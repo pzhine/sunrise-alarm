@@ -3,6 +3,7 @@ import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import os from 'node:os'
+import { startSerialComms } from './serial'
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -117,40 +118,4 @@ ipcMain.handle('open-win', (_, arg) => {
   }
 })
 
-// serial
-
-const { SerialPort } = require('serialport');
-const port = new SerialPort({ 
-  path: '/dev/ttyACM0',
-  baudRate: 9600 
-}, (err) => {
-  if (err) {
-    return console.log('Error: ', err.message)
-  }
-});
-// Read the port data
-port.on("open", () => {
-  console.log('serial port open');
-});
-
-ipcMain.handle('serial-test', (_, arg) => {
-  console.log('serial-test')
-  sendSerialMessage('TEST')
-})
-
-
-function sendSerialMessage(msg: string) {
-  // Sending String character by character
-  for(var i=0; i < msg.length; i++){
-    port.write(new Buffer(msg[i], 'ascii'), function(err, results) {
-        console.log('Error: ' + err);
-        // console.log('Results ' + results);
-    });
-  }
-
-  // Sending the terminate character
-  port.write(new Buffer('\n', 'ascii'), function(err, results) {
-      console.log('err ' + err);
-      // console.log('results ' + results);
-  });
-}
+startSerialComms(ipcMain)

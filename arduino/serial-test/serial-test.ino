@@ -1,24 +1,17 @@
-/*
-  Input Pull-up Serial
+// serial input constants
+#define INPUT_BUFFER_SIZE 64
+#define MAX_INPUT_PARAMS 10
+#define INPUT_DELIMETER ' '
 
-  This example demonstrates the use of pinMode(INPUT_PULLUP). It reads a digital
-  input on pin 2 and prints the results to the Serial Monitor.
+// Serial INPUT for Unipixel comms
+char *inputBuffer = new char[INPUT_BUFFER_SIZE];
+size_t inputBufferIndex = 0;
+bool inputBufferReady = false;
+char* inputParams[MAX_INPUT_PARAMS];  // Array to store pointers to tokens
+int inputParamCount = 0; // Number of params extracted
 
-  The circuit:
-  - momentary switch attached from pin 2 to ground
-  - built-in LED on pin 13
-
-  Unlike pinMode(INPUT), there is no pull-down resistor necessary. An internal
-  20K-ohm resistor is pulled to 5V. This configuration causes the input to read
-  HIGH when the switch is open, and LOW when it is closed.
-
-  created 14 Mar 2012
-  by Scott Fitzgerald
-
-  This example code is in the public domain.
-
-  https://www.arduino.cc/en/Tutorial/BuiltInExamples/InputPullupSerial
-*/
+// Other state
+bool testIsHigh = false;
 
 void setup() {
   //start serial connection
@@ -26,39 +19,78 @@ void setup() {
   //configure pin 2 as an input and enable the internal pull-up resistor
   pinMode(2, INPUT_PULLUP);
   pinMode(13, OUTPUT);
+}
 
-  String data = receiveData();
-  Serial.println(data);
-  if (data == "TEST") {
-    digitalWrite(13, HIGH);
+void readSerialInput() {
+  if (Serial.available() <= 0) {
+    return;
+  }
+  char c = Serial.read(); // Read a single character
+  if (c == '\n' || inputBufferIndex >= INPUT_BUFFER_SIZE - 1) { // End of line or buffer full
+    inputBuffer[inputBufferIndex] = '\0'; // Null-terminate the string
+    inputBufferReady = true; // flag the buffer ready to read
+    inputBufferIndex = 0; // reset the index
+    return;
+  }
+  inputBuffer[inputBufferIndex] = c; // Append character to buffer
+  inputBufferIndex += 1;
+}
+
+void parseSerialCommand() {
+  char* buffer = new char[strlen(inputBuffer) + 1]; // Allocate memory for a modifiable copy of the input
+  strcpy(buffer, inputBuffer);  // Copy input to the buffer
+  char delimiterStr[2] = {INPUT_DELIMETER, '\0'};  // Delimiter as a C-string
+  char* token = strtok(buffer, delimiterStr); // Get the first token
+  inputParamCount = 0;
+  while (token != nullptr && inputParamCount < MAX_INPUT_PARAMS) {
+    inputParams[inputParamCount] = new char[strlen(token) + 1]; // Allocate space for the token
+    strcpy(inputParams[inputParamCount], token); // Copy token into tokens array
+    inputParamCount += 1;
+    token = strtok(nullptr, delimiterStr); // Get the next token
+  }
+  delete[] buffer; // Free the temporary buffer
+}
+
+void freeInputParams() {
+  for (int i = 0; i < inputParamCount; ++i) {
+    delete[] inputParams[i]; 
+  }
+}
+
+void handleSerialCommand() {
+  if (strcmp(inputParams[0], "TEST") == 0) {
+    digitalWrite(13, testIsHigh ? LOW : HIGH);
+    testIsHigh = !testIsHigh;
+  }  
+}
+
+void readAndHandleSerialCommands() {
+  if (inputBufferReady) {
+    inputBufferReady = false;
+    parseSerialCommand();
+    handleSerialCommand();
+    freeInputParams();
+    Serial.print("ACK ");
+    Serial.println(inputBuffer);
+  }
+  // read from serial until newline
+  readSerialInput();
+}
+
+void readAndHandleButton() {
+  //read the pushbutton value into a variable
+  int sensorVal = digitalRead(2);
+ 
+  // LOW when it's pressed. Toggle test LED (pin 13) when the
+  // button's pressed
+  if (sensorVal == LOW) {
+    digitalWrite(13, testIsHigh ? LOW : HIGH);
+  } else {
+    digitalWrite(13, testIsHigh ? HIGH : LOW);
   }
 }
 
 void loop() {
-  //read the pushbutton value into a variable
-  int sensorVal = digitalRead(2);
- 
-  // Keep in mind the pull-up means the pushbutton's logic is inverted. It goes
-  // HIGH when it's open, and LOW when it's pressed. Turn on pin 13 when the
-  // button's pressed, and off when it's not:
-  if (sensorVal == HIGH) {
-    digitalWrite(13, LOW);
-  } else {
-    digitalWrite(13, HIGH);
-  }
-
-  
-}
-
-String receiveData() {
-  String inData = "";
-  while (Serial.available() > 0) {
-    char received = Serial.read();
-    inData += received;
-
-    // Process message when new line character is received
-    if (received == '\n') {
-      return inData;
-    }
-  }
+  readAndHandleSerialCommands();
+  readAndHandleButton();
 }

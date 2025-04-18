@@ -7,81 +7,129 @@
  #include <avr/power.h> // Required for 16 MHz Adafruit Trinket
 #endif
 
-#define PIN        6 
-#define NUMPIXELS  3
+// Which pin on the Arduino is connected to the NeoPixels?
+#define CENTER_PIN   6
+#define RING_PIN     5
+
+// How many NeoPixels are attached to the Arduino?
+#define RING_PIXELS 12 // Popular NeoPixel ring size
 
 // When setting up the NeoPixel library, we tell it how many pixels,
 // and which pin to use to send signals. Note that for older NeoPixel
 // strips you might need to change the third parameter -- see the
 // strandtest example for more information on possible values.
-Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRBW + NEO_KHZ800);
+Adafruit_NeoPixel center_pixel(1, CENTER_PIN, NEO_RGBW + NEO_KHZ800);
+Adafruit_NeoPixel ring_pixels(RING_PIXELS, RING_PIN, NEO_GRB + NEO_KHZ800);
 
-#define DELAYVAL 500 // Time (in milliseconds) to pause between pixels
-
-struct RGB {
-    int r, g, b;
-    RGB(int red, int green, int blue) : r(red), g(green), b(blue) {}
-};
+#define CENTER_BRIGHTNESS 255
+#define RING_BRIGHTNESS   255
 
 void setup() {
-  // These lines are specifically to support the Adafruit Trinket 5V 16 MHz.
-  // Any other board, you can remove this part (but no harm leaving it):
-#if defined(__AVR_ATtiny85__) && (F_CPU == 16000000)
-  clock_prescale_set(clock_div_1);
-#endif
-  // END of Trinket-specific code.
-
-  pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
-  pixels.clear(); // Set all pixel colors to 'off'
-  pixels.show();  // Turn OFF all pixels ASAP
-  pixels.setBrightness(0);
-
-  // setPixelHue(2, 300, 0);
-  // setPixelHue(1, 35, 200);
-  // setPixelHue(0, 300, 200);
-  // setPixelHue(1, 160, 100);
-  // pixels.setPixelColor(1, 0, 50, 255, 250);
-  // pixels.setPixelColor(0, 0, 255, 0, 250);
-  pixels.setPixelColor(2, 50, 200, 0, 120);
-
-  pixels.show();
+  ring_pixels.begin();
+  ring_pixels.setBrightness(RING_BRIGHTNESS);
+  center_pixel.begin(); 
+  center_pixel.setBrightness(CENTER_BRIGHTNESS);
+  
+  ring_pixels.clear(); 
+  center_pixel.clear();
 }
+
+int sunbright = 0;
+unsigned long lastIncrementTime = 0;
 
 void loop() {
+  incrementEveryNms(sunbright, 250); 
+
+  center_pixel.setPixelColor(0, center_pixel.Color(
+    min(sunbright, 255),
+    0, 
+    min(sunbright, 255), 
+    min(255, (sunbright > 100 ? sunbright - 100 : 0))
+  ));
+
+  center_pixel.show();
+
+  runTheaterChaseWithDissolve(
+    ring_pixels,
+    12,                    // numLeds
+    3000,                   // stepInterval (ms)
+    50,                    // fadeSteps
+    ring_pixels.Color(255, 0, 0),// active color (red)
+    ring_pixels.Color(0, 0, 255)   // background color (black)
+  );
 }
 
+void incrementEveryNms(int &value, unsigned long interval) {
+  unsigned long now = millis();
+  if (now - lastIncrementTime >= interval) {
+    lastIncrementTime = now;
+    value++;
+  }
+}
 
+void runTheaterChaseWithDissolve(
+  Adafruit_NeoPixel &strip,
+  uint16_t numLeds,
+  unsigned long stepInterval,
+  uint8_t fadeSteps,
+  uint32_t activeColor,
+  uint32_t bgColor
+) {
+  static uint8_t chaseOffset = 0;
+  static unsigned long lastStepTime = 0;
+  static bool running = false;
+  static uint8_t nextOffset;
+  static uint8_t fadeStep = 0;
 
-RGB hueToRGB(float hue) {
-    float c = 1.0f; // Assume maximum saturation and value (chroma)
-    float x = c * (1 - abs(fmod(hue / 60.0f, 2) - 1));
-    float m = 0.0f; // Adjust brightness
+  unsigned long now = millis();
 
-    float r, g, b;
+  if (!running && (now - lastStepTime >= stepInterval)) {
+    lastStepTime = now;
+    nextOffset = (chaseOffset + 1) % 3;
+    fadeStep = 0;
+    running = true;
+  }
 
-    if (hue >= 0 && hue < 60) {
-        r = c; g = x; b = 0;
-    } else if (hue >= 60 && hue < 120) {
-        r = x; g = c; b = 0;
-    } else if (hue >= 120 && hue < 180) {
-        r = 0; g = c; b = x;
-    } else if (hue >= 180 && hue < 240) {
-        r = 0; g = x; b = c;
-    } else if (hue >= 240 && hue < 300) {
-        r = x; g = 0; b = c;
-    } else {
-        r = c; g = 0; b = x;
+  if (running) {
+    float blend = (float)fadeStep / fadeSteps;
+
+    for (int i = 0; i < numLeds; i++) {
+      bool isLitCurrent = ((i + chaseOffset) % 3 == 0);
+      bool isLitNext = ((i + nextOffset) % 3 == 0);
+
+      uint32_t blended = blendColors(
+        isLitCurrent ? activeColor : bgColor,
+        isLitNext ? activeColor : bgColor,
+        blend
+      );
+
+      strip.setPixelColor(i, blended);
     }
 
-    // Convert to 0-255 range
-    int red = (int)((r + m) * 255);
-    int green = (int)((g + m) * 255);
-    int blue = (int)((b + m) * 255);
+    strip.show();
 
-    return RGB(red, green, blue);
+    fadeStep++;
+    delay(stepInterval / fadeSteps);
+
+    if (fadeStep > fadeSteps) {
+      chaseOffset = nextOffset;
+      running = false;
+    }
+  }
 }
 
-void setPixelHue(int i, float hue, int w) {
-  RGB color = hueToRGB(hue);
-  pixels.setPixelColor(i, pixels.Color(color.g, color.r, color.b, w));
+uint32_t blendColors(uint32_t color1, uint32_t color2, float t) {
+  uint8_t r1 = (color1 >> 16) & 0xFF;
+  uint8_t g1 = (color1 >> 8) & 0xFF;
+  uint8_t b1 = color1 & 0xFF;
+
+  uint8_t r2 = (color2 >> 16) & 0xFF;
+  uint8_t g2 = (color2 >> 8) & 0xFF;
+  uint8_t b2 = color2 & 0xFF;
+
+  uint8_t r = r1 + (r2 - r1) * t;
+  uint8_t g = g1 + (g2 - g1) * t;
+  uint8_t b = b1 + (b2 - b1) * t;
+
+  return ring_pixels.Color(r, g, b);
 }

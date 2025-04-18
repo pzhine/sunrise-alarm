@@ -12,13 +12,14 @@
 #define RING_PIN     5
 
 // How many NeoPixels are attached to the Arduino?
-#define RING_PIXELS 12 // Popular NeoPixel ring size
+#define CENTER_PIXELS  2
+#define RING_PIXELS    12 
 
 // When setting up the NeoPixel library, we tell it how many pixels,
 // and which pin to use to send signals. Note that for older NeoPixel
 // strips you might need to change the third parameter -- see the
 // strandtest example for more information on possible values.
-Adafruit_NeoPixel center_pixel(1, CENTER_PIN, NEO_RGBW + NEO_KHZ800);
+Adafruit_NeoPixel center_pixels(CENTER_PIXELS, CENTER_PIN, NEO_RGBW + NEO_KHZ800);
 Adafruit_NeoPixel ring_pixels(RING_PIXELS, RING_PIN, NEO_GRB + NEO_KHZ800);
 
 #define CENTER_BRIGHTNESS 255
@@ -27,27 +28,30 @@ Adafruit_NeoPixel ring_pixels(RING_PIXELS, RING_PIN, NEO_GRB + NEO_KHZ800);
 void setup() {
   ring_pixels.begin();
   ring_pixels.setBrightness(RING_BRIGHTNESS);
-  center_pixel.begin(); 
-  center_pixel.setBrightness(CENTER_BRIGHTNESS);
+  center_pixels.begin(); 
+  center_pixels.setBrightness(CENTER_BRIGHTNESS);
   
   ring_pixels.clear(); 
-  center_pixel.clear();
+  center_pixels.clear();
+
+  center_pixels.setPixelColor(1, 0, 0, 255, 100);
+  center_pixels.show();
 }
 
 int sunbright = 0;
 unsigned long lastIncrementTime = 0;
 
 void loop() {
-  incrementEveryNms(sunbright, 250); 
+  incrementEveryNms(sunbright, 50); 
 
-  center_pixel.setPixelColor(0, center_pixel.Color(
-    min(sunbright, 255),
+  center_pixels.setPixelColor(0, center_pixels.Color(
+    max(0, (sunbright > 200 ? 200 - (sunbright - 200) : sunbright)),
     0, 
-    min(sunbright, 255), 
+    max(0, (sunbright > 200 ? 200 - (sunbright - 200) : sunbright)), 
     min(255, (sunbright > 100 ? sunbright - 100 : 0))
   ));
 
-  center_pixel.show();
+  center_pixels.show();
 
   runTheaterChaseWithDissolve(
     ring_pixels,

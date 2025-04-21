@@ -1,31 +1,29 @@
-import { exec } from 'child_process';
-import { ipcMain } from 'electron';
+import { ipcMain, net } from 'electron';
 import wifi from 'node-wifi';
 
 // Initialize node-wifi
 wifi.init({ iface: null }); // null means it will use the current active WiFi interface
 
 /**
- * Lists available WiFi networks using the `nmcli` command.
+ * Lists available WiFi networks using the `node-wifi` library.
  * @returns {Promise<string[]>} A promise that resolves to an array of WiFi network names.
  */
-export function listAvailableWifiNetworks(): Promise<string[]> {
+ipcMain.handle('list-available-wifi-networks', async () => {
   return new Promise((resolve, reject) => {
-    exec('nmcli -t -f SSID dev wifi', (error, stdout, stderr) => {
+    wifi.scan((error, networks) => {
       if (error) {
-        reject(`Error listing WiFi networks: ${stderr || error.message}`);
+        reject(`Error listing WiFi networks: ${error.message}`);
         return;
       }
 
-      const networks = stdout
-        .split('\n')
-        .map(line => line.trim())
-        .filter(ssid => ssid.length > 0);
+      const networkNames = networks
+        .map((network) => network.ssid)
+        .filter((ssid) => ssid && ssid.length > 0);
 
-      resolve(networks);
+      resolve(networkNames);
     });
   });
-}
+});
 
 ipcMain.handle('connect-to-network', async (_, { networkName, password }) => {
   try {
@@ -33,19 +31,43 @@ ipcMain.handle('connect-to-network', async (_, { networkName, password }) => {
     return `Successfully connected to ${networkName}`;
   } catch (error) {
     console.error('Error in connect-to-network IPC handler:', error);
-    throw new Error(`Failed to connect to ${networkName}: ${error.message}`);
+    // Attempt to delete the connection if it exists
+    try {
+      await wifi.deleteConnection({ ssid: networkName });
+    } catch (deleteError) {
+      console.error('Error deleting connection:', deleteError);
+    }
+    throw new Error(error.message);
   }
 });
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  listAvailableWifiNetworks()
-    .then(networks => {
-      console.log('Available WiFi Networks:');
-      networks.forEach((network, index) => {
-        console.log(`${index + 1}. ${network}`);
-      });
-    })
-    .catch(error => {
-      console.error('Error:', error);
+/**
+ * Checks if there is an active internet connection
+ * @returns {Promise<boolean>} A promise that resolves to true if internet is available, false otherwise
+ */
+ipcMain.handle('check-internet-connectivity', async () => {
+  return new Promise((resolve) => {
+    // Use Electron's net module to check connectivity
+    const request = net.request({
+      method: 'HEAD',
+      url: 'https://www.google.com',
     });
-}
+
+    // Set a timeout to resolve as false if no response
+    const timeoutId = setTimeout(() => {
+      resolve(false);
+    }, 5000);
+
+    request.on('response', () => {
+      clearTimeout(timeoutId);
+      resolve(true);
+    });
+
+    request.on('error', () => {
+      clearTimeout(timeoutId);
+      resolve(false);
+    });
+
+    request.end();
+  });
+});

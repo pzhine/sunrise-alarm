@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { openNewWindow, sendSerialTest } from '../demos/ipc'
+import { ref } from 'vue';
+import { openNewWindow, sendSerialTest } from '../demos/ipc';
 
-defineProps<{ msg: string }>()
+defineProps<{ msg: string }>();
 
-const count = ref(0)
+const count = ref(0);
 </script>
 
 <template>

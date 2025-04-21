@@ -1,74 +1,48 @@
 <template>
-  <div id="wifi" class="flex flex-col items-center p-8 w-full">
+  <div id="wifi" class="p-8 w-full">
     <h1 class="text-xl font-bold mb-4">Available WiFi Networks</h1>
-    <ul
-      class="w-full divide-y"
-      @keydown.up.prevent="navigateList('up')"
-      @keydown.down.prevent="navigateList('down')"
-      @keydown.enter.prevent="selectNetwork(wifiNetworks[highlightedIndex])"
-      tabindex="0"
-    >
-      <li
-        v-for="(network, index) in wifiNetworks"
-        :key="index"
-        :class="{
-          'hover:bg-[var(--color-li-hover)]': !startedKeyboardNavigation,
-          'p-4': true,
-          'bg-[var(--color-li-highlight)]': index === highlightedIndex,
-        }"
-        @click="selectNetwork(network)"
-        @keydown.enter.prevent="selectNetwork(network)"
-      >
-        {{ network }}
-      </li>
-    </ul>
+    <InteractiveList :items="wifiNetworks" @select="selectNetwork" />
   </div>
 </template>
 
-<script>
-export default {
-  name: 'Wifi',
-  data() {
-    return {
-      wifiNetworks: [],
-      highlightedIndex: 0,
-      startedKeyboardNavigation: false,
-    };
-  },
-  methods: {
-    async fetchWifiNetworks() {
-      try {
-        const networks = await window.ipcRenderer.invoke(
-          'list-available-wifi-networks'
-        );
-        this.wifiNetworks = networks;
-      } catch (error) {
-        console.error('Error fetching WiFi networks:', error);
-      }
-    },
-    navigateList(direction) {
-      this.startedKeyboardNavigation = true;
-      if (direction === 'up') {
-        this.highlightedIndex =
-          (this.highlightedIndex - 1 + this.wifiNetworks.length) %
-          this.wifiNetworks.length;
-      } else if (direction === 'down') {
-        this.highlightedIndex =
-          (this.highlightedIndex + 1) % this.wifiNetworks.length;
-      }
-    },
-    selectNetwork(network) {
-      this.$router.push({
-        name: 'WifiPassword',
-        params: { networkName: network },
-      });
-    },
-  },
-  mounted() {
-    this.fetchWifiNetworks();
-    this.$nextTick(() => {
-      this.$el.querySelector('ul').focus();
-    });
-  },
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
+import InteractiveList from '../components/InteractiveList.vue';
+
+const router = useRouter();
+const wifiNetworks = ref<string[]>([]);
+
+const fetchWifiNetworks = async (): Promise<void> => {
+  try {
+    const networks = await window.ipcRenderer.invoke(
+      'list-available-wifi-networks'
+    );
+    wifiNetworks.value = networks;
+  } catch (error) {
+    console.error('Error fetching WiFi networks:', error);
+  }
 };
+
+const selectNetwork = (network: string): void => {
+  router.push({
+    name: 'WifiPassword',
+    params: { networkName: network },
+  });
+};
+
+let intervalId: NodeJS.Timeout | undefined;
+
+onMounted(() => {
+  // Initial fetch
+  fetchWifiNetworks();
+
+  // Set up interval to refresh every 15 seconds
+  intervalId = setInterval(fetchWifiNetworks, 15000);
+});
+
+// Clean up interval when component is unmounted
+onUnmounted(() => {
+  clearInterval(intervalId);
+});
 </script>

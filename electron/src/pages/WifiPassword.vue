@@ -1,8 +1,8 @@
 <template>
-  <div class="flex flex-col items-center p-8">
+  <div class="p-8">
     <button
       class="self-start mb-4 px-4 py-2 rounded border"
-      @click="$router.back()"
+      @click="router.back()"
     >
       Back
     </button>
@@ -47,61 +47,54 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'WifiPassword',
-  data() {
-    return {
-      password: '',
-      keyboardKeys: [
-        [...'!@#$%&*_-.'.split('')],
-        [...'1234567890'.split('')],
-        [...'qwertyuiop'.split('')],
-        [...'asdfghjkl'.split('')],
-        ['SHIFT', ...'zxcvbnm'.split('')],
-      ],
-      capKeys: [
-        [...'!@#$%&*_-.'.split('')],
-        [...'1234567890'.split('')],
-        [...'QWERTYUIOP'.split('')],
-        [...'ASDFGHJKL'.split('')],
-        ['SHIFT', ...'ZXCVBNM'.split('')],
-      ],
-      isShiftActive: false,
-    };
-  },
-  computed: {
-    networkName() {
-      return this.$route.params.networkName;
-    },
-  },
-  methods: {
-    onKeyboard(key) {
-      if (key === 'SHIFT') {
-        this.toggleShift();
-        return;
-      }
-      this.password += key;
-    },
-    removeLastCharacter() {
-      this.password = this.password.slice(0, -1);
-    },
-    connectToNetwork() {
-      this.$router.push({
-        name: 'WifiConnect',
-        params: { networkName: this.networkName, password: this.password },
-      });
-    },
-    toggleShift() {
-      this.isShiftActive = !this.isShiftActive;
-    },
-  },
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+
+const route = useRoute();
+const router = useRouter();
+
+const password = ref('');
+const isShiftActive = ref(false);
+
+const keyboardKeys = [
+  [...'!@#$%&*_-.'.split('')],
+  [...'1234567890'.split('')],
+  [...'qwertyuiop'.split('')],
+  [...'asdfghjkl'.split('')],
+  ['SHIFT', ...'zxcvbnm'.split('')],
+];
+
+const capKeys = [
+  [...'!@#$%&*_-.'.split('')],
+  [...'1234567890'.split('')],
+  [...'QWERTYUIOP'.split('')],
+  [...'ASDFGHJKL'.split('')],
+  ['SHIFT', ...'ZXCVBNM'.split('')],
+];
+
+const networkName = computed(() => route.params.networkName as string);
+
+const onKeyboard = (key: string): void => {
+  if (key === 'SHIFT') {
+    toggleShift();
+    return;
+  }
+  password.value += key;
+};
+
+const removeLastCharacter = (): void => {
+  password.value = password.value.slice(0, -1);
+};
+
+const connectToNetwork = (): void => {
+  router.push({
+    name: 'WifiConnect',
+    params: { networkName: networkName.value, password: password.value },
+  });
+};
+
+const toggleShift = (): void => {
+  isShiftActive.value = !isShiftActive.value;
 };
 </script>
-
-<style scoped>
-.grid {
-  display: grid;
-  gap: 0.5rem;
-}
-</style>

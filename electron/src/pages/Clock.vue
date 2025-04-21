@@ -1,7 +1,5 @@
 <template>
-  <div class="flex flex-col items-center p-8">
-    <div class="text-8xl">{{ formattedTime }}</div>
-  </div>
+  <div class="text-8xl">{{ formattedTime }}</div>
 </template>
 
 <script setup lang="ts">

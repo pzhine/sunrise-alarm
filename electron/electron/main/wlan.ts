@@ -1,4 +1,9 @@
 import { exec } from 'child_process';
+import { ipcMain } from 'electron';
+import wifi from 'node-wifi';
+
+// Initialize node-wifi
+wifi.init({ iface: null }); // null means it will use the current active WiFi interface
 
 /**
  * Lists available WiFi networks using the `nmcli` command.
@@ -21,6 +26,16 @@ export function listAvailableWifiNetworks(): Promise<string[]> {
     });
   });
 }
+
+ipcMain.handle('connect-to-network', async (_, { networkName, password }) => {
+  try {
+    const result = await wifi.connect({ ssid: networkName, password });
+    return `Successfully connected to ${networkName}`;
+  } catch (error) {
+    console.error('Error in connect-to-network IPC handler:', error);
+    throw new Error(`Failed to connect to ${networkName}: ${error.message}`);
+  }
+});
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   listAvailableWifiNetworks()

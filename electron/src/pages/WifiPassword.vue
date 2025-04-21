@@ -69,8 +69,10 @@ export default {
       this.password = this.password.slice(0, -1);
     },
     connectToNetwork() {
-      console.log(`Connecting to ${this.networkName} with password: ${this.password}`);
-      // Add logic to connect to the network
+      this.$router.push({
+        name: 'WifiConnect',
+        params: { networkName: this.networkName, password: this.password },
+      });
     },
     toggleShift() {
       this.isShiftActive = !this.isShiftActive;

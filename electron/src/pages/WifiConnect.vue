@@ -6,9 +6,6 @@
     </template>
     <template v-else-if="isSuccess">
       <p>Connected successfully!</p>
-      <p v-if="redirectCountdown > 0" class="mt-2 text-sm">
-        Redirecting in {{ redirectCountdown }} seconds...
-      </p>
     </template>
     <template v-else>
       <p>Could not connect to network. Check the password and try again.</p>

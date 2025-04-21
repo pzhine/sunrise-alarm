@@ -1,7 +1,23 @@
+// Include Mouse library
+#include <Mouse.h>
+
 // serial input constants
 #define INPUT_BUFFER_SIZE 64
 #define MAX_INPUT_PARAMS 10
 #define INPUT_DELIMETER ' '
+
+
+// Rotary Encoder Pins
+#define ENCODER_PIN_A 3
+#define ENCODER_PIN_B 4
+#define SCROLL_SENSITIVITY 2 // Adjust sensitivity of scroll (higher = more sensitive)
+
+// Rotary encoder state
+volatile int lastEncoded = 0;
+volatile long encoderValue = 0;
+long lastEncoderValue = 0;
+int lastMSB = 0;
+int lastLSB = 0;
 
 // Serial INPUT for Unipixel comms
 char *inputBuffer = new char[INPUT_BUFFER_SIZE];
@@ -19,6 +35,16 @@ void setup() {
   //configure pin 2 as an input and enable the internal pull-up resistor
   pinMode(2, INPUT_PULLUP);
   pinMode(13, OUTPUT);
+  
+  // Initialize rotary encoder pins
+  pinMode(ENCODER_PIN_A, INPUT_PULLUP);
+  pinMode(ENCODER_PIN_B, INPUT_PULLUP);
+  
+  // Read the initial state of the encoder
+  lastEncoded = (digitalRead(ENCODER_PIN_A) << 1) | digitalRead(ENCODER_PIN_B);
+  
+  // Initialize the Mouse library
+  Mouse.begin();
 }
 
 void readSerialInput() {
@@ -90,7 +116,41 @@ void readAndHandleButton() {
   }
 }
 
+void handleRotaryEncoder() {
+  // Read the current state of the encoder pins
+  int MSB = digitalRead(ENCODER_PIN_A);
+  int LSB = digitalRead(ENCODER_PIN_B);
+  
+  // Converting the 2 pin values to a single number
+  int encoded = (MSB << 1) | LSB;
+  
+  // Determine direction based on the current and previous encoder values
+  int sum = (lastEncoded << 2) | encoded;
+  
+  // Clockwise rotation (0010, 1101, 1011, 0100) - decimal values 2, 13, 11, 4
+  if(sum == 2 || sum == 13 || sum == 11 || sum == 4) {
+    encoderValue++;
+  }
+  // Counter-clockwise rotation (0001, 0111, 1110, 1000) - decimal values 1, 7, 14, 8
+  else if(sum == 1 || sum == 7 || sum == 14 || sum == 8) {
+    encoderValue--;
+  }
+  
+  lastEncoded = encoded;
+  
+  // Send mouse scroll events if there's significant movement
+  if(encoderValue > lastEncoderValue + SCROLL_SENSITIVITY) {
+    Mouse.move(0, 0, -1); // Scroll up
+    lastEncoderValue = encoderValue;
+  }
+  else if(encoderValue < lastEncoderValue - SCROLL_SENSITIVITY) {
+    Mouse.move(0, 0, 1); // Scroll down
+    lastEncoderValue = encoderValue;
+  }
+}
+
 void loop() {
   readAndHandleSerialCommands();
   readAndHandleButton();
+  handleRotaryEncoder();
 }

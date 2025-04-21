@@ -8,7 +8,12 @@
     </button>
     <h1 class="text-xl font-bold mb-4">Enter Password for {{ networkName }}</h1>
     <div class="flex flex-row items-stretch mb-4">
-      <input type="text" class="flex p-2 border rounded" v-model="password" />
+      <input
+        type="text"
+        class="flex p-2 border rounded"
+        v-model="password"
+        ref="passwordInput"
+      />
       <button class="ml-4 p-3 flex rounded border" @click="removeLastCharacter">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -48,7 +53,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
@@ -56,6 +61,7 @@ const router = useRouter();
 
 const password = ref('');
 const isShiftActive = ref(false);
+const passwordInput = ref<HTMLInputElement | null>(null);
 
 const keyboardKeys = [
   [...'!@#$%&*_-.'.split('')],
@@ -97,4 +103,9 @@ const connectToNetwork = (): void => {
 const toggleShift = (): void => {
   isShiftActive.value = !isShiftActive.value;
 };
+
+onMounted(() => {
+  // Focus the password input when component is mounted
+  passwordInput.value?.focus();
+});
 </script>

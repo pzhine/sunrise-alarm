@@ -4,6 +4,7 @@
     @keydown.up.prevent="navigateList('up')"
     @keydown.down.prevent="navigateList('down')"
     @keydown.enter.prevent="selectItem(items[highlightedIndex])"
+    @wheel="handleWheel"
     tabindex="0"
     ref="listContainer"
   >
@@ -89,6 +90,24 @@ onMounted(() => {
     listContainer.value?.focus();
   });
 });
+
+const handleWheel = (event: WheelEvent): void => {
+  // Check if the wheel event was triggered by a touch
+  // Chrome/Safari touch events don't have wheelDelta
+  const isTouchGenerated = (event as any).wheelDeltaY === undefined;
+
+  // Only prevent default for mouse-generated wheel events, not touch-generated ones
+  if (!isTouchGenerated) {
+    event.preventDefault();
+  }
+
+  // Detect scroll direction (positive deltaY means scrolling down)
+  if (event.deltaY > 0) {
+    navigateList('down');
+  } else if (event.deltaY < 0) {
+    navigateList('up');
+  }
+};
 </script>
 
 <style scoped>

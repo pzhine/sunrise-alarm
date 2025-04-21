@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import os from 'node:os'
 import { startSerialComms } from './serial'
+import './ipc'
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -118,4 +119,4 @@ ipcMain.handle('open-win', (_, arg) => {
   }
 })
 
-startSerialComms(ipcMain)
+startSerialComms()

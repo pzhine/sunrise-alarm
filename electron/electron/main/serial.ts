@@ -11,13 +11,13 @@ let inflightMessage = null
 
 setInterval(processMessageQueue, MESSAGE_INTERVAL)
 
-export function startSerialComms(ipcMain: Electron.IpcMain) {
-  port = new SerialPort({ 
+export function startSerialComms() {
+  port = new SerialPort({
     path: '/dev/ttyACM0',
-    baudRate: 9600 
+    baudRate: 9600
   }, (err) => {
     if (err) {
-      throw(err)
+      throw (err)
     }
   });
   port.on("open", () => {
@@ -25,15 +25,11 @@ export function startSerialComms(ipcMain: Electron.IpcMain) {
   });
 
   parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
-  
+
   // Read the port data
-  parser.on('data', data =>{
+  parser.on('data', data => {
     receive(data)
   });
-
-  ipcMain.handle('serial-test', (_, arg) => {
-    sendMessage('TEST')
-  })
 }
 
 function receive(msg: string) {
@@ -66,7 +62,7 @@ function receive(msg: string) {
 
 function transmit(msg: string): boolean {
   if (!port) {
-    throw(new Error('Serial port not open'))
+    throw (new Error('Serial port not open'))
   }
   console.log('[serial] tx', msg)
   // Sending String character by character

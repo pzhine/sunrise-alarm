@@ -1,12 +1,28 @@
 <template>
-  <div class="text-8xl">{{ formattedTime }}</div>
+  <div
+    class="p-8"
+    @click="goToMenu"
+    @keydown.enter="goToMenu"
+    tabindex="0"
+    ref="clockContainer"
+  >
+    <div class="text-8xl mb-10">{{ formattedTime }}</div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
 
+const router = useRouter();
 const time = ref(new Date());
 const formattedTime = ref('');
+const clockContainer = ref<HTMLDivElement | null>(null);
+
+// Navigation function
+const goToMenu = () => {
+  router.push('/menu');
+};
 
 // Format time as HH:MM:SS
 const updateFormattedTime = () => {
@@ -24,6 +40,9 @@ onMounted(() => {
     time.value = new Date();
     updateFormattedTime();
   }, 500);
+
+  // Set focus to make the enter key work
+  clockContainer.value?.focus();
 });
 
 // Clear interval when component is unmounted

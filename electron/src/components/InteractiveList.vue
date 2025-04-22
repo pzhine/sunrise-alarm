@@ -13,13 +13,16 @@
       :key="index"
       :class="{
         'hover:bg-[var(--color-li-hover)]': !startedKeyboardNavigation,
-        'p-4': true,
+        'p-4 flex justify-between items-center': true,
         'bg-[var(--color-li-highlight)]': index === highlightedIndex,
       }"
       @click="selectItem(item)"
       @keydown.enter.prevent="selectItem(item)"
     >
-      {{ item }}
+      <span>{{ isObject(item) ? item.label : item }}</span>
+      <span v-if="isObject(item) && 'value' in item" class="ml-4 font-medium">
+        {{ item.value }}
+      </span>
     </li>
   </ul>
 </template>
@@ -27,18 +30,33 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch, defineProps, defineEmits } from 'vue';
 
+// Define item type
+type ListItem =
+  | string
+  | {
+      label: string;
+      value?: any;
+      onSelect?: () => void;
+      [key: string]: any;
+    };
+
 const props = defineProps<{
-  items: string[];
+  items: ListItem[];
   initialHighlightIndex?: number;
 }>();
 
 const emit = defineEmits<{
-  (e: 'select', item: string): void;
+  (e: 'select', item: ListItem): void;
 }>();
 
 const highlightedIndex = ref(props.initialHighlightIndex || 0);
 const startedKeyboardNavigation = ref(false);
 const listContainer = ref<HTMLUListElement | null>(null);
+
+// Helper to check if item is an object
+const isObject = (item: ListItem): item is { label: string; value?: any } => {
+  return typeof item === 'object' && item !== null;
+};
 
 const navigateList = (direction: 'up' | 'down'): void => {
   startedKeyboardNavigation.value = true;
@@ -76,7 +94,11 @@ const scrollToHighlighted = (): void => {
   }
 };
 
-const selectItem = (item: string): void => {
+const selectItem = (item: ListItem): void => {
+  // If item is an object with onSelect handler, call it
+  if (isObject(item) && typeof item.onSelect === 'function') {
+    item.onSelect();
+  }
   emit('select', item);
 };
 

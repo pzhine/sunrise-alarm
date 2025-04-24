@@ -1,65 +1,25 @@
 <template>
-  <div class="flex flex-col items-center justify-center min-h-screen p-8">
-    <div class="flex w-full justify-start mb-6">
-      <button class="px-4 py-2 rounded border" @click="router.push('/menu')">
-        Back
-      </button>
+  <div>
+    <div class="flex items-center justify-center text-8xl mb-8">
+      <span :class="{ 'text-blue-500': editMode === 'hours' }">{{
+        formattedHours
+      }}</span>
+      <span class="mx-2">:</span>
+      <span :class="{ 'text-blue-500': editMode === 'minutes' }">{{
+        formattedMinutes
+      }}</span>
     </div>
-
+  </div>
+  <div class="flex flex-row fixed p-8 justify-between w-full items-start">
     <h1 class="text-2xl font-bold mb-6">Set Alarm</h1>
-
-    <div class="flex flex-col items-center w-full max-w-md">
-      <div class="flex items-center justify-center text-4xl mb-8">
-        <span>{{ formattedHours }}</span>
-        <span class="mx-2">:</span>
-        <span>{{ formattedMinutes }}</span>
-      </div>
-
-      <div class="grid grid-cols-2 gap-8 w-full mb-8">
-        <div class="flex flex-col items-center">
-          <button
-            class="w-16 h-16 rounded-full border text-2xl mb-4"
-            @click="changeHours(1)"
-          >
-            +
-          </button>
-          <span class="text-lg">Hours</span>
-          <button
-            class="w-16 h-16 rounded-full border text-2xl mt-4"
-            @click="changeHours(-1)"
-          >
-            -
-          </button>
-        </div>
-
-        <div class="flex flex-col items-center">
-          <button
-            class="w-16 h-16 rounded-full border text-2xl mb-4"
-            @click="changeMinutes(5)"
-          >
-            +
-          </button>
-          <span class="text-lg">Minutes</span>
-          <button
-            class="w-16 h-16 rounded-full border text-2xl mt-4"
-            @click="changeMinutes(-5)"
-          >
-            -
-          </button>
-        </div>
-      </div>
-
-      <button class="px-6 py-3 rounded border text-lg" @click="saveAlarm">
-        Save Alarm
-      </button>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAppStore } from '../stores/appState';
+import { debounce } from 'lodash-es';
 
 const router = useRouter();
 const appStore = useAppStore();
@@ -67,6 +27,7 @@ const appStore = useAppStore();
 // Local state for alarm time
 const hours = ref(appStore.alarmTime[0]);
 const minutes = ref(appStore.alarmTime[1]);
+const editMode = ref('hours'); // 'hours' or 'minutes'
 
 // Formatted display values
 const formattedHours = computed(() => {
@@ -77,25 +38,80 @@ const formattedMinutes = computed(() => {
   return minutes.value.toString().padStart(2, '0');
 });
 
-// Change hours with wrapping (0-23)
-const changeHours = (delta: number) => {
-  hours.value = (hours.value + delta + 24) % 24;
-};
-
-// Change minutes with wrapping (0-55) in 5-minute increments
-const changeMinutes = (delta: number) => {
-  minutes.value = (Math.floor((minutes.value + delta) / 5) * 5 + 60) % 60;
-};
-
-// Save alarm time to global state
-const saveAlarm = () => {
+// Create debounced save function
+const debouncedSave = debounce(() => {
   appStore.setAlarmTime(hours.value, minutes.value);
-  router.push('/menu');
+}, 300);
+
+// Handle wheel event to change time based on current edit mode
+const handleWheel = (event: WheelEvent) => {
+  // Check if the wheel event was triggered by a touch
+  const isTouchGenerated = (event as any).wheelDeltaY === undefined;
+
+  // Only prevent default for mouse-generated wheel events, not touch-generated ones
+  if (!isTouchGenerated) {
+    event.preventDefault();
+  }
+
+  if (editMode.value === 'hours') {
+    // Scrolling up decreases, scrolling down increases (consistent with natural scrolling)
+    if (event.deltaY < 0) {
+      hours.value = (hours.value + 1) % 24;
+    } else if (event.deltaY > 0) {
+      hours.value = (hours.value - 1 + 24) % 24;
+    }
+  } else if (editMode.value === 'minutes') {
+    if (event.deltaY < 0) {
+      minutes.value = (Math.round(minutes.value / 5) * 5 + 5) % 60;
+    } else if (event.deltaY > 0) {
+      minutes.value = (Math.round(minutes.value / 5) * 5 - 5 + 60) % 60;
+    }
+  }
+
+  // Save changes as they're made
+  debouncedSave();
 };
 
-// Initialize from global state
+// Handle right click to advance mode or return to menu
+const handleRightClick = (event: MouseEvent) => {
+  if (event.button === 2) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (editMode.value === 'hours') {
+      // Switch to minutes mode
+      editMode.value = 'minutes';
+    } else {
+      // Make sure any pending changes are saved before navigating
+      debouncedSave.flush();
+      // Return to menu
+      router.push('/menu');
+    }
+  }
+};
+
+// Initialize from global state and set up wheel event
 onMounted(() => {
   hours.value = appStore.alarmTime[0];
   minutes.value = appStore.alarmTime[1];
+
+  // Add global wheel event listener to window
+  window.addEventListener('wheel', handleWheel, { passive: false });
+
+  // Add global mousedown event listener for right-click detection
+  window.addEventListener('mousedown', handleRightClick);
+
+  // Prevent context menu from appearing on right-click
+  window.addEventListener('contextmenu', (e) => e.preventDefault());
+});
+
+// Clean up event listeners when component unmounts
+onBeforeUnmount(() => {
+  // Ensure any pending changes are saved before unmounting
+  debouncedSave.flush();
+
+  window.removeEventListener('wheel', handleWheel);
+  window.removeEventListener('mousedown', handleRightClick);
+  window.removeEventListener('contextmenu', (e) => e.preventDefault());
 });
 </script>

@@ -65,7 +65,7 @@ const title = computed(() => titleMap[props.type] || 'Level Control');
 // Create debounced save function using lodash
 const debouncedSave = debounce((value: number) => {
   setters[props.type](value);
-}, 500);
+}, 50);
 
 // Handle wheel event to change level
 const handleWheel = (event: WheelEvent) => {

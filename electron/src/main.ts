@@ -8,6 +8,7 @@ import WifiConnect from './pages/WifiConnect.vue';
 import Clock from './pages/Clock.vue';
 import MainMenu from './pages/MainMenu.vue';
 import { nextTick } from 'vue';
+import { useAppStore } from './stores/appState';
 
 import './style.css';
 
@@ -61,7 +62,22 @@ const router = createRouter({
 const app = createApp(App);
 app.use(router);
 app.use(pinia); // Add Pinia to the Vue application
+
+// Mount the app
 app.mount('#app');
+
+// Initialize the app state from saved data
+const initializeAppState = async () => {
+  const appStore = useAppStore();
+
+  // Load saved state first
+  await appStore.loadState();
+
+  // Subscribe to state changes and save when they occur
+  appStore.$subscribe((_, state) => {
+    appStore.saveState();
+  });
+};
 
 // Check internet connectivity and route accordingly
 const checkInternetAndRoute = async () => {
@@ -82,8 +98,13 @@ const checkInternetAndRoute = async () => {
 // Set up hourly checks (60 * 60 * 1000 = 3600000 milliseconds = 1 hour)
 setInterval(checkInternetAndRoute, 3600000);
 
-// Perform the check after the app is mounted
-nextTick(() => {
+// Perform initialization and checks after the app is mounted
+nextTick(async () => {
   postMessage({ payload: 'removeLoading' }, '*');
-  checkInternetAndRoute();
+
+  // Load saved app state
+  await initializeAppState();
+
+  // Check internet connectivity
+  await checkInternetAndRoute();
 });

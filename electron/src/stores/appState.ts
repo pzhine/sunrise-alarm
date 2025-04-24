@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { debounce } from 'lodash-es';
 
 // Define the type for our alarm time tuple [hours, minutes]
 type AlarmTime = [number, number];
@@ -55,6 +56,28 @@ export const useAppStore = defineStore('appState', {
   },
 
   actions: {
+    // Save state to Electron via IPC
+    saveState: debounce(function (this: any) {
+      // Send the entire state to the main process
+      window.ipcRenderer.invoke(
+        'save-app-state',
+        JSON.parse(JSON.stringify(this.$state))
+      );
+    }, 1000),
+
+    // Load state from Electron main process
+    async loadState() {
+      try {
+        const savedState = await window.ipcRenderer.invoke('load-app-state');
+        if (savedState) {
+          // Replace the entire state with the saved one
+          this.$patch(savedState);
+        }
+      } catch (error) {
+        console.error('Failed to load saved state:', error);
+      }
+    },
+
     // Set the alarm time
     setAlarmTime(hours: number, minutes: number): void {
       this.alarmTime = [hours, minutes];

@@ -4,8 +4,10 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import os from 'node:os';
 import { startSerialComms } from './serial';
+import { initStateManagement } from './stateManager';
 import './serial';
 import './wlan';
+import './stateManager';
 
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -79,7 +81,10 @@ async function createWindow() {
   // win.webContents.on('will-navigate', (event, url) => { }) #344
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+  initStateManagement();
+});
 
 app.on('window-all-closed', () => {
   win = null;

@@ -42,6 +42,14 @@ const menuItems = computed(() => [
     value: `${appStore.lampBrightness}%`,
     onSelect: () => router.push('/level/lampBrightness'),
   },
+  {
+    label: 'Time Format',
+    value: appStore.timeFormat,
+    onSelect: () => {
+      // Toggle between 12h and 24h format
+      appStore.setTimeFormat(appStore.timeFormat === '12h' ? '24h' : '12h');
+    },
+  },
 ]);
 
 // Handle menu item selection (for any additional processing if needed)

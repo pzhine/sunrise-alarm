@@ -8,6 +8,9 @@
       <span :class="{ 'text-blue-500': editMode === 'minutes' }">{{
         formattedMinutes
       }}</span>
+      <span v-if="appStore.timeFormat === '12h'" class="ml-4">{{
+        isPM ? 'PM' : 'AM'
+      }}</span>
     </div>
   </div>
   <div class="flex flex-row fixed p-8 justify-between w-full items-start">
@@ -29,9 +32,17 @@ const hours = ref(appStore.alarmTime[0]);
 const minutes = ref(appStore.alarmTime[1]);
 const editMode = ref('hours'); // 'hours' or 'minutes'
 
-// Formatted display values
+// Computed display values
+const isPM = computed(() => hours.value >= 12);
+
+// Formatted display values based on time format preference
 const formattedHours = computed(() => {
-  return hours.value.toString().padStart(2, '0');
+  if (appStore.timeFormat === '12h') {
+    const hours12 = hours.value % 12 || 12; // Convert 0 to 12 for 12 AM
+    return hours12.toString().padStart(2, '0');
+  } else {
+    return hours.value.toString().padStart(2, '0');
+  }
 });
 
 const formattedMinutes = computed(() => {

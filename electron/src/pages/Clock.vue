@@ -11,10 +11,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAppStore } from '../stores/appState';
 
 const router = useRouter();
+const appStore = useAppStore();
 const time = ref(new Date());
 const formattedTime = ref('');
 const clockContainer = ref<HTMLDivElement | null>(null);
@@ -26,12 +28,20 @@ const goToMenu = (event: MouseEvent | KeyboardEvent) => {
   router.push('/menu');
 };
 
-// Format time as HH:MM:SS
+// Format time based on timeFormat preference
 const updateFormattedTime = () => {
-  const hours = time.value.getHours().toString().padStart(2, '0');
+  const hours = time.value.getHours();
   const minutes = time.value.getMinutes().toString().padStart(2, '0');
   const seconds = time.value.getSeconds().toString().padStart(2, '0');
-  formattedTime.value = `${hours}:${minutes}:${seconds}`;
+
+  if (appStore.timeFormat === '12h') {
+    const isPM = hours >= 12;
+    const hours12 = hours % 12 || 12; // Convert 0 to 12 for 12 AM
+    formattedTime.value = `${hours12}:${minutes}:${seconds} ${isPM ? 'PM' : 'AM'}`;
+  } else {
+    // 24h format
+    formattedTime.value = `${hours.toString().padStart(2, '0')}:${minutes}:${seconds}`;
+  }
 };
 
 // Update time every second

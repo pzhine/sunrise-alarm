@@ -15,6 +15,7 @@ interface AppState {
   screenBrightness: number;
   projectorBrightness: number;
   lampBrightness: number;
+  timeFormat: '12h' | '24h'; // Add time format preference
   listPositions: ListPositions; // Store InteractiveList positions by route
 }
 
@@ -26,14 +27,23 @@ export const useAppStore = defineStore('appState', {
     screenBrightness: 80, // Default screen brightness (0-100)
     projectorBrightness: 70, // Default projector brightness (0-100)
     lampBrightness: 50, // Default lamp brightness (0-100)
+    timeFormat: '24h', // Default time format
     listPositions: {}, // Empty object to store list positions by route
   }),
 
   getters: {
-    // Format alarm time as a string (HH:MM)
+    // Format alarm time as a string (HH:MM) based on timeFormat preference
     formattedAlarmTime: (state): string => {
       const [hours, minutes] = state.alarmTime;
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+
+      if (state.timeFormat === '12h') {
+        const isPM = hours >= 12;
+        const hours12 = hours % 12 || 12; // Convert 0 to 12 for 12 AM
+        return `${hours12}:${minutes.toString().padStart(2, '0')} ${isPM ? 'PM' : 'AM'}`;
+      } else {
+        // 24h format
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      }
     },
 
     // Get list position for a specific route
@@ -85,6 +95,11 @@ export const useAppStore = defineStore('appState', {
       this.lampBrightness = Math.max(0, Math.min(100, level)); // Clamp between 0-100
     },
 
+    // Set the time format
+    setTimeFormat(format: '12h' | '24h'): void {
+      this.timeFormat = format;
+    },
+
     // Reset all settings to default values
     resetToDefaults(): void {
       this.volume = 50;
@@ -92,6 +107,7 @@ export const useAppStore = defineStore('appState', {
       this.screenBrightness = 80;
       this.projectorBrightness = 70;
       this.lampBrightness = 50;
+      this.timeFormat = '24h';
       this.clearAllListPositions();
     },
   },

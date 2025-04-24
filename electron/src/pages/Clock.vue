@@ -1,7 +1,7 @@
 <template>
   <div
     class="p-8"
-    @click="goToMenu"
+    @mousedown="goToMenu"
     @keydown.enter="goToMenu"
     tabindex="0"
     ref="clockContainer"
@@ -20,7 +20,9 @@ const formattedTime = ref('');
 const clockContainer = ref<HTMLDivElement | null>(null);
 
 // Navigation function
-const goToMenu = () => {
+const goToMenu = (event: MouseEvent | KeyboardEvent) => {
+  event.preventDefault();
+  event.stopPropagation();
   router.push('/menu');
 };
 

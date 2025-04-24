@@ -1,10 +1,21 @@
 <template>
+  <button
+    v-if="showBackButton"
+    @click="handleBackButton"
+    :class="{
+      'fixed top-4 left-4 p-3 border-b border-r z-10': true,
+      'bg-[var(--color-li-highlight)]': isBackButtonHighlighted,
+      'hover:bg-[var(--color-li-hover)]': !startedKeyboardNavigation,
+    }"
+  >
+    {{ backButtonLabel ?? '← Back' }}
+  </button>
+
   <ul
     class="w-full divide-y overflow-y-auto"
     @keydown.up.prevent="navigateList('up')"
     @keydown.down.prevent="navigateList('down')"
-    @keydown.enter.prevent="selectItem(items[highlightedIndex])"
-    @wheel="handleWheel"
+    @keydown.enter.prevent="handleEnterKey"
     tabindex="0"
     ref="listContainer"
   >
@@ -14,9 +25,10 @@
       :class="{
         'hover:bg-[var(--color-li-hover)]': !startedKeyboardNavigation,
         'p-4 flex justify-between items-center': true,
-        'bg-[var(--color-li-highlight)]': index === highlightedIndex,
+        'bg-[var(--color-li-highlight)]':
+          index === highlightedIndex && !isBackButtonHighlighted,
       }"
-      @click="selectItem(item)"
+      @click="handleItemClick(item, index)"
       @keydown.enter.prevent="selectItem(item)"
     >
       <span>{{ isObject(item) ? item.label : item }}</span>
@@ -28,7 +40,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, watch, defineProps, defineEmits } from 'vue';
+import {
+  ref,
+  onMounted,
+  onUnmounted,
+  nextTick,
+  watch,
+  defineProps,
+  defineEmits,
+  computed,
+} from 'vue';
 
 // Define item type
 type ListItem =
@@ -43,15 +64,24 @@ type ListItem =
 const props = defineProps<{
   items: ListItem[];
   initialHighlightIndex?: number;
+  showBackButton?: boolean;
+  backButtonLabel?: string;
 }>();
 
 const emit = defineEmits<{
   (e: 'select', item: ListItem): void;
+  (e: 'back'): void;
 }>();
 
 const highlightedIndex = ref(props.initialHighlightIndex || 0);
 const startedKeyboardNavigation = ref(false);
 const listContainer = ref<HTMLUListElement | null>(null);
+const isBackButtonHighlighted = ref(false);
+
+// Total number of navigable items (list items + back button if shown)
+const totalNavigableItems = computed(() => {
+  return props.items.length + (props.showBackButton ? 1 : 0);
+});
 
 // Helper to check if item is an object
 const isObject = (item: ListItem): item is { label: string; value?: any } => {
@@ -60,22 +90,75 @@ const isObject = (item: ListItem): item is { label: string; value?: any } => {
 
 const navigateList = (direction: 'up' | 'down'): void => {
   startedKeyboardNavigation.value = true;
-  if (direction === 'up') {
-    highlightedIndex.value =
-      (highlightedIndex.value - 1 + props.items.length) % props.items.length;
-  } else if (direction === 'down') {
-    highlightedIndex.value = (highlightedIndex.value + 1) % props.items.length;
+
+  // Handle navigation with back button
+  if (props.showBackButton) {
+    if (direction === 'up') {
+      if (isBackButtonHighlighted.value) {
+        // From back button, go to last list item
+        isBackButtonHighlighted.value = false;
+        highlightedIndex.value = props.items.length - 1;
+      } else if (highlightedIndex.value === 0) {
+        // From first list item, go to back button
+        isBackButtonHighlighted.value = true;
+        highlightedIndex.value = -1; // Use -1 to indicate no list item is selected
+      } else {
+        // Navigate up through list items
+        highlightedIndex.value =
+          (highlightedIndex.value - 1) % props.items.length;
+      }
+    } else if (direction === 'down') {
+      if (isBackButtonHighlighted.value) {
+        // From back button, go to first list item
+        isBackButtonHighlighted.value = false;
+        highlightedIndex.value = 0;
+      } else if (highlightedIndex.value === props.items.length - 1) {
+        // From last list item, go to back button
+        isBackButtonHighlighted.value = true;
+        highlightedIndex.value = -1; // Use -1 to indicate no list item is selected
+      } else {
+        // Navigate down through list items
+        highlightedIndex.value =
+          (highlightedIndex.value + 1) % props.items.length;
+      }
+    }
+  } else {
+    // Original navigation logic (without back button)
+    if (direction === 'up') {
+      highlightedIndex.value =
+        (highlightedIndex.value - 1 + props.items.length) % props.items.length;
+    } else if (direction === 'down') {
+      highlightedIndex.value =
+        (highlightedIndex.value + 1) % props.items.length;
+    }
   }
 
   // Scroll will happen after the next DOM update
   nextTick(scrollToHighlighted);
 };
 
+const handleEnterKey = () => {
+  if (isBackButtonHighlighted.value) {
+    handleBackButton();
+  } else {
+    selectItem(props.items[highlightedIndex.value]);
+  }
+};
+
+const handleBackButton = () => {
+  emit('back');
+};
+
+// Rest of the component code
 const scrollToHighlighted = (): void => {
   if (!listContainer.value) return;
 
   const container = listContainer.value;
   const listItems = container.querySelectorAll('li');
+
+  // If back button is highlighted, no need to scroll list items
+  if (isBackButtonHighlighted.value) return;
+
   const highlightedElement = listItems[highlightedIndex.value];
 
   if (!highlightedElement) return;
@@ -107,10 +190,46 @@ watch(highlightedIndex, () => {
   nextTick(scrollToHighlighted);
 });
 
+// Handle item click
+const handleItemClick = (item: ListItem, index: number) => {
+  // Reset back button highlight when clicking list items
+  isBackButtonHighlighted.value = false;
+  highlightedIndex.value = index;
+  selectItem(item);
+};
+
+// Handle mouse right click
+const handleMouseDown = (event: MouseEvent) => {
+  if (event.button === 2) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (isBackButtonHighlighted.value) {
+      handleBackButton();
+    } else {
+      selectItem(props.items[highlightedIndex.value]);
+    }
+  }
+};
+
 onMounted(() => {
   nextTick(() => {
     listContainer.value?.focus();
+
+    // Add wheel event listener to window
+    window.addEventListener('wheel', handleWheel, { passive: false });
+
+    // Add mousedown event listener to window
+    window.addEventListener('mousedown', handleMouseDown, { passive: false });
   });
+});
+
+onUnmounted(() => {
+  // Remove wheel event listener when component is unmounted
+  window.removeEventListener('wheel', handleWheel);
+
+  // remove mousedown click event listener
+  window.removeEventListener('mousedown', handleMouseDown);
 });
 
 const handleWheel = (event: WheelEvent): void => {
@@ -149,5 +268,10 @@ ul::-webkit-scrollbar-thumb {
 
 ul::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+
+button {
+  transition: background-color 0.2s;
+  font-size: 0.9rem;
 }
 </style>

@@ -3,6 +3,11 @@ import { defineStore } from 'pinia';
 // Define the type for our alarm time tuple [hours, minutes]
 type AlarmTime = [number, number];
 
+// Define the interface for list positions by route
+interface ListPositions {
+  [routePath: string]: number;
+}
+
 // Define the interface for our app state
 interface AppState {
   volume: number;
@@ -10,6 +15,7 @@ interface AppState {
   screenBrightness: number;
   projectorBrightness: number;
   lampBrightness: number;
+  listPositions: ListPositions; // Store InteractiveList positions by route
 }
 
 // Create a Pinia store for our application state
@@ -20,6 +26,7 @@ export const useAppStore = defineStore('appState', {
     screenBrightness: 80, // Default screen brightness (0-100)
     projectorBrightness: 70, // Default projector brightness (0-100)
     lampBrightness: 50, // Default lamp brightness (0-100)
+    listPositions: {}, // Empty object to store list positions by route
   }),
 
   getters: {
@@ -28,12 +35,34 @@ export const useAppStore = defineStore('appState', {
       const [hours, minutes] = state.alarmTime;
       return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     },
+
+    // Get list position for a specific route
+    getListPosition:
+      (state) =>
+      (routePath: string): number => {
+        return state.listPositions[routePath] ?? 0; // Default to 0 if not found
+      },
   },
 
   actions: {
     // Set the alarm time
     setAlarmTime(hours: number, minutes: number): void {
       this.alarmTime = [hours, minutes];
+    },
+
+    // Save list position for a specific route
+    saveListPosition(routePath: string, position: number): void {
+      this.listPositions[routePath] = position;
+    },
+
+    // Clear saved position for a route
+    clearListPosition(routePath: string): void {
+      delete this.listPositions[routePath];
+    },
+
+    // Clear all saved list positions
+    clearAllListPositions(): void {
+      this.listPositions = {};
     },
 
     // Set the volume level
@@ -63,6 +92,7 @@ export const useAppStore = defineStore('appState', {
       this.screenBrightness = 80;
       this.projectorBrightness = 70;
       this.lampBrightness = 50;
+      this.clearAllListPositions();
     },
   },
 });

@@ -50,6 +50,8 @@ import {
   defineEmits,
   computed,
 } from 'vue';
+import { useAppStore } from '../stores/appState';
+import { useRoute } from 'vue-router';
 
 // Define item type
 type ListItem =
@@ -66,6 +68,7 @@ const props = defineProps<{
   initialHighlightIndex?: number;
   showBackButton?: boolean;
   backButtonLabel?: string;
+  routeKey?: string; // Optional custom route key to use instead of the current route path
 }>();
 
 const emit = defineEmits<{
@@ -73,7 +76,26 @@ const emit = defineEmits<{
   (e: 'back'): void;
 }>();
 
-const highlightedIndex = ref(props.initialHighlightIndex || 0);
+const appStore = useAppStore();
+const route = useRoute();
+
+// Get the route identifier to use for position storage
+const routeIdentifier = computed(() => {
+  return props.routeKey || route.path;
+});
+
+// Get saved position from store or use initialHighlightIndex
+const initialPosition = computed(() => {
+  // Check if we have a saved position for this route
+  const savedPosition = appStore.getListPosition(routeIdentifier.value);
+
+  // Use saved position if available, otherwise fall back to initialHighlightIndex or 0
+  return savedPosition !== undefined
+    ? savedPosition
+    : props.initialHighlightIndex || 0;
+});
+
+const highlightedIndex = ref(initialPosition.value);
 const startedKeyboardNavigation = ref(false);
 const listContainer = ref<HTMLUListElement | null>(null);
 const isBackButtonHighlighted = ref(false);
@@ -133,6 +155,11 @@ const navigateList = (direction: 'up' | 'down'): void => {
     }
   }
 
+  // Save position to store
+  if (!isBackButtonHighlighted.value) {
+    appStore.saveListPosition(routeIdentifier.value, highlightedIndex.value);
+  }
+
   // Scroll will happen after the next DOM update
   nextTick(scrollToHighlighted);
 };
@@ -186,7 +213,11 @@ const selectItem = (item: ListItem): void => {
 };
 
 // Watch for changes to the highlighted index and ensure it's scrolled into view
-watch(highlightedIndex, () => {
+watch(highlightedIndex, (newValue) => {
+  // Save the position to the store when it changes
+  if (!isBackButtonHighlighted.value) {
+    appStore.saveListPosition(routeIdentifier.value, newValue);
+  }
   nextTick(scrollToHighlighted);
 });
 
@@ -215,6 +246,9 @@ const handleMouseDown = (event: MouseEvent) => {
 onMounted(() => {
   nextTick(() => {
     listContainer.value?.focus();
+
+    // If we have a saved position, scroll to it
+    scrollToHighlighted();
 
     // Add wheel event listener to window
     window.addEventListener('wheel', handleWheel, { passive: false });

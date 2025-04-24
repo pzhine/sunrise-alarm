@@ -5,7 +5,6 @@
       :showBackButton="true"
       @select="handleMenuSelection"
       @back="router.push('/')"
-      class="w-full"
     />
   </div>
 </template>

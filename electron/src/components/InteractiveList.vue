@@ -12,7 +12,10 @@
   </button>
 
   <ul
-    class="w-full divide-y overflow-y-auto"
+    :class="{
+      'w-full divide-y overflow-y-auto': true,
+      'max-h-[calc(100vh-3rem)] mt-[3rem]': showBackButton,
+    }"
     @keydown.up.prevent="navigateList('up')"
     @keydown.down.prevent="navigateList('down')"
     @keydown.enter.prevent="handleEnterKey"

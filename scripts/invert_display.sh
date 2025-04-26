@@ -23,11 +23,12 @@ echo "Inverting display and touch input."
 
 # Invert the touch input
 XINPUT_DEVICE_ID=$(xinput --list | grep -i "waveshare" | awk -F 'id=' '{print $2}' | awk '{print $1}')
-TOUCH_INVERT=$(xinput set-prop "$XINPUT_DEVICE_ID" "Coordinate Transformation Matrix" -1 0 1 0 -1 1 0 0 1)
-
-if [ -z "$TOUCH_INVERT" ]; then
-    # print the error message to stderr
-    echo "Error: Unable to invert touch input." >&2
+echo "Setting coordinate transformation matrix for device $XINPUT_DEVICE_ID"
+xinput set-prop "$XINPUT_DEVICE_ID" "Coordinate Transformation Matrix" -1 0 1 0 -1 1 0 0 1
+TOUCH_INVERT=$?
+if [ $TOUCH_INVERT -eq 0 ]; then
+    echo "Touch input successfully inverted"
+else
     exit 1
 fi
 

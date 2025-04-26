@@ -34,22 +34,60 @@ void setup() {
   ring_pixels.clear(); 
   center_pixels.clear();
 
-  center_pixels.setPixelColor(1, 0, 0, 255, 100);
+  center_pixels.setPixelColor(1, 0, 0, 255, 0);
   center_pixels.show();
 }
 
 int sunbright = 0;
 unsigned long lastIncrementTime = 0;
 
+float center0bright = 1;
+float center1bright = 0;
+
+float r, g, b, w;
+
 void loop() {
   incrementEveryNms(sunbright, 50); 
 
-  center_pixels.setPixelColor(0, center_pixels.Color(
-    max(0, (sunbright > 200 ? 200 - (sunbright - 200) : sunbright)),
-    0, 
-    max(0, (sunbright > 200 ? 200 - (sunbright - 200) : sunbright)), 
-    min(255, (sunbright > 100 ? sunbright - 100 : 0))
+  if (sunbright > 750) {
+    sunbright = 0;
+    center0bright = 1;
+    center1bright = 0;
+  }
+
+  if (sunbright > 300) {
+    center0bright = max(0, 1 - ((float)sunbright - 300)/100);
+  }
+
+  r = max(0, (sunbright > 200 ? 200 - (sunbright - 200) : sunbright)) * center0bright;
+  g = 0;
+  b = max(0, (sunbright > 200 ? 200 - (sunbright - 200) : sunbright)) * center0bright;
+  w = min(255, (sunbright > 100 ? sunbright - 100 : 0)) * center0bright;
+
+  center_pixels.setPixelColor(0, center_pixels.Color((int)r,0,(int)b,(int)w));
+
+  if (sunbright > 10) {
+    center1bright = min(1, ((float)sunbright - 10)/100);
+  }
+
+  Serial.print(sunbright);
+  Serial.print(" ");
+  Serial.println(center1bright);
+
+  r = min(255, (sunbright > 50 ? sunbright - 50 : 0)) * center1bright;
+  g = 0;
+  b = max(100, (sunbright < 300 ? 255 : 255 - (sunbright - 300))) * center1bright;
+  w = min(255, (sunbright > 180 ? sunbright - 180 : 0)) * center1bright;
+
+  float r2 = max(0, 200 - (sunbright - 250));
+
+  center_pixels.setPixelColor(1, center_pixels.Color(
+    sunbright < 250 ? (int)r : int(r2),
+    0,
+    (int)b,
+    (int)w
   ));
+
 
   center_pixels.show();
 

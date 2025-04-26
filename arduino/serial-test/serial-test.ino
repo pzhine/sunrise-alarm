@@ -10,7 +10,7 @@
 // Rotary Encoder Pins
 #define ENCODER_PIN_A 3
 #define ENCODER_PIN_B 4
-#define SCROLL_SENSITIVITY 2 // Adjust sensitivity of scroll (higher = more sensitive)
+#define SCROLL_SENSITIVITY 3 // Adjust sensitivity of scroll (higher = more sensitive)
 
 // Rotary encoder state
 volatile int lastEncoded = 0;

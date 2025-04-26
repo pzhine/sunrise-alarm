@@ -19,21 +19,17 @@ else
     echo "Display name: $DISPLAY_NAME"
 fi
 
-# Get the touch input device ID from lsusb instead of xinput
-TOUCH_DEVICE_INFO=$(lsusb | grep -i "waveshare")
-TOUCH_DEVICE=$(echo "$TOUCH_DEVICE_INFO" | awk '{print $2":"$4}' | sed 's/://g')
-
-if [ -z "$TOUCH_DEVICE" ]; then
-    echo "Error: Unable to determine touch input device."
-    exit 1
-else
-    echo "Touch input device: $TOUCH_DEVICE"
-fi
-
 echo "Inverting display and touch input."
 
 # Invert the touch input
-xinput set-prop "$TOUCH_DEVICE" "Coordinate Transformation Matrix" -1 0 1 0 -1 1 0 0 1
+XINPUT_DEVICE_ID=$(xinput --list | grep -i "waveshare" | awk -F 'id=' '{print $2}' | awk '{print $1}')
+TOUCH_INVERT=$(xinput set-prop "$XINPUT_DEVICE_ID" "Coordinate Transformation Matrix" -1 0 1 0 -1 1 0 0 1)
+
+if [ -z "$TOUCH_INVERT" ]; then
+    # print the error message to stderr
+    echo "Error: Unable to invert touch input." >&2
+    exit 1
+fi
 
 # Invert the display
 xrandr --output "$DISPLAY_NAME" --rotate inverted

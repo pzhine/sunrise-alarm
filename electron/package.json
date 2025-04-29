@@ -27,6 +27,7 @@
     "format": "prettier --write ."
   },
   "devDependencies": {
+    "@types/node-fetch": "^2.6.12",
     "@vitejs/plugin-vue": "^5.0.4",
     "autoprefixer": "^10.4.21",
     "electron": "^29.1.1",
@@ -44,7 +45,9 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.1.4",
     "@types/lodash-es": "^4.17.12",
+    "dotenv": "^16.5.0",
     "lodash-es": "^4.17.21",
+    "node-fetch": "^2.7.0",
     "node-wifi": "^2.0.16",
     "pinia": "^3.0.2",
     "serialport": "^13.0.0",

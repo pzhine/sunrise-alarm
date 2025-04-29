@@ -3,11 +3,19 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import os from 'node:os';
+import dotenv from 'dotenv';
 import { startSerialComms } from './serial';
 import { initStateManagement } from './stateManager';
+import {
+  searchSoundsWithCache,
+  groupSoundsByCountryWithCache,
+} from './freesound';
 import './serial';
 import './wlan';
 import './stateManager';
+
+// Load environment variables
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -127,3 +135,32 @@ ipcMain.handle('open-win', (_, arg) => {
 });
 
 startSerialComms();
+
+// Register IPC handlers for Freesound API
+ipcMain.handle('search-sounds', async (_, query) => {
+  try {
+    return await searchSoundsWithCache(query);
+  } catch (error) {
+    console.error('Error in search-sounds IPC handler:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('get-sounds-by-country', async (_, query) => {
+  try {
+    return await groupSoundsByCountryWithCache(query);
+  } catch (error) {
+    console.error('Error in get-sounds-by-country IPC handler:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('get-country-sounds', async (_, { query, country }) => {
+  try {
+    const countrySounds = await groupSoundsByCountryWithCache(query);
+    return countrySounds[country] || [];
+  } catch (error) {
+    console.error('Error in get-country-sounds IPC handler:', error);
+    throw error;
+  }
+});

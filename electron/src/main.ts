@@ -7,6 +7,7 @@ import WifiPassword from './pages/WifiPassword.vue';
 import WifiConnect from './pages/WifiConnect.vue';
 import Clock from './pages/Clock.vue';
 import MainMenu from './pages/MainMenu.vue';
+import SoundCategories from './pages/SoundCategories.vue';
 import { nextTick } from 'vue';
 import { useAppStore } from './stores/appState';
 
@@ -29,6 +30,17 @@ const routes = [
   },
   { path: '/', name: 'Clock', component: Clock },
   { path: '/menu', name: 'MainMenu', component: MainMenu },
+  { path: '/sounds', name: 'SoundCategories', component: SoundCategories },
+  {
+    path: '/sounds/countries/:searchPhrase',
+    name: 'SoundCountries',
+    component: () => import('./pages/SoundCountries.vue'),
+  },
+  {
+    path: '/sounds/list/:searchPhrase/:country',
+    name: 'SoundsList',
+    component: () => import('./pages/SoundsList.vue'),
+  },
   {
     path: '/alarm',
     name: 'SetAlarm',

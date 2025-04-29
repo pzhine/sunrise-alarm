@@ -28,6 +28,10 @@ const menuItems = computed(() => [
     onSelect: () => router.push('/alarm'),
   },
   {
+    label: 'Browse Sounds',
+    onSelect: () => router.push('/sounds'),
+  },
+  {
     label: 'Volume',
     value: `${appStore.volume}%`,
     onSelect: () => router.push('/level/volume'),

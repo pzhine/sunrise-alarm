@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { debounce } from 'lodash-es';
+import { AlarmSound } from '../../types/sound.types';
 
 // Define the type for our alarm time tuple [hours, minutes]
 type AlarmTime = [number, number];
@@ -18,6 +19,7 @@ interface AppState {
   lampBrightness: number;
   timeFormat: '12h' | '24h'; // Add time format preference
   listPositions: ListPositions; // Store InteractiveList positions by route
+  alarmSound: AlarmSound | null;
 }
 
 // Create a Pinia store for our application state
@@ -30,6 +32,7 @@ export const useAppStore = defineStore('appState', {
     lampBrightness: 50, // Default lamp brightness (0-100)
     timeFormat: '24h', // Default time format
     listPositions: {}, // Empty object to store list positions by route
+    alarmSound: null, // Default to no alarm sound selected
   }),
 
   getters: {
@@ -123,6 +126,11 @@ export const useAppStore = defineStore('appState', {
       this.timeFormat = format;
     },
 
+    // Set the alarm sound
+    setAlarmSound(sound: AlarmSound | null): void {
+      this.alarmSound = sound;
+    },
+
     // Reset all settings to default values
     resetToDefaults(): void {
       this.volume = 50;
@@ -132,6 +140,7 @@ export const useAppStore = defineStore('appState', {
       this.lampBrightness = 50;
       this.timeFormat = '24h';
       this.clearAllListPositions();
+      this.alarmSound = null;
     },
   },
 });

@@ -4,9 +4,17 @@
 DEVICE_FOUND=$(lsusb | grep -i "waveshare")
 
 if [ -n "$DEVICE_FOUND" ]; then
-    echo "WaveShare device detected. Checking display and touch input devices."
+    echo "WaveShare device detected."
 else 
     echo "No WaveShare device detected. Exiting."
+    exit 1
+fi
+
+# Check for a USB device with "Mouse" in its identifier
+DEVICE_FOUND=$(lsusb | grep -i "mouse")
+
+if [ -n "$DEVICE_FOUND" ]; then
+    echo "Mouse device detected. Exiting"
     exit 1
 fi
 

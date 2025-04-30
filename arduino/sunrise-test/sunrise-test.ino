@@ -70,9 +70,9 @@ void loop() {
     center1bright = min(1, ((float)sunbright - 10)/100);
   }
 
-  Serial.print(sunbright);
-  Serial.print(" ");
-  Serial.println(center1bright);
+  // Serial.print(sunbright);
+  // Serial.print(" ");
+  // Serial.println(center1bright);
 
   r = min(255, (sunbright > 50 ? sunbright - 50 : 0)) * center1bright;
   g = 0;

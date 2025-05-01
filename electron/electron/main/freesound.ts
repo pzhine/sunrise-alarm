@@ -11,7 +11,7 @@ import {
   FreesoundSearchResult,
   FreesoundSearchResponse,
   CachedSearchData,
-} from '../../types/sound.types';
+} from '../../types/sound';
 import countryNamesData from '../../assets/countryNames.json';
 
 // Load environment variables

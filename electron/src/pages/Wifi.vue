@@ -8,7 +8,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import InteractiveList from '../components/InteractiveList.vue';
+import InteractiveList, { ListItem } from '../components/InteractiveList.vue';
 
 const router = useRouter();
 const wifiNetworks = ref<string[]>([]);
@@ -24,11 +24,12 @@ const fetchWifiNetworks = async (): Promise<void> => {
   }
 };
 
-const selectNetwork = (network: string): void => {
-  router.push({
-    name: 'WifiPassword',
-    params: { networkName: network },
-  });
+const selectNetwork = (item: ListItem): void => {
+  if (typeof item === 'string') {
+    console.log(`Selected network: ${item}`);
+  } else {
+    console.log(`Selected network: ${item.label}`);
+  }
 };
 
 let intervalId: NodeJS.Timeout | undefined;

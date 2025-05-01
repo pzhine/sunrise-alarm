@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { debounce } from 'lodash-es';
-import { AlarmSound } from '../../types/sound.types';
+import { AlarmSound } from '../../types/sound';
 
 // Define the type for our alarm time tuple [hours, minutes]
 type AlarmTime = [number, number];

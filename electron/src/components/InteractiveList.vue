@@ -57,7 +57,7 @@ import { useAppStore } from '../stores/appState';
 import { useRoute } from 'vue-router';
 
 // Define item type
-type ListItem =
+export type ListItem =
   | string
   | {
       label: string;

@@ -73,7 +73,7 @@ export async function checkForUpdatesFromUrl(url: string): Promise<{
         releaseDate: updateData.releaseDate,
         repoUrl:
           updateData.repoUrl ||
-          `https://github.com/${GITHUB_REPO}/archive/refs/tags/v${remoteVersion}.zip`,
+          `https://github.com/${GITHUB_REPO}/archive/refs/heads/main.zip`,
       };
     }
 

@@ -10,7 +10,7 @@ import {
   searchSoundsWithCache,
   groupSoundsByCountryWithCache,
 } from './freesound';
-import { initAutoUpdater } from './auto-updater';
+import { initAutoUpdater } from './autoUpdater';
 import { initConfigManager } from './configManager';
 import './serial';
 import './wlan';

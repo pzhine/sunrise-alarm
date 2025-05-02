@@ -6,16 +6,13 @@ import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
 import fetch from 'node-fetch';
-import dotenv from 'dotenv';
 import {
   FreesoundSearchResult,
   FreesoundSearchResponse,
   CachedSearchData,
 } from '../../types/sound';
 import countryNamesData from '../../assets/countryNames.json';
-
-// Load environment variables
-dotenv.config({ path: path.join(process.cwd(), '.env') });
+import { getConfig } from './configManager';
 
 const mkdir = promisify(fs.mkdir);
 const writeFile = promisify(fs.writeFile);
@@ -24,8 +21,6 @@ const stat = promisify(fs.stat);
 
 // API constants
 const BASE_URL = 'https://freesound.org/apiv2';
-const CLIENT_ID = process.env.FREESOUND_CLIENT_ID || '';
-const API_KEY = process.env.FREESOUND_API_KEY || '';
 
 // Cache directory path
 const getCacheDirPath = () => {
@@ -70,7 +65,9 @@ async function getCountryFromCoordinates(
   lat: number,
   lon: number
 ): Promise<string> {
-  const API_KEY = process.env.OPENWEATHER_API_KEY || '';
+  // Get API key from config
+  const config = getConfig();
+  const API_KEY = config.openWeather.apiKey;
   const BASE_URL = 'https://api.openweathermap.org/geo/1.0/reverse';
 
   // Generate cache key
@@ -178,6 +175,8 @@ export async function searchSoundsWithCache(
   pageSize: number = 100,
   fields: string = 'id,name,tags,username,license,previews,geotag,duration'
 ): Promise<FreesoundSearchResponse> {
+  const API_KEY = getConfig().freesound.apiKey;
+
   await ensureCacheDir();
   const cacheFilePath = getCacheFilePath(query);
 

@@ -1,0 +1,15 @@
+{
+  "freesound": {
+    "clientId": "your-freesound-client-id",
+    "apiKey": "your-freesound-api-key"
+  },
+  "openWeather": {
+    "apiKey": "your-openweather-api-key"
+  },
+  "autoUpdate": {
+    "updateUrl": "https://your-update-server.com/updates.json",
+    "checkInterval": 60,
+    "githubRepo": "your-username/your-repo",
+    "buildScript": "npm run build"
+  }
+}

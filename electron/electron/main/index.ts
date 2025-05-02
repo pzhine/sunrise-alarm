@@ -1,9 +1,8 @@
-import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, dialog } from 'electron';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import os from 'node:os';
-import dotenv from 'dotenv';
 import { startSerialComms } from './serial';
 import { initStateManagement } from './stateManager';
 import { initVolumeControl } from './volumeControl';
@@ -12,12 +11,21 @@ import {
   groupSoundsByCountryWithCache,
 } from './freesound';
 import { initAutoUpdater } from './auto-updater';
+import { initConfigManager } from './configManager';
 import './serial';
 import './wlan';
 import './stateManager';
 
-// Load environment variables
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+// Display a helpful dialog if config.json is missing
+function showConfigMissingDialog() {
+  const configPath = path.join(app.getPath('userData'), 'config.json');
+  if (app.isReady()) {
+    dialog.showErrorBox(
+      'Configuration Missing',
+      `The application configuration file is missing.\n\nPlease create a config.json file in:\n${configPath}\n\nThe application will now exit.`
+    );
+  }
+}
 
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -92,6 +100,11 @@ async function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Initialize the configuration manager before everything else
+  if (!initConfigManager()) {
+    showConfigMissingDialog();
+    app.exit(1);
+  }
   createWindow();
   initStateManagement();
   initVolumeControl();

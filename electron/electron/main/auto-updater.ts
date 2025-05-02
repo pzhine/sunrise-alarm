@@ -3,26 +3,25 @@ import pkg from 'electron-updater';
 import fetch from 'node-fetch';
 import path from 'path';
 import fs from 'fs';
-import dotenv from 'dotenv';
 import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
+import { getConfig } from './configManager';
 
 const { autoUpdater } = pkg;
 
 // Promisify exec for easier use with async/await
 const execAsync = promisify(exec);
 
-// Load environment variables from .env file
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-
-// Get configuration from environment variables
-const UPDATE_URL = process.env.UPDATE_URL || '';
-const UPDATE_CHECK_INTERVAL = parseInt(
-  process.env.UPDATE_CHECK_INTERVAL || '60',
-  10
-); // minutes
-const GITHUB_REPO = process.env.GITHUB_REPO || ''; // Format: "owner/repo"
-const BUILD_SCRIPT = process.env.BUILD_SCRIPT || 'npm run build'; // Command to build the app
+// Get configuration from config manager instead of environment variables
+function getUpdateConfig() {
+  const config = getConfig();
+  return {
+    UPDATE_URL: config.autoUpdate.updateUrl,
+    UPDATE_CHECK_INTERVAL: config.autoUpdate.checkInterval,
+    GITHUB_REPO: config.autoUpdate.githubRepo,
+    BUILD_SCRIPT: config.autoUpdate.buildScript,
+  };
+}
 
 // Configure the auto updater
 autoUpdater.autoDownload = false;
@@ -66,6 +65,7 @@ export async function checkForUpdatesFromUrl(url: string): Promise<{
 
     if (hasUpdate) {
       console.log(`Update available: ${remoteVersion}`);
+      const GITHUB_REPO = getConfig().autoUpdate.githubRepo;
       return {
         hasUpdate: true,
         version: remoteVersion,
@@ -183,6 +183,9 @@ export async function buildSource(sourceDir: string): Promise<string> {
       throw new Error(`Electron directory not found at: ${electronDir}`);
     }
 
+    // Get the build script from config
+    const BUILD_SCRIPT = getConfig().autoUpdate.buildScript;
+
     // Install dependencies and build
     console.log('Installing dependencies...');
     await execAsync(`cd "${electronDir}" && npm install`);
@@ -269,16 +272,19 @@ exit 0
  * Automatically check for updates, download source, build, and install if available
  */
 async function checkForUpdatesAndInstall() {
+  const UPDATE_URL = getConfig().autoUpdate.updateUrl;
+  const GITHUB_REPO = getConfig().autoUpdate.githubRepo;
+
   if (!UPDATE_URL) {
     console.log(
-      'No UPDATE_URL provided in environment variables. Skipping update check.'
+      'No UPDATE_URL provided in configuration. Skipping update check.'
     );
     return;
   }
 
   if (!GITHUB_REPO) {
     console.log(
-      'No GITHUB_REPO provided in environment variables. Skipping update check.'
+      'No GITHUB_REPO provided in configuration. Skipping update check.'
     );
     return;
   }
@@ -318,6 +324,11 @@ async function checkForUpdatesAndInstall() {
  * Initialize auto-updater with unattended updates
  */
 export function initAutoUpdater() {
+  const UPDATE_URL = getConfig().autoUpdate.updateUrl;
+  const GITHUB_REPO = getConfig().autoUpdate.githubRepo;
+  const UPDATE_CHECK_INTERVAL = getConfig().autoUpdate.checkInterval;
+  const BUILD_SCRIPT = getConfig().autoUpdate.buildScript;
+
   console.log(`Initializing auto-updater with URL: ${UPDATE_URL || 'not set'}`);
   console.log(`GitHub repo: ${GITHUB_REPO || 'not set'}`);
   console.log(`Update check interval: ${UPDATE_CHECK_INTERVAL} minutes`);

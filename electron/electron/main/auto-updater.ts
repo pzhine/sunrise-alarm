@@ -1,5 +1,5 @@
 import { app } from 'electron';
-import { autoUpdater } from 'electron-updater';
+import autoUpdater from 'electron-updater';
 import fetch from 'node-fetch';
 import path from 'path';
 import fs from 'fs';

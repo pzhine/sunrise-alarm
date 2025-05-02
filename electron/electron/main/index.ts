@@ -11,6 +11,7 @@ import {
   searchSoundsWithCache,
   groupSoundsByCountryWithCache,
 } from './freesound';
+import { initAutoUpdater } from './auto-updater';
 import './serial';
 import './wlan';
 import './stateManager';
@@ -94,6 +95,7 @@ app.whenReady().then(() => {
   createWindow();
   initStateManagement();
   initVolumeControl();
+  initAutoUpdater();
 });
 
 app.on('window-all-closed', () => {

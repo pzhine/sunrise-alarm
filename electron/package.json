@@ -46,6 +46,7 @@
     "@tailwindcss/vite": "^4.1.4",
     "@types/lodash-es": "^4.17.12",
     "dotenv": "^16.5.0",
+    "electron-updater": "^6.6.2",
     "lodash-es": "^4.17.21",
     "node-fetch": "^2.7.0",
     "node-wifi": "^2.0.16",

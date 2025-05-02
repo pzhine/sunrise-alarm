@@ -1,5 +1,6 @@
 import { exec } from 'child_process';
 import { ipcMain } from 'electron';
+import { getState } from './stateManager';
 
 // Function to execute shell commands
 function executeCommand(command: string): Promise<string> {
@@ -59,6 +60,15 @@ export function initVolumeControl(): void {
   ipcMain.handle('get-system-volume', async () => {
     return await getSystemVolume();
   });
+
+  // Apply stored volume level on startup
+  const appState = getState();
+  if (appState && typeof appState.volume === 'number') {
+    setSystemVolume(appState.volume);
+    console.log(`Applied stored volume level on startup: ${appState.volume}%`);
+  } else {
+    console.log('No stored volume level found, using system default');
+  }
 
   console.log('System volume control initialized');
 }

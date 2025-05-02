@@ -1,5 +1,4 @@
 import { app } from 'electron';
-import pkg from 'electron-updater';
 import fetch from 'node-fetch';
 import path from 'path';
 import fs from 'fs';
@@ -7,28 +6,8 @@ import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import { getConfig } from './configManager';
 
-const { autoUpdater } = pkg;
-
 // Promisify exec for easier use with async/await
 const execAsync = promisify(exec);
-
-// Get configuration from config manager instead of environment variables
-function getUpdateConfig() {
-  const config = getConfig();
-  return {
-    UPDATE_URL: config.autoUpdate.updateUrl,
-    UPDATE_CHECK_INTERVAL: config.autoUpdate.checkInterval,
-    GITHUB_REPO: config.autoUpdate.githubRepo,
-    BUILD_SCRIPT: config.autoUpdate.buildScript,
-  };
-}
-
-// Configure the auto updater
-autoUpdater.autoDownload = false;
-autoUpdater.autoInstallOnAppQuit = false;
-
-// Set up logging
-autoUpdater.logger = console;
 
 let updateCheckInterval: NodeJS.Timeout | null = null;
 

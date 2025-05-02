@@ -5,7 +5,6 @@ import fs from 'fs';
 import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import { getConfig } from './configManager';
-import { release } from 'os';
 
 // Promisify exec for easier use with async/await
 const execAsync = promisify(exec);
@@ -223,52 +222,69 @@ export function installUpdateAndRestart(releasePath: string) {
       fs.mkdirSync(installDir, { recursive: true });
     }
 
-    // Create a shell script that will wait for this process to exit and then copy the files
+    // Create a shell script that will be fully independent of the parent process
     const scriptPath = path.join(app.getPath('temp'), 'update-and-restart.sh');
     const scriptContent = `#!/bin/bash
-# Wait for the app to exit
-sleep 2
 
-# Copy all files from linux-unpacked to installation directory
-cp -rf "${linuxUnpackedDir}"/* "${installDir}/"
+# Log file for debugging
+LOG_FILE="${app.getPath('temp')}/update-restart.log"
+echo "Starting update process at $(date)" > "$LOG_FILE"
 
-# Make the executable file executable
-chmod +x "${installDir}/sunrise-alarm"
-
-# Wait for resources to be freed up (increase if needed)
+# Wait for the app to completely exit
+echo "Waiting for original process to exit..." >> "$LOG_FILE"
 sleep 3
 
-# Check if another instance is still running and wait if necessary
+# Check if the app is still running and wait longer if needed
+APP_NAME="sunrise-alarm"
 for i in {1..10}; do
-  if pgrep -f "${installDir}/sunrise-alarm" > /dev/null; then
-    echo "Waiting for previous instance to exit... ($i)"
+  if pgrep -f "$APP_NAME" > /dev/null; then
+    echo "App still running, waiting... (attempt $i)" >> "$LOG_FILE"
     sleep 1
   else
+    echo "App process no longer detected" >> "$LOG_FILE"
     break
   fi
 done
 
-# Run the updated application
-"${installDir}/sunrise-alarm" &
+# Copy all files from linux-unpacked to installation directory
+echo "Copying files from ${linuxUnpackedDir} to ${installDir}" >> "$LOG_FILE"
+cp -rf "${linuxUnpackedDir}"/* "${installDir}/" 2>> "$LOG_FILE"
+
+# Make the executable file executable
+echo "Setting executable permissions" >> "$LOG_FILE"
+chmod +x "${installDir}/sunrise-alarm" 2>> "$LOG_FILE"
+
+# Wait additional time for resources to be freed up
+echo "Waiting for resources to be freed..." >> "$LOG_FILE"
+sleep 1
+
+# Start the updated application
+echo "Starting application at $(date)" >> "$LOG_FILE"
+cd "${installDir}" && ./sunrise-alarm > /dev/null 2>&1 &
 
 # Exit the script
+echo "Update process complete at $(date)" >> "$LOG_FILE"
 exit 0
 `;
 
     fs.writeFileSync(scriptPath, scriptContent);
     fs.chmodSync(scriptPath, '0755');
 
-    // Execute the script and then quit the app
-    exec(`bash "${scriptPath}"`, (error) => {
-      if (error) {
-        console.error(`Error executing update script: ${error}`);
-      }
+    // Use detached process to run the script so it can continue after app exits
+    const child = spawn('bash', [scriptPath], {
+      detached: true,
+      stdio: 'ignore', // Completely detach from parent process I/O
     });
+
+    // Unreference the child to allow the parent process to exit independently
+    child.unref();
+
+    console.log('Update script launched as detached process');
 
     // Wait a moment and then quit the app
     setTimeout(() => {
       app.quit();
-    }, 1000);
+    }, 500);
 
     return {
       success: true,

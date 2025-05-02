@@ -145,8 +145,21 @@ const indexHtml = path.join(RENDERER_DIST, 'index.html');
 
 async function createWindow() {
   win = new BrowserWindow({
-    // fullscreen: true,
-    title: 'Main window',
+    // Different window settings for dev and production
+    ...(VITE_DEV_SERVER_URL
+      ? {
+          // Development settings - windowed with specific size
+          width: 950,
+          height: 544,
+          useContentSize: true, // This ensures dimensions apply to content area only
+          title: 'Sunrise Alarm (Dev)',
+        }
+      : {
+          // Production settings - fullscreen
+          fullscreen: true,
+          title: 'Sunrise Alarm',
+          autoHideMenuBar: true,
+        }),
     icon: path.join(process.env.VITE_PUBLIC, 'favicon.ico'),
     webPreferences: {
       preload,
@@ -154,6 +167,13 @@ async function createWindow() {
       // contextIsolation: false,
     },
   });
+
+  // Hide cursor in production mode
+  if (!VITE_DEV_SERVER_URL) {
+    win.webContents.on('dom-ready', () => {
+      win?.webContents.insertCSS('* { cursor: none !important; }');
+    });
+  }
 
   if (VITE_DEV_SERVER_URL) {
     // #298

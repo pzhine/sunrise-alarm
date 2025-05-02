@@ -71,3 +71,25 @@ ipcMain.handle('check-internet-connectivity', async () => {
     request.end();
   });
 });
+
+/**
+ * Gets the name of the currently connected WiFi network
+ * @returns {Promise<string|null>} A promise that resolves to the name of the connected network, or null if not connected
+ */
+ipcMain.handle('get-current-wifi-network', async () => {
+  return new Promise((resolve, reject) => {
+    wifi.getCurrentConnections((error, currentConnections) => {
+      if (error) {
+        console.error('Error getting current WiFi connection:', error);
+        resolve(null);
+        return;
+      }
+
+      if (currentConnections && currentConnections.length > 0) {
+        resolve(currentConnections[0].ssid);
+      } else {
+        resolve(null);
+      }
+    });
+  });
+});

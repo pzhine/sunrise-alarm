@@ -176,10 +176,16 @@ export async function buildSource(sourceDir: string): Promise<string> {
 
     // Install dependencies and build
     console.log('Installing dependencies...');
-    await execAsync(`cd "${electronDir}" && npm install`);
+    await execAsync(`. ~/.nvm/nvm.sh && npm install`, {
+      shell: '/bin/bash',
+      cwd: electronDir,
+    });
 
     console.log('Building app...');
-    await execAsync(`cd "${electronDir}" && ${BUILD_SCRIPT}`);
+    await execAsync(`. ~/.nvm/nvm.sh && ${BUILD_SCRIPT}`, {
+      shell: '/bin/bash',
+      cwd: electronDir,
+    });
 
     // On success, the app should be built to the release files directory
     const releaseDir = path.join(electronDir, RELATIVE_RELEASE_DIR);

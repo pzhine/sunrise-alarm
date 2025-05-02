@@ -19,9 +19,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useAppStore } from '../stores/appState';
 
 const route = useRoute();
 const router = useRouter();
+const appStore = useAppStore();
 
 const isConnecting = ref(true);
 const isSuccess = ref(false);
@@ -61,6 +63,10 @@ const connectToNetwork = () => {
       isConnecting.value = false;
       isSuccess.value = true;
       console.log('Connection response:', response);
+
+      // Save the successfully connected network name in app state
+      appStore.setLastConnectedWifi(networkName.value);
+
       // Start the countdown after successful connection
       startRedirectCountdown();
     })

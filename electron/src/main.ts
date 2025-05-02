@@ -93,12 +93,82 @@ const initializeAppState = async () => {
 
 // Check internet connectivity and route accordingly with retries
 const checkInternetAndRoute = async (initialStartup = false) => {
+  const appStore = useAppStore();
+
   // Only use retry logic during initial startup
   if (initialStartup) {
     const startTime = Date.now();
     const maxWaitTime = 30000; // 30 seconds timeout
     let retryCount = 0;
     const maxRetries = 10;
+
+    // First check if we already have an internet connection
+    try {
+      const isConnected = await window.ipcRenderer.invoke(
+        'check-internet-connectivity'
+      );
+
+      if (isConnected) {
+        console.log('Internet connectivity already exists');
+
+        // We're already connected, get the current WiFi network name
+        try {
+          const currentWifiName = await window.ipcRenderer.invoke(
+            'get-current-wifi-network'
+          );
+
+          if (currentWifiName) {
+            console.log(`Currently connected to: ${currentWifiName}`);
+            // Save the current WiFi network name in app state
+            appStore.setLastConnectedWifi(currentWifiName);
+          }
+        } catch (error) {
+          console.error('Error getting current WiFi network:', error);
+        }
+
+        return; // Already connected, no need for further checks
+      }
+    } catch (error) {
+      console.error('Error checking initial connectivity:', error);
+    }
+
+    // Check if we have a previously connected WiFi network
+    const lastConnectedWifi = appStore.lastConnectedWifi;
+
+    // If we have a previously connected network, check if it's available
+    if (lastConnectedWifi) {
+      try {
+        // Get list of available networks
+        const availableNetworks = await window.ipcRenderer.invoke(
+          'list-available-wifi-networks'
+        );
+
+        // Check if our last connected network is in the list
+        const isLastNetworkAvailable =
+          availableNetworks.includes(lastConnectedWifi);
+
+        if (!isLastNetworkAvailable) {
+          console.log(
+            'Last connected WiFi network not available, skipping retry logic'
+          );
+          router.push({ name: 'Wifi' });
+          return;
+        }
+
+        console.log(
+          'Last connected WiFi network available, attempting to connect'
+        );
+      } catch (error) {
+        console.error('Error checking available WiFi networks:', error);
+        router.push({ name: 'Wifi' });
+        return;
+      }
+    } else {
+      // No previously connected network, skip retry logic
+      console.log('No previously connected WiFi network, skipping retry logic');
+      router.push({ name: 'Wifi' });
+      return;
+    }
 
     // Try until we succeed, hit max retries, or timeout
     while (retryCount < maxRetries) {
@@ -143,12 +213,31 @@ const checkInternetAndRoute = async (initialStartup = false) => {
     console.log('Failed to establish internet connection after retries');
     router.push({ name: 'Wifi' });
   } else {
-    // Original behavior for periodic checks
+    // Check for periodic checks (non-initial startup)
     try {
       const isConnected = await window.ipcRenderer.invoke(
         'check-internet-connectivity'
       );
-      if (!isConnected) {
+
+      if (isConnected) {
+        // We're connected, check if we need to update the saved WiFi name
+        try {
+          const currentWifiName = await window.ipcRenderer.invoke(
+            'get-current-wifi-network'
+          );
+
+          if (
+            currentWifiName &&
+            currentWifiName !== appStore.lastConnectedWifi
+          ) {
+            console.log(`Connected to a different network: ${currentWifiName}`);
+            // Update the stored WiFi network name
+            appStore.setLastConnectedWifi(currentWifiName);
+          }
+        } catch (error) {
+          console.error('Error getting current WiFi network:', error);
+        }
+      } else {
         router.push({ name: 'Wifi' });
       }
     } catch (error) {

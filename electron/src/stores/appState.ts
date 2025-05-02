@@ -14,6 +14,7 @@ export const useAppStore = defineStore('appState', {
     timeFormat: '24h', // Default time format
     listPositions: {}, // Empty object to store list positions by route
     alarmSound: null, // Default to no alarm sound selected
+    lastConnectedWifi: undefined, // Last successfully connected WiFi network
   }),
 
   getters: {
@@ -143,6 +144,18 @@ export const useAppStore = defineStore('appState', {
       this.alarmSound = sound;
     },
 
+    // Set the last connected WiFi network
+    setLastConnectedWifi(networkName: string): void {
+      this.lastConnectedWifi = networkName;
+      this.saveState();
+    },
+
+    // Clear the last connected WiFi network
+    clearLastConnectedWifi(): void {
+      this.lastConnectedWifi = undefined;
+      this.saveState();
+    },
+
     // Reset all settings to default values
     resetToDefaults(): void {
       this.volume = 50;
@@ -153,6 +166,7 @@ export const useAppStore = defineStore('appState', {
       this.timeFormat = '24h';
       this.clearAllListPositions();
       this.alarmSound = null;
+      this.lastConnectedWifi = undefined;
     },
   },
 });

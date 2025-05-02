@@ -18,6 +18,7 @@ export interface AppState {
   timeFormat: '12h' | '24h'; // Add time format preference
   listPositions: ListPositions; // Store InteractiveList positions by route
   alarmSound: AlarmSound | null;
+  lastConnectedWifi?: string; // Store the last successfully connected WiFi network name
   lastBuildResult?: {
     success: boolean;
     message: string;

@@ -10,6 +10,7 @@
     "updateUrl": "https://your-update-server.com/updates.json",
     "checkInterval": 60,
     "githubRepo": "your-username/your-repo",
-    "buildScript": "npm run build"
+    "buildScript": "npm run build",
+    "installDir": "/path/to/installation/directory"
   }
 }

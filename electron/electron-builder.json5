@@ -5,7 +5,7 @@
   asar: true,
   productName: 'SunriseAlarm',
   directories: {
-    output: 'release/${version}',
+    output: 'release',
   },
   files: ['dist', 'dist-electron'],
   mac: {

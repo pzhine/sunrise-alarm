@@ -5,6 +5,7 @@ import fs from 'fs';
 import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import { getConfig } from './configManager';
+import { release } from 'os';
 
 // Promisify exec for easier use with async/await
 const execAsync = promisify(exec);
@@ -173,24 +174,15 @@ export async function buildSource(sourceDir: string): Promise<string> {
     await execAsync(`cd "${electronDir}" && ${BUILD_SCRIPT}`);
 
     // On success, the app should be built to the dist directory
-    const appImageDir = path.join(electronDir, 'dist');
+    const releaseDir = path.join(electronDir, 'release');
 
-    if (!fs.existsSync(appImageDir)) {
-      throw new Error(`Build failed: ${appImageDir} not found`);
+    if (!fs.existsSync(releaseDir)) {
+      throw new Error(`Build failed: ${releaseDir} not found`);
     }
 
-    // Find the AppImage file
-    const files = fs.readdirSync(appImageDir);
-    const appImageFile = files.find((file) => file.endsWith('.AppImage'));
+    console.log(`Build successful: ${releaseDir}`);
 
-    if (!appImageFile) {
-      throw new Error('Build succeeded but no AppImage file found');
-    }
-
-    const appImagePath = path.join(appImageDir, appImageFile);
-    console.log(`Build successful: ${appImagePath}`);
-
-    return appImagePath;
+    return releaseDir;
   } catch (error) {
     console.error('Error building source:', error);
     throw error;
@@ -198,23 +190,54 @@ export async function buildSource(sourceDir: string): Promise<string> {
 }
 
 /**
- * Install the update and restart the app
+ * Install the update by copying files from linux-unpacked to the installation directory
  */
-export function installUpdateAndRestart(appImagePath: string) {
+export function installUpdateAndRestart(releasePath: string) {
   try {
-    console.log(`Installing update from: ${appImagePath}`);
+    console.log(`Installing update from build at: ${releasePath}`);
 
-    // Make AppImage executable
-    fs.chmodSync(appImagePath, '0755');
-    console.log('Made AppImage executable');
+    // Get the installation directory from config
+    const installDir = getConfig().autoUpdate.installDir;
 
-    // Create a shell script that will wait for this process to exit and then run the new version
+    if (!installDir) {
+      return {
+        success: false,
+        message: 'Installation directory not specified in config.json',
+      };
+    }
+
+    // Find the linux-unpacked directory
+    const linuxUnpackedDir = path.join(releasePath, 'linux-unpacked');
+
+    if (!fs.existsSync(linuxUnpackedDir)) {
+      return {
+        success: false,
+        message: `linux-unpacked directory not found at: ${linuxUnpackedDir}`,
+      };
+    }
+
+    console.log(`Copying files from ${linuxUnpackedDir} to ${installDir}`);
+
+    // Create installation directory if it doesn't exist
+    if (!fs.existsSync(installDir)) {
+      fs.mkdirSync(installDir, { recursive: true });
+    }
+
+    // Create a shell script that will wait for this process to exit and then copy the files
     const scriptPath = path.join(app.getPath('temp'), 'update-and-restart.sh');
     const scriptContent = `#!/bin/bash
 # Wait for the app to exit
 sleep 2
-# Run the new version
-"${appImagePath}" &
+
+# Copy all files from linux-unpacked to installation directory
+cp -rf "${linuxUnpackedDir}"/* "${installDir}/"
+
+# Make the executable file executable
+chmod +x "${installDir}/sunrise-alarm"
+
+# Run the updated application
+"${installDir}/sunrise-alarm" &
+
 # Exit the script
 exit 0
 `;
@@ -309,11 +332,11 @@ export async function checkForUpdatesAndInstall(
 
       // Build the source
       console.log('Building source...');
-      const appImagePath = await buildSource(sourceDir);
+      const releasePath = await buildSource(sourceDir);
 
       // Install and restart
       console.log('Update built. Installing and restarting...');
-      const result = installUpdateAndRestart(appImagePath);
+      const result = installUpdateAndRestart(releasePath);
 
       if (result.success) {
         console.log(result.message);

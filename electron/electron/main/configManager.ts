@@ -15,6 +15,7 @@ export interface AppConfig {
     checkInterval: number;
     githubRepo: string;
     buildScript: string;
+    installDir?: string; // Directory where app files will be installed
   };
 }
 

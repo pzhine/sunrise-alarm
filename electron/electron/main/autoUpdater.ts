@@ -206,7 +206,7 @@ export function installUpdateAndRestart(releasePath: string) {
     }
 
     // Get the release files dir
-    const unpackedDir = getConfig().autoUpdate.relativeReleasePath;
+    const unpackedDir = getConfig().autoUpdate.relativeReleaseDir;
     if (!unpackedDir) {
       return {
         success: false,

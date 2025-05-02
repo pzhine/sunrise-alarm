@@ -16,7 +16,7 @@ export interface AppConfig {
     githubRepo: string;
     buildScript: string;
     installDir?: string; // Directory where app files will be installed
-    relativeReleasePath?: string; // Path to unpacked release files relative to electron dir
+    relativeReleaseDir?: string; // Path to unpacked release files relative to electron dir
   };
 }
 

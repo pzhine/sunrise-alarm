@@ -98,7 +98,7 @@ const checkInternetAndRoute = async (initialStartup = false) => {
     const startTime = Date.now();
     const maxWaitTime = 30000; // 30 seconds timeout
     let retryCount = 0;
-    const maxRetries = 5;
+    const maxRetries = 10;
 
     // Try until we succeed, hit max retries, or timeout
     while (retryCount < maxRetries) {

@@ -25,6 +25,7 @@ onMounted(() => {
   // Define the update status listener
   const updateStatusListener = (_: unknown, newStatus: UpdateStatus) => {
     status.value = newStatus;
+    console.log('[UpdateStatus]', newStatus);
 
     if (
       newStatus === 'checking' ||

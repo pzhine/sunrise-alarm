@@ -176,6 +176,23 @@ async function createWindow() {
       win?.focus();
       // Additionally, focus the web contents within the window
       win?.webContents.focus();
+
+      // Ensure focus is maintained for the first 30 seconds
+      let focusChecks = 0;
+      const focusCheckInterval = setInterval(() => {
+        // Check if the window is focused
+        if (!win?.isFocused()) {
+          console.log('Window lost focus, regaining...');
+          win?.focus();
+          win?.webContents.focus();
+        }
+
+        // Stop checking after 30 seconds (60 checks at 500ms interval)
+        if (++focusChecks >= 60) {
+          clearInterval(focusCheckInterval);
+          console.log('Focus maintenance period ended');
+        }
+      }, 500);
     });
   }
 

@@ -1,5 +1,34 @@
 import { ipcRenderer, contextBridge } from 'electron';
 
+// Set up console log forwarding to main process
+const originalConsole = {
+  log: console.log,
+  info: console.info,
+  warn: console.warn,
+  error: console.error,
+};
+
+// Override console methods to also send logs to main process
+console.log = (...args) => {
+  ipcRenderer.send('renderer-log', 'log', ...args);
+  return originalConsole.log.apply(console, args);
+};
+
+console.info = (...args) => {
+  ipcRenderer.send('renderer-log', 'info', ...args);
+  return originalConsole.info.apply(console, args);
+};
+
+console.warn = (...args) => {
+  ipcRenderer.send('renderer-log', 'warn', ...args);
+  return originalConsole.warn.apply(console, args);
+};
+
+console.error = (...args) => {
+  ipcRenderer.send('renderer-log', 'error', ...args);
+  return originalConsole.error.apply(console, args);
+};
+
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('ipcRenderer', {
   on(...args: Parameters<typeof ipcRenderer.on>) {

@@ -21,6 +21,57 @@ import './serial';
 import './wlan';
 import './stateManager';
 
+// Setup file logging
+const logFilePath = path.join(app.getPath('userData'), 'app.log');
+
+// Create a writable stream for logging
+let logStream: fs.WriteStream;
+
+function setupFileLogging() {
+  // Create or overwrite the log file
+  logStream = fs.createWriteStream(logFilePath, { flags: 'w' });
+
+  // Store original console methods
+  const originalConsole = {
+    log: console.log,
+    info: console.info,
+    warn: console.warn,
+    error: console.error,
+  };
+
+  // Helper to write to both console and file
+  const logToFileAndConsole = (type: string, args: any[]) => {
+    // Format the log entry with timestamp
+    const timestamp = new Date().toISOString();
+    const formattedArgs = args
+      .map((arg) =>
+        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+      )
+      .join(' ');
+
+    const logEntry = `[${timestamp}] [${type}] ${formattedArgs}\n`;
+
+    // Write to log file
+    if (logStream) {
+      logStream.write(logEntry);
+    }
+
+    // Call original console method
+    return originalConsole[type as keyof typeof originalConsole].apply(
+      console,
+      args
+    );
+  };
+
+  // Override console methods
+  console.log = (...args) => logToFileAndConsole('log', args);
+  console.info = (...args) => logToFileAndConsole('info', args);
+  console.warn = (...args) => logToFileAndConsole('warn', args);
+  console.error = (...args) => logToFileAndConsole('error', args);
+
+  console.log('File logging initialized at', logFilePath);
+}
+
 // Lock file to check if another instance is shutting down
 const lockFilePath = path.join(app.getPath('userData'), 'app.lock');
 
@@ -91,6 +142,11 @@ async function cleanupResources() {
 
   // Close all serial ports
   await closeSerialPorts();
+
+  // Close log stream
+  if (logStream) {
+    logStream.end();
+  }
 
   // Allow some time for resources to be released
   await new Promise((resolve) => setTimeout(resolve, 500));
@@ -250,6 +306,29 @@ async function initializeApp() {
     app.exit(1);
     return;
   }
+
+  setupFileLogging();
+
+  // Set up IPC handler for renderer logs
+  ipcMain.on('renderer-log', (_, logType, ...args) => {
+    // Format message to indicate it's from renderer
+    const rendererPrefix = '[RENDERER]';
+
+    // Log using the appropriate console method
+    switch (logType) {
+      case 'info':
+        console.info(rendererPrefix, ...args);
+        break;
+      case 'warn':
+        console.warn(rendererPrefix, ...args);
+        break;
+      case 'error':
+        console.error(rendererPrefix, ...args);
+        break;
+      default:
+        console.log(rendererPrefix, ...args);
+    }
+  });
 
   createWindow();
   initStateManagement();

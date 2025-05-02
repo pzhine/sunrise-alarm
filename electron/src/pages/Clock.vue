@@ -17,7 +17,9 @@ import { useAppStore } from '../stores/appState';
 
 const router = useRouter();
 const appStore = useAppStore();
-const time = ref(new Date());
+
+// Explicitly create a local Date object from system time
+const time = ref(new Date(Date.now()));
 const formattedTime = ref('');
 const clockContainer = ref<HTMLDivElement | null>(null);
 
@@ -30,6 +32,7 @@ const goToMenu = (event: MouseEvent | KeyboardEvent) => {
 
 // Format time based on timeFormat preference
 const updateFormattedTime = () => {
+  // Get local time components directly
   const hours = time.value.getHours();
   const minutes = time.value.getMinutes().toString().padStart(2, '0');
   const seconds = time.value.getSeconds().toString().padStart(2, '0');
@@ -49,7 +52,8 @@ let intervalId: number;
 onMounted(() => {
   updateFormattedTime();
   intervalId = window.setInterval(() => {
-    time.value = new Date();
+    // Create a fresh Date object from the current system timestamp
+    time.value = new Date(Date.now());
     updateFormattedTime();
   }, 500);
 

@@ -4,13 +4,17 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import os from 'node:os';
 import { startSerialComms } from './serial';
-import { initStateManagement } from './stateManager';
+import { getState, initStateManagement, updateState } from './stateManager';
 import { initVolumeControl } from './volumeControl';
 import {
   searchSoundsWithCache,
   groupSoundsByCountryWithCache,
 } from './freesound';
-import { initAutoUpdater, forceUpdate } from './autoUpdater';
+import {
+  initAutoUpdater,
+  forceUpdate,
+  installUpdateAndRestart,
+} from './autoUpdater';
 import { initConfigManager } from './configManager';
 import './serial';
 import './wlan';
@@ -212,31 +216,18 @@ function createApplicationMenu() {
           label: 'Force Update',
           accelerator: 'CmdOrCtrl+Shift+U',
           click: async () => {
-            try {
-              console.log('Force update requested from menu');
-              const result = await forceUpdate();
-
-              if (result.success) {
-                dialog.showMessageBox({
-                  type: 'info',
-                  title: 'Force Update',
-                  message: 'Update process started',
-                  detail:
-                    'The application will restart to complete the update.',
-                });
-              } else {
-                dialog.showErrorBox(
-                  'Force Update Failed',
-                  `Could not force update: ${result.message}`
-                );
-              }
-            } catch (error) {
-              console.error('Error during force update:', error);
-              dialog.showErrorBox(
-                'Force Update Failed',
-                `An error occurred: ${error instanceof Error ? error.message : String(error)}`
-              );
-            }
+            console.log('Force update requested from menu');
+            const lastBuildResult = await forceUpdate();
+            updateState('lastBuildResult', lastBuildResult);
+          },
+        },
+        {
+          label: 'Install Update and Restart',
+          accelerator: 'CmdOrCtrl+Shift+/',
+          enabled: !!getState().lastBuildResult?.success,
+          click: async () => {
+            console.log('Install update requested from menu');
+            installUpdateAndRestart(getState().lastBuildResult.releasePath!);
           },
         },
       ],

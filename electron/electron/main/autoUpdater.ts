@@ -277,7 +277,7 @@ exit 0
  */
 export async function checkForUpdatesAndInstall(
   force = false
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; message: string; releasePath?: string }> {
   const UPDATE_URL = getConfig().autoUpdate.updateUrl;
   const GITHUB_REPO = getConfig().autoUpdate.githubRepo;
 
@@ -344,7 +344,7 @@ export async function checkForUpdatesAndInstall(
         console.error('Failed to install update:', result.message);
       }
 
-      return result;
+      return { ...result, releasePath };
     } else {
       console.log('No updates available');
       return { success: false, message: 'No updates available.' };

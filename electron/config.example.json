@@ -11,6 +11,7 @@
     "checkInterval": 60,
     "githubRepo": "your-username/your-repo",
     "buildScript": "npm run build",
-    "installDir": "/path/to/installation/directory"
+    "installDir": "/path/to/installation/directory",
+    "relativeReleaseDir": "release/linux-[arm64]-unpacked"
   }
 }

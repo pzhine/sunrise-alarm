@@ -205,13 +205,22 @@ export function installUpdateAndRestart(releasePath: string) {
       };
     }
 
+    // Get the release files dir
+    const unpackedDir = getConfig().autoUpdate.relativeReleasePath;
+    if (!unpackedDir) {
+      return {
+        success: false,
+        message: 'Relative release path not specified in config.json',
+      };
+    }
+
     // Find the linux-unpacked directory
-    const linuxUnpackedDir = path.join(releasePath, 'linux-unpacked');
+    const linuxUnpackedDir = path.join(releasePath, unpackedDir);
 
     if (!fs.existsSync(linuxUnpackedDir)) {
       return {
         success: false,
-        message: `linux-unpacked directory not found at: ${linuxUnpackedDir}`,
+        message: `Release files directory not found at: ${linuxUnpackedDir}`,
       };
     }
 

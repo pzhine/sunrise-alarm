@@ -91,19 +91,71 @@ const initializeAppState = async () => {
   });
 };
 
-// Check internet connectivity and route accordingly
-const checkInternetAndRoute = async () => {
-  try {
-    const isConnected = await window.ipcRenderer.invoke(
-      'check-internet-connectivity'
-    );
-    if (!isConnected) {
+// Check internet connectivity and route accordingly with retries
+const checkInternetAndRoute = async (initialStartup = false) => {
+  // Only use retry logic during initial startup
+  if (initialStartup) {
+    const startTime = Date.now();
+    const maxWaitTime = 30000; // 30 seconds timeout
+    let retryCount = 0;
+    const maxRetries = 5;
+
+    // Try until we succeed, hit max retries, or timeout
+    while (retryCount < maxRetries) {
+      try {
+        const isConnected = await window.ipcRenderer.invoke(
+          'check-internet-connectivity'
+        );
+        if (isConnected) {
+          console.log('Internet connectivity confirmed');
+          return; // We're connected, exit the function
+        }
+
+        // If we've waited more than maxWaitTime, give up
+        if (Date.now() - startTime > maxWaitTime) {
+          console.log('Timeout waiting for internet connection');
+          break;
+        }
+
+        // Exponential backoff delay
+        const delay = Math.min(2000 * Math.pow(2, retryCount), 8000);
+        console.log(
+          `No internet connection detected, retry ${retryCount + 1}/${maxRetries} in ${delay}ms`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        retryCount++;
+      } catch (error) {
+        console.error('Error checking internet connectivity:', error);
+
+        // If we've waited more than maxWaitTime, give up
+        if (Date.now() - startTime > maxWaitTime) {
+          console.log('Timeout waiting for internet connection');
+          break;
+        }
+
+        // Shorter delay on error
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        retryCount++;
+      }
+    }
+
+    // If we get here, we couldn't connect after several attempts
+    console.log('Failed to establish internet connection after retries');
+    router.push({ name: 'Wifi' });
+  } else {
+    // Original behavior for periodic checks
+    try {
+      const isConnected = await window.ipcRenderer.invoke(
+        'check-internet-connectivity'
+      );
+      if (!isConnected) {
+        router.push({ name: 'Wifi' });
+      }
+    } catch (error) {
+      console.error('Error checking internet connectivity:', error);
+      // Default to Wifi page if there's an error
       router.push({ name: 'Wifi' });
     }
-  } catch (error) {
-    console.error('Error checking internet connectivity:', error);
-    // Default to Wifi page if there's an error
-    router.push({ name: 'Wifi' });
   }
 };
 
@@ -118,5 +170,5 @@ nextTick(async () => {
   await initializeAppState();
 
   // Check internet connectivity
-  await checkInternetAndRoute();
+  await checkInternetAndRoute(true);
 });

@@ -76,8 +76,27 @@ export const useAppStore = defineStore('appState', {
           // Replace the entire state with the saved one
           this.$patch(savedState);
         }
+
+        // Sync with system volume after loading state
+        await this.syncWithSystemVolume();
       } catch (error) {
         console.error('Failed to load saved state:', error);
+      }
+    },
+
+    // Sync app volume with system volume
+    async syncWithSystemVolume() {
+      try {
+        // Get the current system volume using general invoke method
+        const systemVolume =
+          await window.ipcRenderer.invoke('get-system-volume');
+
+        // Update the app state without triggering the setSystemVolume call
+        this.volume = systemVolume;
+
+        console.log(`App volume synced with system volume: ${systemVolume}%`);
+      } catch (error) {
+        console.error('Failed to sync with system volume:', error);
       }
     },
 
@@ -103,7 +122,19 @@ export const useAppStore = defineStore('appState', {
 
     // Set the volume level
     setVolume(level: number): void {
-      this.volume = Math.max(0, Math.min(100, level)); // Clamp between 0-100
+      // Clamp between 0-100
+      const newLevel = Math.max(0, Math.min(100, level));
+      this.volume = newLevel;
+
+      // Update the system volume using general invoke method
+      window.ipcRenderer
+        .invoke('set-system-volume', newLevel)
+        .catch((error) => {
+          console.error('Failed to set system volume:', error);
+        });
+
+      // Save state after change
+      this.saveState();
     },
 
     // Set the screen brightness

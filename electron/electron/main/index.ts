@@ -6,6 +6,7 @@ import os from 'node:os';
 import dotenv from 'dotenv';
 import { startSerialComms } from './serial';
 import { initStateManagement } from './stateManager';
+import { initVolumeControl } from './volumeControl';
 import {
   searchSoundsWithCache,
   groupSoundsByCountryWithCache,
@@ -92,6 +93,7 @@ async function createWindow() {
 app.whenReady().then(() => {
   createWindow();
   initStateManagement();
+  initVolumeControl();
 });
 
 app.on('window-all-closed', () => {

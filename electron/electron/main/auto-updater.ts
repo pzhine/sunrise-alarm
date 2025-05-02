@@ -1,11 +1,13 @@
 import { app } from 'electron';
-import autoUpdater from 'electron-updater';
+import pkg from 'electron-updater';
 import fetch from 'node-fetch';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
+
+const { autoUpdater } = pkg;
 
 // Promisify exec for easier use with async/await
 const execAsync = promisify(exec);

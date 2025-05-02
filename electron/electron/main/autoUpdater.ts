@@ -5,6 +5,7 @@ import fs from 'fs';
 import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import { getConfig } from './configManager';
+import { release } from 'os';
 
 // Promisify exec for easier use with async/await
 const execAsync = promisify(exec);
@@ -162,6 +163,14 @@ export async function buildSource(sourceDir: string): Promise<string> {
       throw new Error(`Electron directory not found at: ${electronDir}`);
     }
 
+    // Check config for the release files dir
+    const RELATIVE_RELEASE_DIR = getConfig().autoUpdate.relativeReleaseDir;
+    if (!RELATIVE_RELEASE_DIR) {
+      throw new Error(
+        'Relative release directory not specified in config.json'
+      );
+    }
+
     // Get the build script from config
     const BUILD_SCRIPT = getConfig().autoUpdate.buildScript;
 
@@ -172,8 +181,8 @@ export async function buildSource(sourceDir: string): Promise<string> {
     console.log('Building app...');
     await execAsync(`cd "${electronDir}" && ${BUILD_SCRIPT}`);
 
-    // On success, the app should be built to the dist directory
-    const releaseDir = path.join(electronDir, 'release');
+    // On success, the app should be built to the release files directory
+    const releaseDir = path.join(electronDir, RELATIVE_RELEASE_DIR);
 
     if (!fs.existsSync(releaseDir)) {
       throw new Error(`Build failed: ${releaseDir} not found`);
@@ -205,26 +214,15 @@ export function installUpdateAndRestart(releasePath: string) {
       };
     }
 
-    // Get the release files dir
-    const unpackedDir = getConfig().autoUpdate.relativeReleaseDir;
-    if (!unpackedDir) {
+    // Check the release files directory
+    if (!fs.existsSync(releasePath)) {
       return {
         success: false,
-        message: 'Relative release path not specified in config.json',
+        message: `Release files directory not found at: ${releasePath}`,
       };
     }
 
-    // Find the linux-unpacked directory
-    const linuxUnpackedDir = path.join(releasePath, unpackedDir);
-
-    if (!fs.existsSync(linuxUnpackedDir)) {
-      return {
-        success: false,
-        message: `Release files directory not found at: ${linuxUnpackedDir}`,
-      };
-    }
-
-    console.log(`Copying files from ${linuxUnpackedDir} to ${installDir}`);
+    console.log(`Copying files from ${releasePath} to ${installDir}`);
 
     // Create installation directory if it doesn't exist
     if (!fs.existsSync(installDir)) {
@@ -256,8 +254,8 @@ for i in {1..10}; do
 done
 
 # Copy all files from linux-unpacked to installation directory
-echo "Copying files from ${linuxUnpackedDir} to ${installDir}" >> "$LOG_FILE"
-cp -rf "${linuxUnpackedDir}"/* "${installDir}/" 2>> "$LOG_FILE"
+echo "Copying files from ${releasePath} to ${installDir}" >> "$LOG_FILE"
+cp -rf "${releasePath}"/* "${installDir}/" 2>> "$LOG_FILE"
 
 # Make the executable file executable
 echo "Setting executable permissions" >> "$LOG_FILE"

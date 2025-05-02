@@ -235,6 +235,19 @@ cp -rf "${linuxUnpackedDir}"/* "${installDir}/"
 # Make the executable file executable
 chmod +x "${installDir}/sunrise-alarm"
 
+# Wait for resources to be freed up (increase if needed)
+sleep 3
+
+# Check if another instance is still running and wait if necessary
+for i in {1..10}; do
+  if pgrep -f "${installDir}/sunrise-alarm" > /dev/null; then
+    echo "Waiting for previous instance to exit... ($i)"
+    sleep 1
+  else
+    break
+  fi
+done
+
 # Run the updated application
 "${installDir}/sunrise-alarm" &
 

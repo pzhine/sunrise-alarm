@@ -9,31 +9,99 @@ let parser: ReadlineParser = null;
 const messageQueue: string[] = [];
 let retryCount = 0;
 let inflightMessage = null;
+let messageQueueInterval: NodeJS.Timeout = null;
 
-setInterval(processMessageQueue, MESSAGE_INTERVAL);
+// Function to properly close serial ports
+export async function closeSerialPorts(): Promise<void> {
+  return new Promise((resolve) => {
+    if (!port) {
+      console.log('[serial] No port to close');
+      resolve();
+      return;
+    }
+
+    console.log('[serial] Closing port...');
+
+    // Clear any pending message queue processing
+    if (messageQueueInterval) {
+      clearInterval(messageQueueInterval);
+      messageQueueInterval = null;
+    }
+
+    // Clear the message queue
+    messageQueue.length = 0;
+    inflightMessage = null;
+
+    // Close the port
+    port.close((err) => {
+      if (err) {
+        console.error('[serial] Error closing port:', err);
+      } else {
+        console.log('[serial] Port closed successfully');
+      }
+      port = null;
+      parser = null;
+      resolve();
+    });
+
+    // If port.close doesn't respond within 2 seconds, resolve anyway
+    setTimeout(() => {
+      if (port) {
+        console.log('[serial] Force resolving port close');
+        port = null;
+        parser = null;
+        resolve();
+      }
+    }, 2000);
+  });
+}
+
+messageQueueInterval = setInterval(processMessageQueue, MESSAGE_INTERVAL);
 
 export function startSerialComms() {
-  port = new SerialPort(
-    {
-      path: '/dev/ttyACM0',
-      baudRate: 9600,
-    },
-    (err) => {
-      if (err) {
-        throw err;
+  // Don't try to open if already open
+  if (port) {
+    console.log('[serial] Port already open');
+    return;
+  }
+
+  try {
+    port = new SerialPort(
+      {
+        path: '/dev/ttyACM0',
+        baudRate: 9600,
+      },
+      (err) => {
+        if (err) {
+          console.error('[serial] Error opening port:', err);
+          port = null; // Clear the reference if opening fails
+          return;
+        }
       }
-    }
-  );
-  port.on('open', () => {
-    console.log('serial port open');
-  });
+    );
 
-  parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
+    port.on('open', () => {
+      console.log('[serial] Serial port open');
+    });
 
-  // Read the port data
-  parser.on('data', (data) => {
-    receive(data);
-  });
+    port.on('error', (err) => {
+      console.error('[serial] Port error:', err);
+    });
+
+    port.on('close', () => {
+      console.log('[serial] Port closed');
+    });
+
+    parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
+
+    // Read the port data
+    parser.on('data', (data) => {
+      receive(data);
+    });
+  } catch (error) {
+    console.error('[serial] Failed to open serial port:', error);
+    port = null;
+  }
 }
 
 function receive(msg: string) {

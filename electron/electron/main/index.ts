@@ -2,8 +2,9 @@ import { app, BrowserWindow, shell, ipcMain, dialog, Menu } from 'electron';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import fs from 'node:fs';
 import os from 'node:os';
-import { startSerialComms } from './serial';
+import { startSerialComms, closeSerialPorts } from './serial';
 import { getState, initStateManagement, updateState } from './stateManager';
 import { initVolumeControl } from './volumeControl';
 import {
@@ -20,6 +21,9 @@ import './serial';
 import './wlan';
 import './stateManager';
 
+// Lock file to check if another instance is shutting down
+const lockFilePath = path.join(app.getPath('userData'), 'app.lock');
+
 // Display a helpful dialog if config.json is missing
 function showConfigMissingDialog() {
   const configPath = path.join(app.getPath('userData'), 'config.json');
@@ -28,6 +32,76 @@ function showConfigMissingDialog() {
       'Configuration Missing',
       `The application configuration file is missing.\n\nPlease create a config.json file in:\n${configPath}\n\nThe application will now exit.`
     );
+  }
+}
+
+// Check if another instance is in the process of shutting down
+function checkForLockedResources(): boolean {
+  try {
+    if (fs.existsSync(lockFilePath)) {
+      const lockData = fs.readFileSync(lockFilePath, 'utf8');
+      const lockInfo = JSON.parse(lockData);
+
+      // Check if the lock is stale (older than 30 seconds)
+      if (Date.now() - lockInfo.timestamp < 30000) {
+        console.log(
+          `Another instance is shutting down (PID: ${lockInfo.pid}). Waiting...`
+        );
+        return true;
+      } else {
+        console.log('Found stale lock file, removing it');
+        fs.unlinkSync(lockFilePath);
+      }
+    }
+    return false;
+  } catch (error) {
+    console.error('Error checking lock file:', error);
+    // Try to remove potentially corrupted lock file
+    try {
+      if (fs.existsSync(lockFilePath)) {
+        fs.unlinkSync(lockFilePath);
+      }
+    } catch (e) {
+      console.error('Failed to remove lock file:', e);
+    }
+    return false;
+  }
+}
+
+// Create lock file when app is shutting down
+function createLockFile() {
+  try {
+    const lockData = JSON.stringify({
+      pid: process.pid,
+      timestamp: Date.now(),
+    });
+    fs.writeFileSync(lockFilePath, lockData);
+    console.log('Created lock file for graceful shutdown');
+  } catch (error) {
+    console.error('Error creating lock file:', error);
+  }
+}
+
+// Clean up resources before exiting
+async function cleanupResources() {
+  console.log('Cleaning up resources before exit...');
+
+  // Create lock file to signal to new instances that we're shutting down
+  createLockFile();
+
+  // Close all serial ports
+  await closeSerialPorts();
+
+  // Allow some time for resources to be released
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  // Remove lock file
+  try {
+    if (fs.existsSync(lockFilePath)) {
+      fs.unlinkSync(lockFilePath);
+    }
+  } catch (error) {
+    console.error('Error removing lock file:', error);
   }
 }
 
@@ -103,17 +177,53 @@ async function createWindow() {
   // win.webContents.on('will-navigate', (event, url) => { }) #344
 }
 
-app.whenReady().then(() => {
+// Wait for any previous instances to cleanup resources before continuing
+async function waitForResources(
+  maxRetries = 10,
+  retryDelay = 1000
+): Promise<boolean> {
+  for (let i = 0; i < maxRetries; i++) {
+    if (checkForLockedResources()) {
+      console.log(
+        `Waiting for resources to free up... (attempt ${i + 1}/${maxRetries})`
+      );
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
+    } else {
+      return true;
+    }
+  }
+  console.log(
+    'Timed out waiting for resources to free up. Continuing anyway...'
+  );
+  return false;
+}
+
+// Initialize app after waiting for resources
+async function initializeApp() {
+  // Wait for any previous instances to properly shut down
+  await waitForResources();
+
   // Initialize the configuration manager before everything else
   if (!initConfigManager()) {
     showConfigMissingDialog();
     app.exit(1);
+    return;
   }
+
   createWindow();
   initStateManagement();
   initVolumeControl();
   initAutoUpdater();
   createApplicationMenu();
+}
+
+app.whenReady().then(initializeApp);
+
+// Clean up resources before exiting
+app.on('will-quit', async (event) => {
+  event.preventDefault(); // Temporarily prevent quitting
+  await cleanupResources();
+  app.exit(); // Now explicitly exit
 });
 
 app.on('window-all-closed', () => {

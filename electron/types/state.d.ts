@@ -24,3 +24,10 @@ export interface AppState {
     releasePath?: string;
   };
 }
+
+export type UpdateStatus =
+  | 'checking'
+  | 'downloading'
+  | 'installing'
+  | 'error'
+  | 'not-available';

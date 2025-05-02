@@ -172,11 +172,11 @@ async function createWindow() {
   if (!VITE_DEV_SERVER_URL) {
     win.webContents.on('dom-ready', () => {
       win?.webContents.insertCSS('* { cursor: none !important; }');
+      // Focus the window automatically to apply cursor hiding
+      win?.focus();
+      // Additionally, focus the web contents within the window
+      win?.webContents.focus();
     });
-    // Focus the window automatically to apply cursor hiding
-    win?.focus();
-    // Additionally, focus the web contents within the window
-    win?.webContents.focus();
   }
 
   if (VITE_DEV_SERVER_URL) {

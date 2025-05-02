@@ -1,11 +1,11 @@
-import { app } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import fetch from 'node-fetch';
 import path from 'path';
 import fs from 'fs';
 import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import { getConfig } from './configManager';
-import { release } from 'os';
+import { UpdateStatus } from '../../types/state';
 
 // Promisify exec for easier use with async/await
 const execAsync = promisify(exec);
@@ -314,6 +314,15 @@ exit 0
 export async function checkForUpdatesAndInstall(
   force = false
 ): Promise<{ success: boolean; message: string; releasePath?: string }> {
+  // Send update status notification to renderer
+  const sendUpdateStatus = (status: UpdateStatus) => {
+    const win =
+      BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+    if (win) {
+      win.webContents.send('update-status', status);
+    }
+  };
+
   const UPDATE_URL = getConfig().autoUpdate.updateUrl;
   const GITHUB_REPO = getConfig().autoUpdate.githubRepo;
 
@@ -321,6 +330,7 @@ export async function checkForUpdatesAndInstall(
     const message =
       'No UPDATE_URL provided in configuration. Skipping update check.';
     console.log(message);
+    sendUpdateStatus('error');
     return force ? { success: false, message } : undefined;
   }
 
@@ -328,12 +338,16 @@ export async function checkForUpdatesAndInstall(
     const message =
       'No GITHUB_REPO provided in configuration. Skipping update check.';
     console.log(message);
+    sendUpdateStatus('error');
     return force
       ? { success: false, message: 'GitHub repo not configured.' }
       : undefined;
   }
 
   try {
+    // Notify renderer update check is in progress
+    sendUpdateStatus('checking');
+
     // Fetch update information from the server
     const response = await fetch(UPDATE_URL);
     if (!response.ok) {
@@ -359,6 +373,8 @@ export async function checkForUpdatesAndInstall(
         console.log(`Update found: ${remoteVersion}. Downloading source...`);
       }
 
+      sendUpdateStatus('downloading');
+
       const repoUrl =
         updateData.repoUrl ||
         `https://github.com/${GITHUB_REPO}/archive/refs/heads/main.zip`;
@@ -368,6 +384,7 @@ export async function checkForUpdatesAndInstall(
 
       // Build the source
       console.log('Building source...');
+      sendUpdateStatus('installing');
       const releasePath = await buildSource(sourceDir);
 
       // Install and restart
@@ -378,15 +395,18 @@ export async function checkForUpdatesAndInstall(
         console.log(result.message);
       } else {
         console.error('Failed to install update:', result.message);
+        sendUpdateStatus('error');
       }
 
       return { ...result, releasePath };
     } else {
       console.log('No updates available');
+      sendUpdateStatus('not-available');
       return { success: false, message: 'No updates available.' };
     }
   } catch (error) {
     console.error('Error in update process:', error);
+    sendUpdateStatus('error');
     return {
       success: false,
       message: `Error during update: ${error instanceof Error ? error.message : String(error)}`,

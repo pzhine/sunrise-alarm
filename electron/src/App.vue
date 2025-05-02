@@ -1,10 +1,12 @@
 <template>
   <router-view />
+  <UpdateIndicator />
 </template>
 
 <script setup lang="ts">
 import { useAppStore } from './stores/appState';
 import { computed, watch, onMounted } from 'vue';
+import UpdateIndicator from './components/UpdateIndicator.vue';
 
 const appStore = useAppStore();
 

@@ -270,36 +270,63 @@ exit 0
 
 /**
  * Automatically check for updates, download source, build, and install if available
+ * @param force If true, bypass version check and force an update
+ * @returns Result of the update process, if force is true
  */
-async function checkForUpdatesAndInstall() {
+export async function checkForUpdatesAndInstall(
+  force = false
+): Promise<{ success: boolean; message: string }> {
   const UPDATE_URL = getConfig().autoUpdate.updateUrl;
   const GITHUB_REPO = getConfig().autoUpdate.githubRepo;
 
   if (!UPDATE_URL) {
-    console.log(
-      'No UPDATE_URL provided in configuration. Skipping update check.'
-    );
-    return;
+    const message =
+      'No UPDATE_URL provided in configuration. Skipping update check.';
+    console.log(message);
+    return force ? { success: false, message } : undefined;
   }
 
   if (!GITHUB_REPO) {
-    console.log(
-      'No GITHUB_REPO provided in configuration. Skipping update check.'
-    );
-    return;
+    const message =
+      'No GITHUB_REPO provided in configuration. Skipping update check.';
+    console.log(message);
+    return force
+      ? { success: false, message: 'GitHub repo not configured.' }
+      : undefined;
   }
 
   try {
-    const updateInfo = await checkForUpdatesFromUrl(UPDATE_URL);
+    // Fetch update information from the server
+    const response = await fetch(UPDATE_URL);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
-    if (updateInfo.hasUpdate && updateInfo.version && updateInfo.repoUrl) {
-      console.log(`Update found: ${updateInfo.version}. Downloading source...`);
+    const updateData = await response.json();
+    const remoteVersion = updateData.version;
+    const currentVersion = app.getVersion();
+
+    console.log(
+      `Current version: ${currentVersion}, Remote version: ${remoteVersion}`
+    );
+
+    // Determine if an update is available
+    const hasUpdate = compareVersions(remoteVersion, currentVersion) > 0;
+
+    // Proceed if there's an update available or if force is true
+    if ((hasUpdate || force) && remoteVersion) {
+      if (force) {
+        console.log(`Force update requested. Using version: ${remoteVersion}`);
+      } else {
+        console.log(`Update found: ${remoteVersion}. Downloading source...`);
+      }
+
+      const repoUrl =
+        updateData.repoUrl ||
+        `https://github.com/${GITHUB_REPO}/archive/refs/heads/main.zip`;
 
       // Download the source
-      const sourceDir = await downloadSource(
-        updateInfo.repoUrl,
-        updateInfo.version
-      );
+      const sourceDir = await downloadSource(repoUrl, remoteVersion);
 
       // Build the source
       console.log('Building source...');
@@ -314,10 +341,27 @@ async function checkForUpdatesAndInstall() {
       } else {
         console.error('Failed to install update:', result.message);
       }
+
+      return result;
+    } else {
+      console.log('No updates available');
+      return { success: false, message: 'No updates available.' };
     }
   } catch (error) {
-    console.error('Error in auto-update process:', error);
+    console.error('Error in update process:', error);
+    return {
+      success: false,
+      message: `Error during update: ${error instanceof Error ? error.message : String(error)}`,
+    };
   }
+}
+
+/**
+ * Force an update download, build, and install regardless of version check
+ */
+export async function forceUpdate() {
+  console.log('Force update requested, bypassing version check...');
+  return checkForUpdatesAndInstall(true);
 }
 
 /**

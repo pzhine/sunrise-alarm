@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, dialog, Menu } from 'electron';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -10,7 +10,7 @@ import {
   searchSoundsWithCache,
   groupSoundsByCountryWithCache,
 } from './freesound';
-import { initAutoUpdater } from './autoUpdater';
+import { initAutoUpdater, forceUpdate } from './autoUpdater';
 import { initConfigManager } from './configManager';
 import './serial';
 import './wlan';
@@ -109,6 +109,7 @@ app.whenReady().then(() => {
   initStateManagement();
   initVolumeControl();
   initAutoUpdater();
+  createApplicationMenu();
 });
 
 app.on('window-all-closed', () => {
@@ -181,3 +182,69 @@ ipcMain.handle('get-country-sounds', async (_, { query, country }) => {
     throw error;
   }
 });
+
+// Create the application menu with update options
+function createApplicationMenu() {
+  const isMac = process.platform === 'darwin';
+
+  const template = [
+    {
+      label: 'File',
+      submenu: [{ role: 'quit' }],
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'forceReload' },
+        { role: 'reload' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+      ],
+    },
+    {
+      label: 'Advanced',
+      submenu: [
+        {
+          label: 'Force Update',
+          accelerator: 'CmdOrCtrl+Shift+U',
+          click: async () => {
+            try {
+              console.log('Force update requested from menu');
+              const result = await forceUpdate();
+
+              if (result.success) {
+                dialog.showMessageBox({
+                  type: 'info',
+                  title: 'Force Update',
+                  message: 'Update process started',
+                  detail:
+                    'The application will restart to complete the update.',
+                });
+              } else {
+                dialog.showErrorBox(
+                  'Force Update Failed',
+                  `Could not force update: ${result.message}`
+                );
+              }
+            } catch (error) {
+              console.error('Error during force update:', error);
+              dialog.showErrorBox(
+                'Force Update Failed',
+                `An error occurred: ${error instanceof Error ? error.message : String(error)}`
+              );
+            }
+          },
+        },
+      ],
+    },
+  ];
+
+  const menu = Menu.buildFromTemplate(
+    template as Electron.MenuItemConstructorOptions[]
+  );
+  Menu.setApplicationMenu(menu);
+}

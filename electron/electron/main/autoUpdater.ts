@@ -509,7 +509,10 @@ export async function uploadArduinoSketch(): Promise<boolean> {
     const command = `${ARDUINO_CLI_PATH} upload -p ${PORT} --fqbn ${BOARD_TYPE} ${ARDUINO_SKETCH_PATH}`;
 
     // Execute the command
-    const { stdout, stderr } = await execAsync(command);
+    console.log(`Executing command: ${command}`);
+    const { stdout, stderr } = await execAsync(command, {
+      shell: '/bin/bash',
+    });
 
     console.log('Arduino CLI output:', stdout);
     if (stderr) {

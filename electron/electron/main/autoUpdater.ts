@@ -502,7 +502,8 @@ export async function uploadArduinoSketch(): Promise<boolean> {
     const PORT = getConfig().arduino.port;
 
     if (!ARDUINO_CLI_PATH || !BOARD_TYPE || !PORT) {
-      throw new Error('Arduino CLI path, board type, and port must be configured.');
+      console.log('Arduino CLI path, board type, and port must be configured.');
+      return false;
     }
 
     // Build the command to upload the sketch

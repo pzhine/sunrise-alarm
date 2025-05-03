@@ -24,8 +24,9 @@
 #define BOTTOM_PIXELS  1
 
 // Rotary Encoder Pins
-#define ENCODER_PIN_A 3
-#define ENCODER_PIN_B 4
+#define ENCODER_PIN_A 7
+#define ENCODER_PIN_B 8
+#define ENCODER_PIN_C 4
 #define SCROLL_SENSITIVITY 3 // Adjust sensitivity of scroll (higher = more sensitive)
 
 // Init NeoPixel library
@@ -102,7 +103,7 @@ void setup() {
   //start serial connection
   Serial.begin(9600);
   //configure pin 2 as an input and enable the internal pull-up resistor
-  pinMode(2, INPUT_PULLUP);
+  pinMode(ENCODER_PIN_C, INPUT_PULLUP);
   pinMode(13, OUTPUT);
   
   // Initialize rotary encoder pins
@@ -183,7 +184,7 @@ void readAndHandleSerialCommands() {
 
 void readAndHandleButton() {
   //read the pushbutton value into a variable
-  int sensorVal = digitalRead(2);
+  int sensorVal = digitalRead(ENCODER_PIN_C);
  
   // LOW when it's pressed. Toggle test LED (pin 13) when the
   // button'spressed

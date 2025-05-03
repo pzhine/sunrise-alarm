@@ -523,7 +523,7 @@ export async function uploadArduinoSketch(): Promise<boolean> {
     console.log('Sketch uploaded successfully.');
     return true;
   } catch (error) {
-    console.error('Error uploading Arduino sketch:', error);
+    console.error('Error uploading Arduino sketch:', JSON.stringify(error));
     return false;
   }
 }

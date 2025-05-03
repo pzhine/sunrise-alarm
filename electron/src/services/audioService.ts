@@ -30,6 +30,7 @@ export function playGlobalSound(soundInfo: {
 
   // Create and play new audio
   globalAudioElement = new Audio(soundInfo.previewUrl);
+  globalAudioElement.volume = 1; // Set default volume to 100%
   
   // Set the current time if provided and valid
   if (soundInfo.currentTime !== undefined) {
@@ -95,6 +96,7 @@ export function getCurrentSoundInfo(): {
 // Set the volume of the global audio
 export function setGlobalVolume(volume: number): void {
   if (globalAudioElement && process.env.NODE_ENV === 'development' ) {
+    console.log('Setting client volume to:', volume);
     globalAudioElement.volume = Math.max(0, Math.min(volume, 1)); // Clamp between 0-1
   }
 }

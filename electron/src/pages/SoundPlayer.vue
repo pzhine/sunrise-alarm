@@ -101,7 +101,7 @@ const startPlayback = () => {
     name: soundName.value,
     previewUrl: previewUrl.value,
     duration: duration.value,
-    currentTime: initialTime 
+    currentTime: initialTime.value // Access .value of the computed ref
   });
   
   // Set volume based on app state

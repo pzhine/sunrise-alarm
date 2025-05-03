@@ -32,10 +32,10 @@ void setup() {
 
  audioamp.begin();
 
- audioamp.setGain(6);
- audioamp.setLimitLevel(8);
+ audioamp.setGain(0);
+ audioamp.setLimitLevel(22);
 
- setAgcMode(AGC_MODE_VOICE);
+ setAgcMode(AGC_MODE_JAZZ);
 
  // Dump register map, for debugging purposes.
  /*

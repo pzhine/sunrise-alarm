@@ -28,7 +28,8 @@ const menuItems = computed(() => [
     onSelect: () => router.push('/alarm'),
   },
   {
-    label: 'Browse Sounds',
+    label: 'Alarm Sound',
+    value: appStore.alarmSound.name,
     onSelect: () => router.push('/sounds'),
   },
   {

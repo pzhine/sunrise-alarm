@@ -5,7 +5,6 @@
     :class="{
       'fixed top-4 left-4 p-3 border-b border-r z-10': true,
       'bg-[var(--color-li-highlight)]': isBackButtonHighlighted,
-      'hover:bg-[var(--color-li-hover)]': !startedKeyboardNavigation,
     }"
   >
     {{ backButtonLabel ?? '← Back' }}
@@ -26,7 +25,6 @@
       v-for="(item, index) in items"
       :key="index"
       :class="{
-        'hover:bg-[var(--color-li-hover)]': !startedKeyboardNavigation,
         'p-4 flex justify-between items-center': true,
         'bg-[var(--color-li-highlight)]':
           index === highlightedIndex && !isBackButtonHighlighted,
@@ -34,8 +32,8 @@
       @click="handleItemClick(item, index)"
       @keydown.enter.prevent="selectItem(item)"
     >
-      <span>{{ isObject(item) ? item.label : item }}</span>
-      <span v-if="isObject(item) && 'value' in item" class="ml-4 font-medium">
+      <span class="truncate text-ellipsis overflow-hidden max-w-[70%]">{{ isObject(item) ? item.label : item }}</span>
+      <span v-if="isObject(item) && 'value' in item" class="ml-4 font-medium flex-shrink-0">
         {{ item.value }}
       </span>
     </li>

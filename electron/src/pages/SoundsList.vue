@@ -12,21 +12,13 @@
     >
       <div class="text-xl">No sounds found for this country.</div>
     </div>
-    <div v-else>
-      <div class="mb-4 flex items-center justify-between">
-        <h1 class="text-xl font-bold">Sounds from {{ countryName }}</h1>
-        <div v-if="isPlaying" class="text-sm animate-pulse">
-          Playing preview...
-        </div>
-      </div>
-      <InteractiveList
-        :items="soundsList"
-        :showBackButton="true"
-        @select="selectSound"
-        @back="goBack"
-      />
+    <InteractiveList
+      :items="soundsList"
+      :showBackButton="true"
+      @select="selectSound"
+      @back="goBack"
+    />
     </div>
-  </div>
 </template>
 
 <script setup lang="ts">
@@ -44,6 +36,18 @@ const isLoading = ref(true);
 const error = ref<string | null>(null);
 const isPlaying = ref(false);
 let audioElement: HTMLAudioElement | null = null;
+
+// Function to remove common audio file extensions from sound names
+const removeAudioExtensions = (name: string): string => {
+  // Common audio file extensions to remove
+  const extensions = ['.mp3', '.wav', '.ogg', '.flac', '.aac', '.m4a', '.wma', '.aiff', '.alac'];
+  
+  // Create a regex pattern that matches any of the extensions at the end of the string (case insensitive)
+  const pattern = new RegExp(`(${extensions.map(ext => ext.replace('.', '\\.')).join('|')})$`, 'i');
+  
+  // Remove the extension if found
+  return name.replace(pattern, '');
+};
 
 // Get the country name from the route params
 const countryName = computed(() => {
@@ -64,10 +68,7 @@ const soundsList = computed(() => {
     const formattedDuration = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 
     return {
-      label:
-        sound.name.length > 30
-          ? sound.name.substring(0, 27) + '...'
-          : sound.name,
+      label: removeAudioExtensions(sound.name),
       data: sound,
       // Add duration and a checkmark if this is the selected sound
       value: `${formattedDuration} ${appStore.alarmSound?.id === sound.id ? '✓' : ''}`,
@@ -131,7 +132,7 @@ const selectSound = (sound: any) => {
     // Save to app state
     appStore.setAlarmSound({
       id: selectedSound.id,
-      name: selectedSound.name,
+      name: removeAudioExtensions(selectedSound.name),
       previewUrl: previewUrl,
       duration: selectedSound.duration, // Store duration in app state
     });

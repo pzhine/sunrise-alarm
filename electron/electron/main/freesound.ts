@@ -204,6 +204,9 @@ export async function searchSoundsWithCache(
   url.searchParams.append('page_size', pageSize.toString());
   url.searchParams.append('fields', fields);
   url.searchParams.append('token', API_KEY);
+  
+  // Add filter for sounds that are at least 60 seconds long (1 minute)
+  url.searchParams.append('filter', 'duration:[60 TO *]');
 
   try {
     const response = await fetch(url.toString(), {

@@ -107,34 +107,28 @@ onBeforeUnmount(() => {
   }
 });
 
-const selectSound = (sound: any) => {
-  // Stop any currently playing audio
-  if (audioElement) {
-    stopPreview(audioElement);
-    audioElement = null;
-    isPlaying.value = false;
-  }
+// Save the current route information for later navigation
+onMounted(() => {
+  // Store the current sound list route
+  appStore.setLastSoundListRoute('SoundsList', {
+    searchPhrase: route.params.searchPhrase as string,
+    country: route.params.country as string
+  });
+});
 
-  // If a sound is selected, play a preview and save it to the app state
+const selectSound = (sound: any) => {
+  // Get the selected sound data
   const selectedSound = sound.data;
   if (selectedSound) {
-    // Play preview
-    isPlaying.value = true;
-    const previewUrl = selectedSound.previews['preview-hq-mp3'];
-    audioElement = playPreview(previewUrl);
-
-    // Listen for when preview ends
-    audioElement.addEventListener('ended', () => {
-      isPlaying.value = false;
-      audioElement = null;
-    });
-
-    // Save to app state
-    appStore.setAlarmSound({
-      id: selectedSound.id,
-      name: removeAudioExtensions(selectedSound.name),
-      previewUrl: previewUrl,
-      duration: selectedSound.duration, // Store duration in app state
+    // Navigate to the sound player page
+    router.push({
+      name: 'SoundPlayer',
+      params: {
+        id: selectedSound.id.toString(),
+        name: removeAudioExtensions(selectedSound.name),
+        previewUrl: selectedSound.previews['preview-hq-mp3'],
+        duration: selectedSound.duration.toString()
+      }
     });
   }
 };
@@ -146,7 +140,16 @@ const goBack = () => {
     audioElement = null;
   }
 
-  // Go back to the countries list
-  router.back();
+  // Navigate to the stored country list route if available
+  if (appStore.lastCountryListRoute?.name === 'SoundCountries' && 
+      appStore.lastCountryListRoute?.params) {
+    router.push({
+      name: 'SoundCountries',
+      params: appStore.lastCountryListRoute.params
+    });
+  } else {
+    // Fallback to sound categories if country route isn't stored
+    router.push('/sounds');
+  }
 };
 </script>

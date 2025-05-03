@@ -20,9 +20,11 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import InteractiveList from '../components/InteractiveList.vue';
+import { useAppStore } from '../stores/appState';
 
 const route = useRoute();
 const router = useRouter();
+const appStore = useAppStore();
 const isLoading = ref(true);
 const error = ref<string | null>(null);
 const soundsByCountry = ref<Record<string, any[]>>({});
@@ -45,6 +47,11 @@ onMounted(async () => {
   try {
     isLoading.value = true;
     error.value = null;
+
+    // Store the current route information for later navigation
+    appStore.setLastCountryListRoute('SoundCountries', {
+      searchPhrase: searchPhrase.value
+    });
 
     // Call the Freesound API through Electron IPC
     const countryGroups = await window.ipcRenderer.invoke(

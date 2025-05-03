@@ -1,8 +1,102 @@
+// Global audio element for persistent playback
+let globalAudioElement: HTMLAudioElement | null = null;
+let currentSoundInfo: {
+  id: number;
+  name: string;
+  previewUrl: string;
+  duration: number;
+  currentTime?: number;
+} | null = null;
+
 // Play a preview of a sound
 export function playPreview(previewUrl: string): HTMLAudioElement {
   const audio = new Audio(previewUrl);
   audio.play();
   return audio;
+}
+
+// Play a sound globally so it persists across component navigation
+export function playGlobalSound(soundInfo: {
+  id: number;
+  name: string;
+  previewUrl: string;
+  duration: number;
+  currentTime?: number;
+}): void {
+  // Stop any currently playing sound
+  if (globalAudioElement) {
+    stopGlobalSound();
+  }
+
+  // Create and play new audio
+  globalAudioElement = new Audio(soundInfo.previewUrl);
+  
+  // Set the current time if provided and valid
+  if (soundInfo.currentTime !== undefined) {
+    try {
+      // Validate that currentTime is a proper number and within bounds
+      const time = Number(soundInfo.currentTime);
+      if (!isNaN(time) && isFinite(time) && time >= 0) {
+        globalAudioElement.currentTime = time;
+      } else {
+        console.warn('Invalid currentTime provided to playGlobalSound:', soundInfo.currentTime);
+      }
+    } catch (error) {
+      console.error('Error setting currentTime:', error);
+    }
+  }
+  
+  // Store sound info
+  currentSoundInfo = soundInfo;
+  
+  // Start playback
+  globalAudioElement.play().catch(err => {
+    console.error('Error playing audio:', err);
+  });
+  
+  // Loop the sound to keep it playing continuously
+  globalAudioElement.loop = true;
+}
+
+// Stop playing the global sound
+export function stopGlobalSound(): void {
+  if (globalAudioElement) {
+    globalAudioElement.pause();
+    globalAudioElement.currentTime = 0;
+    globalAudioElement = null;
+    currentSoundInfo = null;
+  }
+}
+
+// Check if a sound is currently playing
+export function isGlobalSoundPlaying(): boolean {
+  return globalAudioElement !== null;
+}
+
+// Get current playing sound info
+export function getCurrentSoundInfo(): {
+  id: number;
+  name: string;
+  previewUrl: string;
+  duration: number;
+  currentTime?: number;
+} | null {
+  if (!globalAudioElement || !currentSoundInfo) {
+    return null;
+  }
+  
+  // Update the current time
+  return {
+    ...currentSoundInfo,
+    currentTime: globalAudioElement.currentTime
+  };
+}
+
+// Set the volume of the global audio
+export function setGlobalVolume(volume: number): void {
+  if (globalAudioElement && process.env.NODE_ENV === 'development' ) {
+    globalAudioElement.volume = Math.max(0, Math.min(volume, 1)); // Clamp between 0-1
+  }
 }
 
 // Stop playing a preview

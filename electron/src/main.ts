@@ -42,6 +42,16 @@ const routes = [
     component: () => import('./pages/SoundsList.vue'),
   },
   {
+    path: '/sounds/player/:id?/:name?/:previewUrl?/:duration?/:currentTime?',
+    name: 'SoundPlayer',
+    component: () => import('./pages/SoundPlayer.vue'),
+  },
+  {
+    path: '/sounds/player-menu/:id/:name/:previewUrl/:duration/:currentTime?/:totalTime?',
+    name: 'SoundPlayerMenu',
+    component: () => import('./pages/SoundPlayerMenu.vue'),
+  },
+  {
     path: '/alarm',
     name: 'SetAlarm',
     component: () => import('./pages/SetAlarm.vue'),

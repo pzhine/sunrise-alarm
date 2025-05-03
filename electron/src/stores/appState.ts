@@ -15,6 +15,8 @@ export const useAppStore = defineStore('appState', {
     listPositions: {}, // Empty object to store list positions by route
     alarmSound: null, // Default to no alarm sound selected
     lastConnectedWifi: undefined, // Last successfully connected WiFi network
+    lastSoundListRoute: undefined, // Last sound list route visited
+    lastCountryListRoute: undefined, // Last country list route visited
   }),
 
   getters: {
@@ -156,6 +158,36 @@ export const useAppStore = defineStore('appState', {
       this.saveState();
     },
 
+    // Set the last sound list route
+    setLastSoundListRoute(routeName: string, routeParams: Record<string, string>): void {
+      this.lastSoundListRoute = {
+        name: routeName,
+        params: routeParams
+      };
+      this.saveState();
+    },
+
+    // Clear the last sound list route
+    clearLastSoundListRoute(): void {
+      this.lastSoundListRoute = undefined;
+      this.saveState();
+    },
+
+    // Set the last country list route
+    setLastCountryListRoute(routeName: string, routeParams: Record<string, string>): void {
+      this.lastCountryListRoute = {
+        name: routeName,
+        params: routeParams
+      };
+      this.saveState();
+    },
+
+    // Clear the last country list route
+    clearLastCountryListRoute(): void {
+      this.lastCountryListRoute = undefined;
+      this.saveState();
+    },
+
     // Reset all settings to default values
     resetToDefaults(): void {
       this.volume = 50;
@@ -167,6 +199,8 @@ export const useAppStore = defineStore('appState', {
       this.clearAllListPositions();
       this.alarmSound = null;
       this.lastConnectedWifi = undefined;
+      this.lastSoundListRoute = undefined;
+      this.lastCountryListRoute = undefined;
     },
   },
 });

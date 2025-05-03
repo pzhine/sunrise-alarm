@@ -24,6 +24,14 @@ export interface AppState {
     message: string;
     releasePath?: string;
   };
+  lastSoundListRoute?: {
+    name: string;
+    params: Record<string, string>;
+  }; // Store the last sound list route and params
+  lastCountryListRoute?: {
+    name: string;
+    params: Record<string, string>;
+  }; // Store the last country list route and params
 }
 
 export type UpdateStatus =

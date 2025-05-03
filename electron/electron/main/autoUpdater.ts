@@ -13,7 +13,7 @@ const execAsync = promisify(exec);
 let updateCheckInterval: NodeJS.Timeout | null = null;
 
 // Arduino-related constants
-const ARDUINO_SKETCH_PATH = path.resolve(process.cwd(), 'arduino/sunrise/sunrise.ino');
+const ARDUINO_SKETCH_PATH = 'sunrise/sunrise.ino';
 
 // Check if path exists when running from packaged app
 function resolvePath(relativePath: string): string {
@@ -244,7 +244,8 @@ export async function installUpdateAndRestart(releasePath: string) {
     // Upload Arduino sketch before proceeding with app update
     try {
       console.log('Attempting to upload Arduino sketch before app restart...');
-      const uploadSuccess = await uploadArduinoSketch();
+      const arduinoPath = path.join(releasePath, '..', '..', '..', 'arduino');
+      const uploadSuccess = await uploadArduinoSketch(arduinoPath);
       if (uploadSuccess) {
         console.log('Arduino sketch uploaded successfully.');
       } else {
@@ -492,7 +493,7 @@ export function initAutoUpdater() {
 /**
  * Upload Arduino sketch to the board
  */
-export async function uploadArduinoSketch(): Promise<boolean> {
+export async function uploadArduinoSketch(arduinoPath: string): Promise<boolean> {
   try {
     console.log('Uploading Arduino sketch to the board...');
 
@@ -506,8 +507,10 @@ export async function uploadArduinoSketch(): Promise<boolean> {
       return false;
     }
 
+    const fullSketchPath = path.join(arduinoPath, ARDUINO_SKETCH_PATH);
+
     // Build the command to upload the sketch
-    const command = `${ARDUINO_CLI_PATH} upload -p ${PORT} --fqbn ${BOARD_TYPE} ${ARDUINO_SKETCH_PATH}`;
+    const command = `${ARDUINO_CLI_PATH} compile --upload -p ${PORT} --fqbn ${BOARD_TYPE} ${fullSketchPath}`;
 
     // Execute the command
     console.log(`Executing command: ${command}`);

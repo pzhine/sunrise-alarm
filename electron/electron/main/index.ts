@@ -402,8 +402,6 @@ ipcMain.handle('get-country-sounds', async (_, { query, country }) => {
 
 // Create the application menu with update options
 function createApplicationMenu() {
-  const isMac = process.platform === 'darwin';
-
   const template = [
     {
       label: 'File',

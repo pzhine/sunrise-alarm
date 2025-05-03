@@ -3,12 +3,20 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { app } from 'electron';
 import { AppState } from '../../types/state';
+import { sendMessage } from './serial';
+import { debounce } from 'lodash-es';
 
 // Define the file path for storing application state
 const STATE_FILE_PATH = path.join(app.getPath('userData'), 'app-state.json');
 
 // State cache to avoid unnecessary file reads
 let stateCache: AppState | null = null;
+
+// Constants for lamp brightness control
+const LAMP_BRIGHTNESS_DEBOUNCE_DELAY = 200; // ms
+const LAMP_BRIGHTNESS_TRANSITION_TIME = 300; // ms
+// Strip identifiers matching Arduino constants
+const STRIP_BOTTOM = 1;
 
 /**
  * Get current application state
@@ -77,15 +85,48 @@ ipcMain.handle('load-app-state', async () => {
   return getState();
 });
 
+// Create a debounced version of the sendLampBrightnessToSerial function
+const debouncedSendLampBrightness = debounce(sendLampBrightnessToSerial, LAMP_BRIGHTNESS_DEBOUNCE_DELAY);
+
 // Handler for updating a specific state property
 ipcMain.handle(
   'update-app-state',
   async (_, key: keyof AppState, value: any) => {
-    return updateState(key, value);
+    const result = await updateState(key, value);
+    
+    // If the updated property is lampBrightness, send to Arduino with debounce
+    if (key === 'lampBrightness' && typeof value === 'number') {
+      debouncedSendLampBrightness(value);
+    }
+    
+    return result;
   }
 );
 
 export function initStateManagement() {
   console.log('State management initialized');
   console.log('State file will be saved at:', STATE_FILE_PATH);
+  
+  // Check for initial lamp brightness setting
+  const initialState = getState();
+  if (initialState && typeof initialState.lampBrightness !== 'undefined') {
+    // Send initial brightness on startup
+    sendLampBrightnessToSerial(initialState.lampBrightness);
+  }
+}
+
+/**
+ * Sends a LERP_LED command to update the lamp brightness
+ * @param brightness Value between 0-100 representing lamp brightness percentage
+ */
+function sendLampBrightnessToSerial(brightness: number) {
+  // Convert brightness percentage (0-100) to LED white value (0-255)
+  const whiteValue = Math.floor((brightness / 100) * 255);
+  
+  // Format for LERP_LED: stripId, pixel, r, g, b, w, duration
+  // Using STRIP_BOTTOM (1), pixel 0, color values 0,0,0 (no RGB) and duration from constant
+  const command = `LERP_LED ${STRIP_BOTTOM} 0 0 0 0 ${whiteValue} ${LAMP_BRIGHTNESS_TRANSITION_TIME}`;
+  
+  console.log(`[stateManager] Sending lamp brightness command: ${command}`);
+  sendMessage(command);
 }

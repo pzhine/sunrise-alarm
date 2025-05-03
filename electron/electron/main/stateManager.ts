@@ -48,10 +48,17 @@ export function getState(): AppState | null {
 export function saveState(state: AppState): Promise<boolean> {
   return new Promise((resolve) => {
     try {
+      // Check for lamp brightness changes
+      const currentState = stateCache;
+      if (state.lampBrightness !== undefined && 
+          (!currentState || state.lampBrightness !== currentState.lampBrightness)) {
+        // Send the updated lamp brightness to Arduino
+        debouncedSendLampBrightness(state.lampBrightness);
+      }
+      
       const stateJson = JSON.stringify(state, null, 2);
       fs.writeFileSync(STATE_FILE_PATH, stateJson);
       stateCache = state;
-      console.log('App state saved to:', STATE_FILE_PATH);
       resolve(true);
     } catch (error) {
       console.error('Error saving app state:', error);
@@ -92,14 +99,8 @@ const debouncedSendLampBrightness = debounce(sendLampBrightnessToSerial, LAMP_BR
 ipcMain.handle(
   'update-app-state',
   async (_, key: keyof AppState, value: any) => {
-    const result = await updateState(key, value);
-    
-    // If the updated property is lampBrightness, send to Arduino with debounce
-    if (key === 'lampBrightness' && typeof value === 'number') {
-      debouncedSendLampBrightness(value);
-    }
-    
-    return result;
+    console.log(`[stateManager] Updating state: ${key} = ${value}`);
+    return updateState(key, value);
   }
 );
 

@@ -85,9 +85,38 @@ const initializeAppState = async () => {
   // Load saved state first
   await appStore.loadState();
 
-  // Subscribe to state changes and save when they occur
-  appStore.$subscribe((_, state) => {
-    appStore.saveState();
+  // Subscribe to state changes and determine what changed
+  appStore.$subscribe((mutation, state) => {
+    // Skip if this is an initialization or no events
+    if (!mutation.events || (Array.isArray(mutation.events) && mutation.events.length === 0)) return;
+
+    // Get an array of changed keys from the mutation events
+    const changedKeys = (Array.isArray(mutation.events) ? mutation.events : [mutation.events]).map(event => event.key) as Array<keyof typeof state>;
+
+    console.log('[AppState] Changed keys:', changedKeys);
+    if (changedKeys.length === 0) {
+      // No specific properties changed, fall back to full state save
+      appStore.saveState();
+      return;
+    }
+
+    // If only a few properties changed, update them individually
+    if (changedKeys.length <= 3) {
+      changedKeys.forEach((key) => {
+        // Skip the special volume case which has its own handling
+        if (key === 'volume') return;
+
+        // Use the update-app-state IPC to update only this property
+        window.ipcRenderer
+          .invoke('update-app-state', key, state[key])
+          .catch((error) => {
+            console.error(`Failed to update ${String(key)}:`, error);
+          });
+      });
+    } else {
+      // If many properties changed at once, use the full state save
+      appStore.saveState();
+    }
   });
 };
 

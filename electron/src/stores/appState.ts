@@ -48,7 +48,7 @@ export const useAppStore = defineStore('appState', {
         'save-app-state',
         JSON.parse(JSON.stringify(this.$state))
       );
-    }, 1000),
+    }, 100),
 
     // Load state from Electron main process
     async loadState() {

@@ -12,6 +12,19 @@ const execAsync = promisify(exec);
 
 let updateCheckInterval: NodeJS.Timeout | null = null;
 
+// Arduino-related constants
+const ARDUINO_SKETCH_PATH = path.resolve(process.cwd(), 'arduino/sunrise/sunrise.ino');
+
+// Check if path exists when running from packaged app
+function resolvePath(relativePath: string): string {
+  // Check if we're running in a development environment or packaged app
+  const basePath = app.isPackaged
+    ? path.dirname(app.getPath('exe'))
+    : process.cwd();
+  
+  return path.join(basePath, relativePath);
+}
+
 /**
  * Check for updates from a URL that provides version metadata
  */
@@ -206,7 +219,7 @@ export async function buildSource(sourceDir: string): Promise<string> {
 /**
  * Install the update by copying files from linux-unpacked to the installation directory
  */
-export function installUpdateAndRestart(releasePath: string) {
+export async function installUpdateAndRestart(releasePath: string) {
   try {
     console.log(`Installing update from build at: ${releasePath}`);
 
@@ -226,6 +239,20 @@ export function installUpdateAndRestart(releasePath: string) {
         success: false,
         message: `Release files directory not found at: ${releasePath}`,
       };
+    }
+
+    // Upload Arduino sketch before proceeding with app update
+    try {
+      console.log('Attempting to upload Arduino sketch before app restart...');
+      const uploadSuccess = await uploadArduinoSketch();
+      if (uploadSuccess) {
+        console.log('Arduino sketch uploaded successfully.');
+      } else {
+        console.log('Failed to upload Arduino sketch, continuing with app update anyway.');
+      }
+    } catch (arduinoError) {
+      console.error('Error during Arduino sketch upload:', arduinoError);
+      // Continue with app update even if Arduino upload fails
     }
 
     console.log(`Copying files from ${releasePath} to ${installDir}`);
@@ -395,7 +422,7 @@ export async function checkForUpdatesAndInstall(
 
       // Install and restart
       console.log('Update built. Installing and restarting...');
-      const result = installUpdateAndRestart(releasePath);
+      const result = await installUpdateAndRestart(releasePath);
 
       if (result.success) {
         console.log(result.message);
@@ -459,5 +486,40 @@ export function initAutoUpdater() {
       },
       UPDATE_CHECK_INTERVAL * 60 * 1000
     );
+  }
+}
+
+/**
+ * Upload Arduino sketch to the board
+ */
+export async function uploadArduinoSketch(): Promise<boolean> {
+  try {
+    console.log('Uploading Arduino sketch to the board...');
+
+    // Get the Arduino CLI path from config
+    const ARDUINO_CLI_PATH = getConfig().arduino.cliPath;
+    const BOARD_TYPE = getConfig().arduino.boardType;
+    const PORT = getConfig().arduino.port;
+
+    if (!ARDUINO_CLI_PATH || !BOARD_TYPE || !PORT) {
+      throw new Error('Arduino CLI path, board type, and port must be configured.');
+    }
+
+    // Build the command to upload the sketch
+    const command = `${ARDUINO_CLI_PATH} upload -p ${PORT} --fqbn ${BOARD_TYPE} ${ARDUINO_SKETCH_PATH}`;
+
+    // Execute the command
+    const { stdout, stderr } = await execAsync(command);
+
+    console.log('Arduino CLI output:', stdout);
+    if (stderr) {
+      console.error('Arduino CLI error:', stderr);
+    }
+
+    console.log('Sketch uploaded successfully.');
+    return true;
+  } catch (error) {
+    console.error('Error uploading Arduino sketch:', error);
+    return false;
   }
 }

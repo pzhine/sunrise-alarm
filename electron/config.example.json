@@ -13,5 +13,10 @@
     "buildScript": "npm run build",
     "installDir": "/path/to/installation/directory",
     "relativeReleaseDir": "release/linux-[arm64]-unpacked"
+  },
+  "arduino": {
+    "cliPath": "C:\\Program Files\\Arduino\\arduino-cli.exe",
+    "boardType": "arduino:avr:uno",
+    "port": "COM3"
   }
 }

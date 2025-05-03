@@ -18,6 +18,11 @@ export interface AppConfig {
     installDir?: string; // Directory where app files will be installed
     relativeReleaseDir?: string; // Path to unpacked release files relative to electron dir
   };
+  arduino: {
+    cliPath: string;
+    boardType: string; // fqbn
+    port: string;
+  }
 }
 
 // Configuration object that will be loaded from config.json

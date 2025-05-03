@@ -13,7 +13,7 @@ const STATE_FILE_PATH = path.join(app.getPath('userData'), 'app-state.json');
 let stateCache: AppState | null = null;
 
 // Constants for lamp brightness control
-const LAMP_BRIGHTNESS_DEBOUNCE_DELAY = 200; // ms
+const LAMP_BRIGHTNESS_DEBOUNCE_DELAY = 100; // ms
 const LAMP_BRIGHTNESS_TRANSITION_TIME = 300; // ms
 // Strip identifiers matching Arduino constants
 const STRIP_BOTTOM = 1;

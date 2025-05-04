@@ -87,7 +87,7 @@ export type ListItem =
 const props = defineProps<{
   items: ListItem[];
   initialHighlightIndex?: number;
-  title: string;
+  title?: string;
   showTitle?: boolean;
   showBackButton?: boolean;
   backButtonLabel?: string;

@@ -14,7 +14,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import InteractiveList from '../components/InteractiveList.vue';
+import InteractiveList, { ListItem } from '../components/InteractiveList.vue';
 import { useAppStore } from '../stores/appState';
 
 const router = useRouter();
@@ -33,7 +33,12 @@ const ledOptions = [
 ];
 
 // Handle selection of an LED
-const handleLEDSelection = (selected: MenuItem) => {
+const handleLEDSelection = (selected: ListItem) => {
+  // Type guard to ensure selected is a valid object
+  if (!selected || typeof selected !== 'object') {
+    console.error('Invalid selection received');
+    return;
+  }
 console.log('selected:', selected);
   router.push({
     name: 'ProjectorLEDControl',

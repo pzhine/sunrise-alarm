@@ -23,7 +23,7 @@ const route = useRoute();
 const appStore = useAppStore();
 
 // Get LED index from route params
-const ledIndex =route.params.ledIndex;
+const ledIndex = parseInt(route.params.ledIndex as string, 10);
 console.log('[ProjectorLEDControl] LED Index:', ledIndex);
 
 // Local state for color values with reactive updates
@@ -119,8 +119,7 @@ const updateLED = () => {
 
 // Load initial values from appStore
 onMounted(() => {
-  const index = parseInt(ledIndex.value);
-  const ledData = appStore.projectorPreview[index];
+  const ledData = appStore.projectorPreview[ledIndex];
   if (ledData) {
     red.value = ledData.red;
     green.value = ledData.green;

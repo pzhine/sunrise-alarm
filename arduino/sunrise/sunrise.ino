@@ -62,21 +62,29 @@ struct RGBW {
   RGBW() : r(0), g(0), b(0), w(0) {}
 };
 
-// Structure for keeping track of LED transitions
+// Define color channel indices
+#define CHANNEL_R 0
+#define CHANNEL_G 1
+#define CHANNEL_B 2
+#define CHANNEL_W 3
+#define CHANNEL_COUNT 4
+
+// Structure for keeping track of LED transitions per channel
 struct LedTransition {
   bool active;
   int stripId;
   int pixel;
-  RGBW startColor;
-  RGBW targetColor;
+  int channelId;      // Which channel this transition is for (R, G, B, or W)
+  int startValue;     // Start value for this channel
+  int targetValue;    // Target value for this channel
   unsigned long startTime;
   unsigned long duration;
   
-  LedTransition() : active(false), stripId(0), pixel(0), startTime(0), duration(0) {}
+  LedTransition() : active(false), stripId(0), pixel(0), channelId(0), startValue(0), targetValue(0), startTime(0), duration(0) {}
 };
 
-// Track active LED transitions (max 5 concurrent transitions)
-#define MAX_TRANSITIONS 5
+// Track active LED transitions (increased to support per-channel transitions)
+#define MAX_TRANSITIONS 20
 LedTransition ledTransitions[MAX_TRANSITIONS];
 unsigned long lastTransitionCheck = 0;
 
@@ -89,10 +97,10 @@ void handleSerialCommand() {
     if (inputParamCount >= 8) {
       int stripId = atoi(inputParams[1]);
       int pixel = atoi(inputParams[2]);
-      int r = constrain(atoi(inputParams[3]), 0, 255);
-      int g = constrain(atoi(inputParams[4]), 0, 255);
-      int b = constrain(atoi(inputParams[5]), 0, 255);
-      int w = constrain(atoi(inputParams[6]), 0, 255);
+      int r = atoi(inputParams[3]); // Allow -1 for unchanged
+      int g = atoi(inputParams[4]); // Allow -1 for unchanged
+      int b = atoi(inputParams[5]); // Allow -1 for unchanged
+      int w = atoi(inputParams[6]); // Allow -1 for unchanged
       unsigned long duration = atol(inputParams[7]);
       
       lerpLedTo(stripId, pixel, r, g, b, w, duration);
@@ -248,71 +256,122 @@ void lerpLedTo(int stripId, int pixel, int r, int g, int b, int w, unsigned long
   }
 
   // Get the current color of the pixel
-  RGBW currentColor;
+  int currentR = 0, currentG = 0, currentB = 0, currentW = 0;
   if (stripId == STRIP_SUN_CENTER) {
     if (pixel >= 0 && pixel < CENTER_PIXELS) {
       uint32_t color = center_pixels.getPixelColor(pixel);
-      currentColor.w = (color >> 24) & 0xFF;
-      currentColor.r = (color >> 16) & 0xFF;
-      currentColor.g = (color >> 8) & 0xFF;
-      currentColor.b = color & 0xFF;
+      currentW = (color >> 24) & 0xFF;
+      currentR = (color >> 16) & 0xFF;
+      currentG = (color >> 8) & 0xFF;
+      currentB = color & 0xFF;
     } else {
       return; // Invalid pixel
     }
   } else if (stripId == STRIP_LAMP) {
     if (pixel >= 0 && pixel < BOTTOM_PIXELS) {
       uint32_t color = bottom_pixels.getPixelColor(pixel);
-      currentColor.w = (color >> 24) & 0xFF;
-      currentColor.r = (color >> 16) & 0xFF;
-      currentColor.g = (color >> 8) & 0xFF;
-      currentColor.b = color & 0xFF;
+      currentW = (color >> 24) & 0xFF;
+      currentR = (color >> 16) & 0xFF;
+      currentG = (color >> 8) & 0xFF;
+      currentB = color & 0xFF;
     } else {
       return; // Invalid pixel
     }
   }
 
-  // Find an inactive transition slot or replace one with the same pixel and strip
-  int transitionIndex = -1;
-  for (int i = 0; i < MAX_TRANSITIONS; ++i) {
-    if (!ledTransitions[i].active) {
-      transitionIndex = i;
-      break;
-    } else if (ledTransitions[i].stripId == stripId && ledTransitions[i].pixel == pixel) {
-      // Replace existing transition for the same pixel
-      transitionIndex = i;
-      break;
+  // Store the target color values in an array for easier processing
+  int currentValues[CHANNEL_COUNT] = {currentR, currentG, currentB, currentW};
+  int targetValues[CHANNEL_COUNT] = {r, g, b, w};
+  
+  // Process each channel
+  for (int channel = 0; channel < CHANNEL_COUNT; channel++) {
+    // Skip this channel if target is -1 (meaning: leave unchanged)
+    if (targetValues[channel] == -1) {
+      continue;
     }
-  }
-
-  // If no slot available, find the oldest transition and replace it
-  if (transitionIndex == -1) {
-    unsigned long oldestTime = millis();
-    for (int i = 0; i < MAX_TRANSITIONS; ++i) {
-      if (ledTransitions[i].startTime < oldestTime) {
-        oldestTime = ledTransitions[i].startTime;
-        transitionIndex = i;
+    
+    // Constrain the target value to valid range
+    targetValues[channel] = constrain(targetValues[channel], 0, 255);
+    
+    // Find a transition slot for this channel
+    int slotIndex = -1;
+    
+    // First try to find an existing transition for this pixel+strip+channel to replace
+    for (int i = 0; i < MAX_TRANSITIONS; i++) {
+      if (ledTransitions[i].active && 
+          ledTransitions[i].stripId == stripId && 
+          ledTransitions[i].pixel == pixel &&
+          ledTransitions[i].channelId == channel) {
+        slotIndex = i;
+        break;
       }
     }
+    
+    // If no existing transition found for this channel, find an inactive slot
+    if (slotIndex == -1) {
+      for (int i = 0; i < MAX_TRANSITIONS; i++) {
+        if (!ledTransitions[i].active) {
+          slotIndex = i;
+          break;
+        }
+      }
+    }
+    
+    // If still no slot available, find the oldest transition and replace it
+    if (slotIndex == -1) {
+      unsigned long oldestTime = millis();
+      for (int i = 0; i < MAX_TRANSITIONS; i++) {
+        if (ledTransitions[i].startTime < oldestTime) {
+          oldestTime = ledTransitions[i].startTime;
+          slotIndex = i;
+        }
+      }
+    }
+    
+    // Initialize the transition for this channel
+    LedTransition& transition = ledTransitions[slotIndex];
+    transition.active = true;
+    transition.stripId = stripId;
+    transition.pixel = pixel;
+    transition.channelId = channel;
+    transition.startValue = currentValues[channel];
+    transition.targetValue = targetValues[channel];
+    transition.startTime = millis();
+    transition.duration = duration;
   }
-
-  // Initialize the transition
-  LedTransition& transition = ledTransitions[transitionIndex];
-  transition.active = true;
-  transition.stripId = stripId;
-  transition.pixel = pixel;
-  transition.startColor = currentColor;
-  transition.targetColor = RGBW(r, g, b, w);
-  transition.startTime = millis();
-  transition.duration = duration;
 }
 
 // Update LED transitions based on elapsed time
 void updateLedTransitions() {
   unsigned long currentTime = millis();
-  bool centerUpdated = false;
-  bool bottomUpdated = false;
   
-  for (int i = 0; i < MAX_TRANSITIONS; ++i) {
+  // Arrays to track which pixels need updating
+  bool centerPixelsUpdated[CENTER_PIXELS] = {false};
+  bool bottomPixelsUpdated[BOTTOM_PIXELS] = {false};
+  
+  // Current color values for each pixel being processed
+  int centerColors[CENTER_PIXELS][CHANNEL_COUNT];
+  int bottomColors[BOTTOM_PIXELS][CHANNEL_COUNT];
+  
+  // First, get the current color values for all pixels
+  for (int p = 0; p < CENTER_PIXELS; p++) {
+    uint32_t color = center_pixels.getPixelColor(p);
+    centerColors[p][CHANNEL_W] = (color >> 24) & 0xFF;
+    centerColors[p][CHANNEL_R] = (color >> 16) & 0xFF;
+    centerColors[p][CHANNEL_G] = (color >> 8) & 0xFF;
+    centerColors[p][CHANNEL_B] = color & 0xFF;
+  }
+  
+  for (int p = 0; p < BOTTOM_PIXELS; p++) {
+    uint32_t color = bottom_pixels.getPixelColor(p);
+    bottomColors[p][CHANNEL_W] = (color >> 24) & 0xFF;
+    bottomColors[p][CHANNEL_R] = (color >> 16) & 0xFF;
+    bottomColors[p][CHANNEL_G] = (color >> 8) & 0xFF;
+    bottomColors[p][CHANNEL_B] = color & 0xFF;
+  }
+  
+  // Process each transition
+  for (int i = 0; i < MAX_TRANSITIONS; i++) {
     LedTransition& transition = ledTransitions[i];
     
     if (transition.active) {
@@ -320,25 +379,50 @@ void updateLedTransitions() {
       unsigned long elapsed = currentTime - transition.startTime;
       float progress = min(1.0f, (float)elapsed / transition.duration);
       
-      // Calculate the interpolated color
-      int r = transition.startColor.r + (transition.targetColor.r - transition.startColor.r) * progress;
-      int g = transition.startColor.g + (transition.targetColor.g - transition.startColor.g) * progress;
-      int b = transition.startColor.b + (transition.targetColor.b - transition.startColor.b) * progress;
-      int w = transition.startColor.w + (transition.targetColor.w - transition.startColor.w) * progress;
+      // Calculate the interpolated value for this channel
+      int interpolatedValue = transition.startValue + 
+                            ((transition.targetValue - transition.startValue) * progress);
       
-      // Set the pixel color based on strip ID
-      if (transition.stripId == STRIP_SUN_CENTER) {
-        center_pixels.setPixelColor(transition.pixel, r, g, b, w);
-        centerUpdated = true;
-      } else if (transition.stripId == STRIP_LAMP) {
-        bottom_pixels.setPixelColor(transition.pixel, r, g, b, w);
-        bottomUpdated = true;
+      // Update the appropriate color array based on strip and pixel
+      if (transition.stripId == STRIP_SUN_CENTER && transition.pixel < CENTER_PIXELS) {
+        centerColors[transition.pixel][transition.channelId] = interpolatedValue;
+        centerPixelsUpdated[transition.pixel] = true;
+      } 
+      else if (transition.stripId == STRIP_LAMP && transition.pixel < BOTTOM_PIXELS) {
+        bottomColors[transition.pixel][transition.channelId] = interpolatedValue;
+        bottomPixelsUpdated[transition.pixel] = true;
       }
       
-      // Check if transition is complete
+      // Mark transition as inactive if complete
       if (progress >= 1.0) {
         transition.active = false;
       }
+    }
+  }
+  
+  // Update pixels with new color values
+  bool centerUpdated = false;
+  bool bottomUpdated = false;
+  
+  for (int p = 0; p < CENTER_PIXELS; p++) {
+    if (centerPixelsUpdated[p]) {
+      center_pixels.setPixelColor(p, 
+                               centerColors[p][CHANNEL_R],
+                               centerColors[p][CHANNEL_G],
+                               centerColors[p][CHANNEL_B],
+                               centerColors[p][CHANNEL_W]);
+      centerUpdated = true;
+    }
+  }
+  
+  for (int p = 0; p < BOTTOM_PIXELS; p++) {
+    if (bottomPixelsUpdated[p]) {
+      bottom_pixels.setPixelColor(p,
+                               bottomColors[p][CHANNEL_R],
+                               bottomColors[p][CHANNEL_G],
+                               bottomColors[p][CHANNEL_B],
+                               bottomColors[p][CHANNEL_W]);
+      bottomUpdated = true;
     }
   }
   

@@ -186,7 +186,7 @@ export function initSunriseController() {
     if (fs.existsSync(examplePath)) { 
       fs.copyFileSync(examplePath, DEFAULT_TIMELINE_PATH);
     } else {
-      throw new Error('Default timeline file not found and example file not available');
+      console.warn('Default timeline file not found and example file not available');
     }
   }
   // Register IPC handlers

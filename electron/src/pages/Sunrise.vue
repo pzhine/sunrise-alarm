@@ -44,6 +44,12 @@ const menuItems = computed(() => {
       onEdit: (increment: number) => adjustDuration(increment),
     },
     {
+      label: 'Brightness',
+      value: `${appStore.sunriseBrightness}%`,
+      canEdit: true,
+      onEdit: (increment: number) => adjustBrightness(increment),
+    },
+    {
       label: appStore.sunriseActive ? 'Stop Sunrise' : 'Start Sunrise',
       onSelect: () => toggleSunrise(),
       customStyle: appStore.sunriseActive ? 'color: #ff6b6b;' : 'color: #51cf66;'
@@ -70,6 +76,16 @@ const adjustDuration = (increment: number) => {
   newDuration = Math.max(30, Math.min(1800, newDuration));
   
   appStore.sunriseDuration = newDuration;
+};
+
+// Adjust sunrise brightness with the edit controls
+const adjustBrightness = (increment: number) => {
+  let newBrightness = appStore.sunriseBrightness + increment; // Adjust in 1% increments
+  
+  // Ensure brightness is between 0% and 100%
+  newBrightness = Math.max(0, Math.min(100, newBrightness));
+  
+  appStore.setSunriseBrightness(newBrightness);
 };
 
 // Load the default timeline example

@@ -24,7 +24,8 @@ export const useAppStore = defineStore('appState', {
     // Add new sunrise-related state properties
     sunriseDuration: (600), // Default: 10 minutes in seconds
     sunriseActive: false,
-    sunriseTimeline: []
+    sunriseTimeline: [],
+    sunriseBrightness: 100, // Default: 100% brightness
   }),
 
   getters: {
@@ -124,9 +125,6 @@ export const useAppStore = defineStore('appState', {
         .catch((error) => {
           console.error('Failed to set system volume:', error);
         });
-
-      // Save state after change
-      this.saveState();
     },
 
     // Set the screen brightness
@@ -157,13 +155,11 @@ export const useAppStore = defineStore('appState', {
     // Set the last connected WiFi network
     setLastConnectedWifi(networkName: string): void {
       this.lastConnectedWifi = networkName;
-      this.saveState();
     },
 
     // Clear the last connected WiFi network
     clearLastConnectedWifi(): void {
       this.lastConnectedWifi = undefined;
-      this.saveState();
     },
 
     // Set the last sound list route
@@ -172,13 +168,11 @@ export const useAppStore = defineStore('appState', {
         name: routeName,
         params: routeParams
       };
-      this.saveState();
     },
 
     // Clear the last sound list route
     clearLastSoundListRoute(): void {
       this.lastSoundListRoute = undefined;
-      this.saveState();
     },
 
     // Set the last country list route
@@ -187,13 +181,11 @@ export const useAppStore = defineStore('appState', {
         name: routeName,
         params: routeParams
       };
-      this.saveState();
     },
 
     // Clear the last country list route
     clearLastCountryListRoute(): void {
       this.lastCountryListRoute = undefined;
-      this.saveState();
     },
 
     // Reset projector preview to default values
@@ -225,11 +217,26 @@ export const useAppStore = defineStore('appState', {
       this.sunriseActive = !this.sunriseActive;
       // When activating, send IPC message to start sunrise playback
       if (this.sunriseActive) {
-        window.ipcRenderer.invoke('start-sunrise', 'default', this.sunriseDuration);
+        // First set the brightness level for the sunrise
+        window.ipcRenderer.invoke('set-strip-brightness', this.sunriseBrightness)
+          .then(() => {
+            // Then start the sunrise with the current duration
+            window.ipcRenderer.invoke('start-sunrise', 'default', this.sunriseDuration);
+          })
+          .catch((error) => {
+            console.error('Failed to set brightness:', error);
+            // Continue with sunrise even if brightness setting fails
+            window.ipcRenderer.invoke('start-sunrise', 'default', this.sunriseDuration);
+          });
       } else {
         // When deactivating, send IPC message to stop sunrise playback
         window.ipcRenderer.invoke('stop-sunrise');
       }
+    },
+
+    // Set the sunrise brightness
+    setSunriseBrightness(level: number): void {
+      this.sunriseBrightness = Math.max(0, Math.min(100, level)); // Clamp between 0-100
     }
   }
 });

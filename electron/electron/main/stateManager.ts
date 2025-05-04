@@ -136,6 +136,20 @@ function sendLampBrightnessToSerial(brightness: number) {
 }
 
 /**
+ * Sends a SET_BRIGHTNESS command to update the sunrise strip brightness
+ * @param brightness Value between 0-100 representing strip brightness percentage
+ */
+function sendStripBrightnessToSerial(brightness: number) {
+  // Scale the brightness from 0-100 to 0-255 for the Arduino
+  const brightnessValue = Math.round((brightness / 100) * 255);
+  
+  // Send to sun center strip (ID 0)
+  sendMessage(`SET_BRIGHTNESS ${STRIP_SUN_CENTER} ${brightnessValue}`);
+  
+  console.log(`[stateManager] Set sun center brightness to ${brightness}% (${brightnessValue}/255)`);
+}
+
+/**
  * Sends a LERP_LED command to control an LED with support for -1 values
  * @param stripId The strip ID
  * @param pixel The pixel index
@@ -201,5 +215,15 @@ export function resetAllProjectorLEDs() {
 // Handler for resetting all projector LEDs
 ipcMain.handle('reset-all-projector-leds', async () => {
   resetAllProjectorLEDs();
+  return true;
+});
+
+// Handler for setting sunrise strip brightness
+ipcMain.handle('set-strip-brightness', async (_, brightness: number) => {
+  // Ensure brightness is within valid range (0-100)
+  const clampedBrightness = Math.max(0, Math.min(100, brightness));
+  
+  // Send the command to the Arduino
+  sendStripBrightnessToSerial(clampedBrightness);
   return true;
 });

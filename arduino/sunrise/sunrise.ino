@@ -97,6 +97,17 @@ void handleSerialCommand() {
       
       lerpLedTo(stripId, pixel, r, g, b, w, duration);
     }
+  } else if (strcmp(inputParams[0], "SET_BRIGHTNESS") == 0) {
+    // Parse parameters: strip, brightness
+    if (inputParamCount >= 3) {
+      int stripId = atoi(inputParams[1]);
+      int brightness = constrain(atoi(inputParams[2]), 0, 255);
+      if (stripId == STRIP_SUN_CENTER) {
+        center_pixels.setBrightness(brightness);
+      } else if (stripId == STRIP_LAMP) {
+        bottom_pixels.setBrightness(brightness);
+      }
+    }
   }
 }
 

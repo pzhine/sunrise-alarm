@@ -56,6 +56,7 @@ export interface AppState {
   sunriseDuration: number;
   sunriseActive: boolean;
   sunriseTimeline: SunriseStep[];
+  sunriseBrightness: number; // Global brightness for sunrise (0-100)
 }
 
 export type UpdateStatus =

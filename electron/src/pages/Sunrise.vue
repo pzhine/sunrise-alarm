@@ -6,7 +6,7 @@
       :showTitle="true"
       title="Sunrise Settings"
       @select="handleMenuSelection"
-      @back="router.push('/main')"
+      @back="router.push('/menu')"
     />
   </div>
 </template>

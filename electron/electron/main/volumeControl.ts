@@ -1,6 +1,7 @@
 import { exec } from 'child_process';
 import { ipcMain } from 'electron';
 import { getState } from './stateManager';
+import { VITE_DEV_SERVER_URL } from '.';
 
 // Function to execute shell commands
 function executeCommand(command: string): Promise<string> {
@@ -18,6 +19,10 @@ function executeCommand(command: string): Promise<string> {
 
 // Set system volume in Ubuntu (0-100 percentage)
 export async function setSystemVolume(volumeLevel: number): Promise<void> {
+  if (VITE_DEV_SERVER_URL) {
+    console.log('Skipping volume control in development mode:', VITE_DEV_SERVER_URL);
+    return;
+  }
   try {
     // Ensure volume is in valid range
     const volume = Math.max(0, Math.min(100, volumeLevel));

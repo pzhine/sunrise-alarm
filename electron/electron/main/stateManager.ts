@@ -17,6 +17,8 @@ const LAMP_BRIGHTNESS_DEBOUNCE_DELAY = 100; // ms
 const LAMP_BRIGHTNESS_TRANSITION_TIME = 300; // ms
 // Strip identifiers matching Arduino constants
 const STRIP_BOTTOM = 1;
+const PROJECTOR_STRIP_ID = 0; // Always use strip ID 0 for projector LEDs
+const PROJECTOR_TRANSITION_TIME = 100; // ms
 
 /**
  * Get current application state
@@ -26,7 +28,7 @@ export function getState(): AppState | null {
   if (stateCache) {
     return stateCache;
   }
-
+  
   try {
     if (fs.existsSync(STATE_FILE_PATH)) {
       const stateJson = fs.readFileSync(STATE_FILE_PATH, 'utf8');
@@ -131,3 +133,74 @@ function sendLampBrightnessToSerial(brightness: number) {
   console.log(`[stateManager] Sending lamp brightness command: ${command}`);
   sendMessage(command);
 }
+
+/**
+ * Sends a LERP_LED command to update the projector LED brightness
+ * @param brightness Value between 0-100 representing projector LED brightness percentage
+ */
+export function sendProjectorBrightnessToSerial(brightness: number) {
+  // Convert brightness percentage (0-100) to LED white value (0-255)
+  const whiteValue = Math.floor((brightness / 100) * 255);
+  
+  // Format for LERP_LED: stripId, pixel, r, g, b, w, duration
+  // Using PROJECTOR_STRIP_ID (1), pixel 0, color values 0,0,0 (no RGB) and duration from constant
+  const command = `LERP_LED ${PROJECTOR_STRIP_ID} 0 0 0 0 ${whiteValue} ${PROJECTOR_TRANSITION_TIME}`;
+  
+  console.log(`[stateManager] Sending projector brightness command: ${command}`);
+  sendMessage(command);
+}
+
+/**
+ * Sends a LERP_LED command to update a projector LED color
+ * @param ledIndex The LED index (0 or 1)
+ * @param red Red value (0-255)
+ * @param green Green value (0-255)
+ * @param blue Blue value (0-255)
+ * @param white White value (0-255)
+ */
+export function sendProjectorLEDToSerial(ledIndex: number, red: number, green: number, blue: number, white: number) {
+  // Format for LERP_LED: stripId, pixel, r, g, b, w, duration
+  const command = `LERP_LED ${PROJECTOR_STRIP_ID} ${ledIndex} ${red} ${green} ${blue} ${white} ${PROJECTOR_TRANSITION_TIME}`;
+  
+  console.log(`[stateManager] Sending projector LED command: ${command}`);
+  sendMessage(command);
+}
+
+// Handler for updating projector LED colors
+ipcMain.handle(
+  'update-projector-led',
+  async (_, ledIndex: number, red: number, green: number, blue: number, white: number) => {
+    // Ensure values are within valid range (0-255)
+    const r = Math.max(0, Math.min(255, red));
+    const g = Math.max(0, Math.min(255, green));
+    const b = Math.max(0, Math.min(255, blue));
+    const w = Math.max(0, Math.min(255, white));
+    
+    // Send the command to the Arduino
+    sendProjectorLEDToSerial(ledIndex, r, g, b, w);
+    return true;
+  }
+);
+
+/**
+ * Resets all LEDs on all strips back to 0 (off)
+ * This will send commands to turn off LEDs on each strip
+ */
+export function resetAllProjectorLEDs() {
+  console.log('[stateManager] Resetting all projector LEDs to 0');
+  
+  // For strip ID 1 (projector strip), reset both LED 0 and LED 1
+  // LERP_LED: stripId, pixel, r, g, b, w, duration
+  sendMessage(`LERP_LED ${PROJECTOR_STRIP_ID} 0 0 0 0 0 ${PROJECTOR_TRANSITION_TIME}`);
+  sendMessage(`LERP_LED ${PROJECTOR_STRIP_ID} 1 0 0 0 0 0 ${PROJECTOR_TRANSITION_TIME}`);
+  
+  // If there are other strips that need to be reset, add them here
+  // For example, for strip ID 0 (if it exists)
+  // sendMessage(`LERP_LED 0 0 0 0 0 0 ${PROJECTOR_TRANSITION_TIME}`);
+}
+
+// Handler for resetting all projector LEDs
+ipcMain.handle('reset-all-projector-leds', async () => {
+  resetAllProjectorLEDs();
+  return true;
+});

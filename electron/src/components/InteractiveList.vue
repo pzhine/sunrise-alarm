@@ -9,6 +9,12 @@
   >
     {{ backButtonLabel ?? '← Back' }}
   </button>
+  <div 
+    v-if="showTitle"
+    class="fixed top-8 text-xl font-bold"
+  >
+    {{title}}
+  </div>
 
   <ul
     :class="{
@@ -33,9 +39,20 @@
       @keydown.enter.prevent="selectItem(item)"
     >
       <span class="truncate text-ellipsis overflow-hidden max-w-[70%]">{{ isObject(item) ? item.label : item }}</span>
-      <span v-if="isObject(item) && 'value' in item" class="ml-4 font-medium flex-shrink-0">
-        {{ item.value }}
-      </span>
+      <div class="flex items-center">
+        <span 
+          v-if="isObject(item) && 'value' in item" 
+          class="ml-4 font-medium flex-shrink-0"
+          :class="{ 'bg-[var(--color-li-highlight)] px-2 py-1': isEditing && editingIndex === index }"
+        >
+          {{ item.value }}
+        </span>
+        <div 
+          v-if="isObject(item) && item.customStyle"
+          class="color-preview ml-3"
+          :style="item.customStyle"
+        ></div>
+      </div>
     </li>
   </ul>
 </template>
@@ -61,12 +78,17 @@ export type ListItem =
       label: string;
       value?: any;
       onSelect?: () => void;
+      onEdit?: (increment: number) => void;
+      canEdit?: boolean;
+      customStyle?: string | { [key: string]: string }; // Add customStyle property
       [key: string]: any;
     };
 
 const props = defineProps<{
   items: ListItem[];
   initialHighlightIndex?: number;
+  title: string;
+  showTitle?: boolean;
   showBackButton?: boolean;
   backButtonLabel?: string;
   routeKey?: string; // Optional custom route key to use instead of the current route path
@@ -75,6 +97,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'select', item: ListItem): void;
   (e: 'back'): void;
+  (e: 'edit', item: ListItem, increment: number): void;
 }>();
 
 const appStore = useAppStore();
@@ -100,6 +123,8 @@ const highlightedIndex = ref(initialPosition.value);
 const startedKeyboardNavigation = ref(false);
 const listContainer = ref<HTMLUListElement | null>(null);
 const isBackButtonHighlighted = ref(false);
+const isEditing = ref(false);
+const editingIndex = ref(-1);
 
 // Total number of navigable items (list items + back button if shown)
 const totalNavigableItems = computed(() => {
@@ -112,6 +137,15 @@ const isObject = (item: ListItem): item is { label: string; value?: any } => {
 };
 
 const navigateList = (direction: 'up' | 'down'): void => {
+  // If in edit mode, adjust value instead of navigating
+  if (isEditing.value && editingIndex.value >= 0) {
+    const item = props.items[editingIndex.value];
+    if (isObject(item) && item.onEdit) {
+      item.onEdit(direction === 'up' ? 1 : -1);
+    }
+    return;
+  }
+
   startedKeyboardNavigation.value = true;
 
   // Handle navigation with back button
@@ -168,12 +202,34 @@ const navigateList = (direction: 'up' | 'down'): void => {
 const handleEnterKey = () => {
   if (isBackButtonHighlighted.value) {
     handleBackButton();
-  } else {
-    selectItem(props.items[highlightedIndex.value]);
+    return;
   }
+
+  const currentItem = props.items[highlightedIndex.value];
+  if (isObject(currentItem) && currentItem.canEdit) {
+    if (isEditing.value && editingIndex.value === highlightedIndex.value) {
+      // Exit edit mode
+      isEditing.value = false;
+      editingIndex.value = -1;
+    } else {
+      // Enter edit mode
+      isEditing.value = true;
+      editingIndex.value = highlightedIndex.value;
+    }
+    return;
+  }
+  
+  selectItem(currentItem);
 };
 
 const handleBackButton = () => {
+  // If in editing mode, exit it when back button is pressed
+  if (isEditing.value) {
+    isEditing.value = false;
+    editingIndex.value = -1;
+    return;
+  }
+  
   emit('back');
 };
 
@@ -206,6 +262,20 @@ const scrollToHighlighted = (): void => {
 };
 
 const selectItem = (item: ListItem): void => {
+  // If item is editable and we're not in edit mode, toggle edit mode
+  if (isObject(item) && item.canEdit && !isEditing.value) {
+    isEditing.value = true;
+    editingIndex.value = highlightedIndex.value;
+    return;
+  }
+  
+  // If we're in edit mode for this item, exit edit mode
+  if (isEditing.value && props.items[editingIndex.value] === item) {
+    isEditing.value = false;
+    editingIndex.value = -1;
+    return;
+  }
+  
   // If item is an object with onSelect handler, call it
   if (isObject(item) && typeof item.onSelect === 'function') {
     item.onSelect();
@@ -268,6 +338,18 @@ onUnmounted(() => {
 });
 
 const handleWheel = (event: WheelEvent): void => {
+  // If in edit mode, use the wheel for adjusting the value
+  if (isEditing.value && editingIndex.value >= 0) {
+    event.preventDefault();
+    const item = props.items[editingIndex.value];
+    if (isObject(item) && item.onEdit) {
+      // Detect direction (negative deltaY means scrolling up)
+      const direction = event.deltaY < 0 ? 1 : -1;
+      item.onEdit(direction);
+    }
+    return;
+  }
+  
   // Check if the wheel event was triggered by a touch
   // Chrome/Safari touch events don't have wheelDelta
   const isTouchGenerated = (event as any).wheelDeltaY === undefined;
@@ -308,5 +390,13 @@ ul::-webkit-scrollbar-thumb:hover {
 button {
   transition: background-color 0.2s;
   font-size: 0.9rem;
+}
+
+/* Add styles for color preview */
+.color-preview {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
 }
 </style>

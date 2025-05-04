@@ -8,6 +8,14 @@ export interface ListPositions {
   [routePath: string]: number;
 }
 
+// Define a type for LED RGBW values
+export interface RGBW {
+  red: number;
+  green: number;
+  blue: number;
+  white: number;
+}
+
 // Define the interface for our app state
 export interface AppState {
   volume: number;
@@ -32,6 +40,7 @@ export interface AppState {
     name: string;
     params: Record<string, string>;
   }; // Store the last country list route and params
+  projectorPreview: RGBW[]; // Store LED color settings as an array of RGBW values
 }
 
 export type UpdateStatus =

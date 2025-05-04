@@ -68,6 +68,11 @@ const menuItems = computed(() => {
       onSelect: () => router.push('/level/lampBrightness'),
     },
     {
+      label: 'Projector Preview',
+      value: 'LED Control',
+      onSelect: () => router.push('/projector'),
+    },
+    {
       label: 'Time Format',
       value: appStore.timeFormat,
       onSelect: () => {
@@ -118,6 +123,9 @@ const checkIsPlaying = () => {
 
 // Initialize timer and event listeners when component mounts
 onMounted(() => {
+  // Reset all projector LEDs when returning to main menu
+  window.ipcRenderer.invoke('reset-all-projector-leds');
+  
   // Set initial timer
   resetInactivityTimer();
 

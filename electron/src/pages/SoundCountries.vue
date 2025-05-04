@@ -9,6 +9,8 @@
     <InteractiveList
       v-else
       :items="countryList"
+      :title="searchPhrase"
+      :showTitle="true"
       :showBackButton="true"
       @select="selectCountry"
       @back="router.push('/sounds')"

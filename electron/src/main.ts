@@ -74,6 +74,16 @@ const routes = [
     component: () => import('./pages/LevelControl.vue'),
     props: { type: 'lampBrightness' },
   },
+  {
+    path: '/projector',
+    name: 'ProjectorPreview',
+    component: () => import('./pages/ProjectorPreview.vue'),
+  },
+  {
+    path: '/projector/:ledIndex',
+    name: 'ProjectorLEDControl',
+    component: () => import('./pages/ProjectorLEDControl.vue'),
+  },
 ];
 
 const router = createRouter({

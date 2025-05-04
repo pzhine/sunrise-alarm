@@ -15,6 +15,8 @@
     <InteractiveList
       :items="soundsList"
       :showBackButton="true"
+      :title='`"${searchPhrase }" from ${ countryName }`'
+      :showTitle="true"
       @select="selectSound"
       @back="goBack"
     />

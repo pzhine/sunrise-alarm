@@ -17,6 +17,10 @@ export const useAppStore = defineStore('appState', {
     lastConnectedWifi: undefined, // Last successfully connected WiFi network
     lastSoundListRoute: undefined, // Last sound list route visited
     lastCountryListRoute: undefined, // Last country list route visited
+    projectorPreview: [
+      { red: 0, green: 0, blue: 0, white: 0 }, // LED 0
+      { red: 0, green: 0, blue: 0, white: 0 }  // LED 1
+    ], // Default LED color settings for projector preview
   }),
 
   getters: {
@@ -188,6 +192,14 @@ export const useAppStore = defineStore('appState', {
       this.saveState();
     },
 
+    // Reset projector preview to default values
+    resetProjectorPreview(): void {
+      this.projectorPreview = [
+        { red: 0, green: 0, blue: 0, white: 0 }, // LED 0
+        { red: 0, green: 0, blue: 0, white: 0 }  // LED 1
+      ];
+    },
+
     // Reset all settings to default values
     resetToDefaults(): void {
       this.volume = 50;
@@ -201,6 +213,7 @@ export const useAppStore = defineStore('appState', {
       this.lastConnectedWifi = undefined;
       this.lastSoundListRoute = undefined;
       this.lastCountryListRoute = undefined;
+      this.resetProjectorPreview();
     },
   },
 });

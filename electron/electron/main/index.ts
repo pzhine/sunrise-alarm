@@ -17,6 +17,7 @@ import {
   installUpdateAndRestart,
 } from './autoUpdater';
 import { initConfigManager } from './configManager';
+import { initSunriseController } from './sunriseController';
 import './serial';
 import './wlan';
 import './stateManager';
@@ -317,6 +318,7 @@ async function initializeApp() {
   initStateManagement();
   initVolumeControl();
   initAutoUpdater();
+  initSunriseController();
   createApplicationMenu();
 }
 

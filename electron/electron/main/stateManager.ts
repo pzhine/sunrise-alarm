@@ -136,18 +136,20 @@ function sendLampBrightnessToSerial(brightness: number) {
 }
 
 /**
- * Sends a LERP_LED command to update the projector LED brightness
- * @param brightness Value between 0-100 representing projector LED brightness percentage
+ * Sends a LERP_LED command to control an LED with support for -1 values
+ * @param stripId The strip ID
+ * @param pixel The pixel index
+ * @param red Red value (0-255, or -1 for no change)
+ * @param green Green value (0-255, or -1 for no change)
+ * @param blue Blue value (0-255, or -1 for no change)
+ * @param white White value (0-255, or -1 for no change)
+ * @param duration Transition duration in milliseconds
  */
-export function sendProjectorBrightnessToSerial(brightness: number) {
-  // Convert brightness percentage (0-100) to LED white value (0-255)
-  const whiteValue = Math.floor((brightness / 100) * 255);
-  
+export function sendLEDToSerial(stripId: number, pixel: number, red: number, green: number, blue: number, white: number, duration: number) {
   // Format for LERP_LED: stripId, pixel, r, g, b, w, duration
-  // Using STRIP_CENTER, pixel 0, color values 0,0,0 (no RGB) and duration from constant
-  const command = `LERP_LED ${STRIP_SUN_CENTER} 0 0 0 0 ${whiteValue} ${PROJECTOR_TRANSITION_TIME}`;
+  const command = `LERP_LED ${stripId} ${pixel} ${red} ${green} ${blue} ${white} ${duration}`;
   
-  console.log(`[stateManager] Sending projector brightness command: ${command}`);
+  console.log(`[stateManager] Sending LED command: ${command}`);
   sendMessage(command);
 }
 
@@ -160,11 +162,7 @@ export function sendProjectorBrightnessToSerial(brightness: number) {
  * @param white White value (0-255)
  */
 export function sendProjectorLEDToSerial(ledIndex: number, red: number, green: number, blue: number, white: number) {
-  // Format for LERP_LED: stripId, pixel, r, g, b, w, duration
-  const command = `LERP_LED ${STRIP_SUN_CENTER} ${ledIndex} ${red} ${green} ${blue} ${white} ${PROJECTOR_TRANSITION_TIME}`;
-  
-  console.log(`[stateManager] Sending projector LED command: ${command}`);
-  sendMessage(command);
+ sendLEDToSerial(STRIP_SUN_CENTER, ledIndex, red, green, blue, white, PROJECTOR_TRANSITION_TIME);
 }
 
 // Handler for updating projector LED colors

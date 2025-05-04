@@ -68,6 +68,11 @@ const menuItems = computed(() => {
       onSelect: () => router.push('/level/lampBrightness'),
     },
     {
+      label: 'Sunrise',
+      value: appStore.sunriseActive ? 'Active' : 'Setup',
+      onSelect: () => router.push('/sunrise'),
+    },
+    {
       label: 'Projector Preview',
       value: 'LED Control',
       onSelect: () => router.push('/projector'),

@@ -16,6 +16,18 @@ export interface RGBW {
   white: number;
 }
 
+// Define the interface for sunrise step
+export interface SunriseStep {
+  strip: string;
+  pixel: number;
+  red: number;
+  green: number;
+  blue: number;
+  white: number;
+  startAt: number;
+  duration: number;
+}
+
 // Define the interface for our app state
 export interface AppState {
   volume: number;
@@ -41,6 +53,9 @@ export interface AppState {
     params: Record<string, string>;
   }; // Store the last country list route and params
   projectorPreview: RGBW[]; // Store LED color settings as an array of RGBW values
+  sunriseDuration: number;
+  sunriseActive: boolean;
+  sunriseTimeline: SunriseStep[];
 }
 
 export type UpdateStatus =

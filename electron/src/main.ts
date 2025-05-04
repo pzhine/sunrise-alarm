@@ -84,6 +84,11 @@ const routes = [
     name: 'ProjectorLEDControl',
     component: () => import('./pages/ProjectorLEDControl.vue'),
   },
+  {
+    path: '/sunrise',
+    name: 'Sunrise',
+    component: () => import('./pages/Sunrise.vue'),
+  },
 ];
 
 const router = createRouter({

@@ -37,6 +37,10 @@ export async function setSystemVolume(volumeLevel: number): Promise<void> {
 
 // Get current system volume level
 export async function getSystemVolume(): Promise<number> {
+  if (VITE_DEV_SERVER_URL) {
+    console.log('Skipping volume control in development mode:', VITE_DEV_SERVER_URL);
+    return;
+  }
   try {
     // Get current volume using amixer
     const output = await executeCommand('amixer -D pulse get Master');

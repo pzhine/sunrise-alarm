@@ -21,6 +21,10 @@ export const useAppStore = defineStore('appState', {
       { red: 0, green: 0, blue: 0, white: 0 }, // LED 0
       { red: 0, green: 0, blue: 0, white: 0 }  // LED 1
     ], // Default LED color settings for projector preview
+    // Add new sunrise-related state properties
+    sunriseDuration: (600), // Default: 10 minutes in seconds
+    sunriseActive: false,
+    sunriseTimeline: []
   }),
 
   getters: {
@@ -215,5 +219,17 @@ export const useAppStore = defineStore('appState', {
       this.lastCountryListRoute = undefined;
       this.resetProjectorPreview();
     },
-  },
+
+    // Toggle sunrise active state
+    toggleSunriseActive(): void {
+      this.sunriseActive = !this.sunriseActive;
+      // When activating, send IPC message to start sunrise playback
+      if (this.sunriseActive) {
+        window.ipcRenderer.invoke('start-sunrise', 'default', this.sunriseDuration);
+      } else {
+        // When deactivating, send IPC message to stop sunrise playback
+        window.ipcRenderer.invoke('stop-sunrise');
+      }
+    }
+  }
 });

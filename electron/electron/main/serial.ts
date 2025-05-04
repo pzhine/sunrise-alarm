@@ -133,9 +133,6 @@ function receive(msg: string) {
 }
 
 function transmit(msg: string): boolean {
-  if (!port) {
-    throw new Error('Serial port not open');
-  }
   console.log('[serial] tx', msg);
   // Sending String character by character
   msg
@@ -183,8 +180,14 @@ function processMessageQueue() {
 }
 
 export function sendMessage(msg: string) {
+  if (!port) {
+    console.warn('[serial] fake tx', msg);
+    return; // don't fail if port is not open, just skip the message
+  }
   messageQueue.push(msg);
-  console.log('[serial] message queue', messageQueue);
+  if (messageQueue.length > 1) {
+    console.log('[serial] message queue', messageQueue);
+  }
 }
 
 ipcMain.handle('serial-test', (_, arg) => {

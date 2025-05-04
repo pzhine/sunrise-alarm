@@ -17,6 +17,7 @@ import { useRoute, useRouter } from 'vue-router';
 import InteractiveList from '../components/InteractiveList.vue';
 import { useAppStore } from '../stores/appState';
 import { ListItem } from '../components/InteractiveList.vue';
+import { debounce } from 'lodash-es';
 
 const router = useRouter();
 const route = useRoute();
@@ -51,7 +52,7 @@ const previewColor = computed(() => {
 // Function to adjust a color value
 const adjustColorValue = (colorRef: Ref<number>, increment: number) => {
   colorRef.value = Math.max(0, Math.min(255, colorRef.value + increment * 5));
-  updateLED();
+  debouncedUpdateLED();
 };
 
 // Interactive menu items for color adjustments
@@ -116,6 +117,8 @@ const updateLED = () => {
     white.value
   );
 };
+
+const debouncedUpdateLED = debounce(updateLED, 300);
 
 // Load initial values from appStore
 onMounted(() => {

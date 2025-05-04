@@ -16,8 +16,9 @@ let stateCache: AppState | null = null;
 const LAMP_BRIGHTNESS_DEBOUNCE_DELAY = 100; // ms
 const LAMP_BRIGHTNESS_TRANSITION_TIME = 300; // ms
 // Strip identifiers matching Arduino constants
-const STRIP_BOTTOM = 1;
-const PROJECTOR_STRIP_ID = 0; // Always use strip ID 0 for projector LEDs
+const STRIP_LAMP = 2;
+const STRIP_SUN_CENTER = 0;
+const STRIP_SUN_RING = 1;
 const PROJECTOR_TRANSITION_TIME = 100; // ms
 
 /**
@@ -128,7 +129,7 @@ function sendLampBrightnessToSerial(brightness: number) {
   
   // Format for LERP_LED: stripId, pixel, r, g, b, w, duration
   // Using STRIP_BOTTOM (1), pixel 0, color values 0,0,0 (no RGB) and duration from constant
-  const command = `LERP_LED ${STRIP_BOTTOM} 0 0 0 0 ${whiteValue} ${LAMP_BRIGHTNESS_TRANSITION_TIME}`;
+  const command = `LERP_LED ${STRIP_LAMP} 0 0 0 0 ${whiteValue} ${LAMP_BRIGHTNESS_TRANSITION_TIME}`;
   
   console.log(`[stateManager] Sending lamp brightness command: ${command}`);
   sendMessage(command);
@@ -143,8 +144,8 @@ export function sendProjectorBrightnessToSerial(brightness: number) {
   const whiteValue = Math.floor((brightness / 100) * 255);
   
   // Format for LERP_LED: stripId, pixel, r, g, b, w, duration
-  // Using PROJECTOR_STRIP_ID (1), pixel 0, color values 0,0,0 (no RGB) and duration from constant
-  const command = `LERP_LED ${PROJECTOR_STRIP_ID} 0 0 0 0 ${whiteValue} ${PROJECTOR_TRANSITION_TIME}`;
+  // Using STRIP_CENTER, pixel 0, color values 0,0,0 (no RGB) and duration from constant
+  const command = `LERP_LED ${STRIP_SUN_CENTER} 0 0 0 0 ${whiteValue} ${PROJECTOR_TRANSITION_TIME}`;
   
   console.log(`[stateManager] Sending projector brightness command: ${command}`);
   sendMessage(command);
@@ -160,7 +161,7 @@ export function sendProjectorBrightnessToSerial(brightness: number) {
  */
 export function sendProjectorLEDToSerial(ledIndex: number, red: number, green: number, blue: number, white: number) {
   // Format for LERP_LED: stripId, pixel, r, g, b, w, duration
-  const command = `LERP_LED ${PROJECTOR_STRIP_ID} ${ledIndex} ${red} ${green} ${blue} ${white} ${PROJECTOR_TRANSITION_TIME}`;
+  const command = `LERP_LED ${STRIP_SUN_CENTER} ${ledIndex} ${red} ${green} ${blue} ${white} ${PROJECTOR_TRANSITION_TIME}`;
   
   console.log(`[stateManager] Sending projector LED command: ${command}`);
   sendMessage(command);
@@ -191,8 +192,8 @@ export function resetAllProjectorLEDs() {
   
   // For strip ID 1 (projector strip), reset both LED 0 and LED 1
   // LERP_LED: stripId, pixel, r, g, b, w, duration
-  sendMessage(`LERP_LED ${PROJECTOR_STRIP_ID} 0 0 0 0 0 ${PROJECTOR_TRANSITION_TIME}`);
-  sendMessage(`LERP_LED ${PROJECTOR_STRIP_ID} 1 0 0 0 0 0 ${PROJECTOR_TRANSITION_TIME}`);
+  sendMessage(`LERP_LED ${STRIP_SUN_CENTER} 0 0 0 0 0 ${PROJECTOR_TRANSITION_TIME}`);
+  sendMessage(`LERP_LED ${STRIP_SUN_CENTER} 1 0 0 0 0 0 ${PROJECTOR_TRANSITION_TIME}`);
   
   // If there are other strips that need to be reset, add them here
   // For example, for strip ID 0 (if it exists)

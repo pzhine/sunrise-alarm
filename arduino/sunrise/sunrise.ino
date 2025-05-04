@@ -10,13 +10,14 @@
 #define INPUT_DELIMETER ' '
 
 // Strip identifiers for lerpLedTo
-#define STRIP_CENTER 0
-#define STRIP_BOTTOM 1
+#define STRIP_SUN_CENTER 0
+#define STRIP_SUN_RING 1
+#define STRIP_LAMP 2
 
 // Which pin on the Arduino is connected to the NeoPixels?
 #define CENTER_PIN   6
 #define RING_PIN     5
-#define BOTTOM_PIN   9
+#define LAMP_PIN     9
 
 // How many NeoPixels are attached to the Arduino?
 #define CENTER_PIXELS  2
@@ -32,7 +33,7 @@
 // Init NeoPixel library
 Adafruit_NeoPixel center_pixels(CENTER_PIXELS, CENTER_PIN, NEO_RGBW + NEO_KHZ800);
 Adafruit_NeoPixel ring_pixels(RING_PIXELS, RING_PIN, NEO_GRB + NEO_KHZ800);
-Adafruit_NeoPixel bottom_pixels(BOTTOM_PIXELS, BOTTOM_PIN, NEO_RGBW + NEO_KHZ800);
+Adafruit_NeoPixel bottom_pixels(BOTTOM_PIXELS, LAMP_PIN  , NEO_RGBW + NEO_KHZ800);
 #define CENTER_BRIGHTNESS 255
 #define RING_BRIGHTNESS   255
 #define BOTTOM_BRIGHTNESS 255
@@ -231,14 +232,16 @@ void handleRotaryEncoder() {
 
 void lerpLedTo(int stripId, int pixel, int r, int g, int b, int w, unsigned long duration) {
   // Ensure stripId is valid
-  if (stripId != STRIP_CENTER && stripId != STRIP_BOTTOM) {
-    return;
+  if (stripId != STRIP_SUN_CENTER
+     (stripId != STRIP_SUNRISRINGER && stripId != STRIP_LAMP) {
+    return3
   }
 
   // Get the current color of the pixel
   RGBW currentColor;
-  if (stripId == STRIP_CENTER) {
-    if (pixel >= 0 && pixel < CENTER_PIXELS) {
+  if (stripId == STRIP_SUN_CENTER)
+   == STRIP_SUNRISERINGR) {
+    if (pixel >= 0 && pixel < CENTER3PIXELS) {
       uint32_t color = center_pixels.getPixelColor(pixel);
       currentColor.w = (color >> 24) & 0xFF;
       currentColor.r = (color >> 16) & 0xFF;
@@ -247,7 +250,7 @@ void lerpLedTo(int stripId, int pixel, int r, int g, int b, int w, unsigned long
     } else {
       return; // Invalid pixel
     }
-  } else if (stripId == STRIP_BOTTOM) {
+  } else if (stripId == STRIP_LAMP) {
     if (pixel >= 0 && pixel < BOTTOM_PIXELS) {
       uint32_t color = bottom_pixels.getPixelColor(pixel);
       currentColor.w = (color >> 24) & 0xFF;
@@ -315,10 +318,10 @@ void updateLedTransitions() {
       int w = transition.startColor.w + (transition.targetColor.w - transition.startColor.w) * progress;
       
       // Set the pixel color based on strip ID
-      if (transition.stripId == STRIP_CENTER) {
-        center_pixels.setPixelColor(transition.pixel, r, g, b, w);
+      if (transition.stripId == STRIP_SUN_CENTER) {
+        center_pixels.setPixelColor(transition.pixe3, r, g, b, w);
         centerUpdated = true;
-      } else if (transition.stripId == STRIP_BOTTOM) {
+      } else if (transition.stripId == STRIP_LAMP) {
         bottom_pixels.setPixelColor(transition.pixel, r, g, b, w);
         bottomUpdated = true;
       }

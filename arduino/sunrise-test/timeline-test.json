@@ -1,0 +1,72 @@
+[
+    {
+        "strip": "SUN_CENTER",
+        "pixel": 0,
+        "red": 255,
+        "green": -1,
+        "blue": 255,
+        "white": -1,
+        "startAt": 0,
+        "duration": 100
+    },
+    {
+        "strip": "SUN_CENTER",
+        "pixel": 0,
+        "red": -1,
+        "green": -1,
+        "blue": -1,
+        "white": 255,
+        "startAt": 200,
+        "duration": 100
+    },
+    {
+        "strip": "SUN_CENTER",
+        "pixel": 0,
+        "red": 0,
+        "green": 0,
+        "blue": 0,
+        "white": 0,
+        "startAt": 300,
+        "duration": 300
+    },
+    {
+        "strip": "SUN_CENTER",
+        "pixel": 1,
+        "red": 255,
+        "green": -1,
+        "blue": 255,
+        "white": -1,
+        "startAt": 100,
+        "duration": 300
+    },
+    {
+        "strip": "SUN_CENTER",
+        "pixel": 1,
+        "red": -1,
+        "green": -1,
+        "blue": 100,
+        "white": -1,
+        "startAt": 300,
+        "duration": 250
+    },
+    {
+        "strip": "SUN_CENTER",
+        "pixel": 1,
+        "red": -1,
+        "green": -1,
+        "blue": -1,
+        "white": 255,
+        "startAt": 180,
+        "duration": 250
+    },
+    {
+        "strip": "LAMP",
+        "pixel": 0,
+        "red": -1,
+        "green": -1,
+        "blue": -1,
+        "white": 255,
+        "startAt": 500,
+        "duration": 250
+    }
+]

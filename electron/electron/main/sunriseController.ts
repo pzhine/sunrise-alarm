@@ -5,7 +5,9 @@ import fs from 'node:fs';
 import { SunriseStep } from '../../types/state';
 import { sendLEDToSerial, getState } from './stateManager';
 
-const DEFAULT_TIMELINE_PATH = path.join(app.getAppPath(), 'sunrise.example.json');
+const DEFAULT_TIMELINE_PATH = path.join(
+  app.getPath('userData'), 'sunrise-data', 'default.json'
+);
 
 // Store for the sunrise playback state
 let isPlaying = false;
@@ -176,6 +178,17 @@ export function stopSunrise() {
  * Initialize the sunrise controller
  */
 export function initSunriseController() {
+  if (!fs.existsSync(DEFAULT_TIMELINE_PATH)) {
+    // Create the default timeline directory if it doesn't exist
+    fs.mkdirSync(path.dirname(DEFAULT_TIMELINE_PATH), { recursive: true });
+    // copy example json if it exists
+    const examplePath = path.join(app.getAppPath(), 'sunrise.example.json');
+    if (fs.existsSync(examplePath)) { 
+      fs.copyFileSync(examplePath, DEFAULT_TIMELINE_PATH);
+    } else {
+      throw new Error('Default timeline file not found and example file not available');
+    }
+  }
   // Register IPC handlers
   ipcMain.handle('load-default-sunrise-timeline', async () => {
     return loadTimelineFromFile(DEFAULT_TIMELINE_PATH);

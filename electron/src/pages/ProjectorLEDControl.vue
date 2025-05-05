@@ -38,12 +38,12 @@ const previewColor = computed(() => {
   // Calculate how white affects the RGB values by adding brightness
   // White value (0-255) is added proportionally to each RGB component
   const whiteFactor = white.value / 255;
-  
+
   // Add white contribution to each channel (white adds equal brightness to all channels)
   const r = Math.min(255, red.value + white.value);
   const g = Math.min(255, green.value + white.value);
   const b = Math.min(255, blue.value + white.value);
-  
+
   return {
     backgroundColor: `rgb(${r}, ${g}, ${b})`,
   };
@@ -61,35 +61,30 @@ const colorItems = computed(() => [
     label: 'Red',
     value: `${red.value}`,
     canEdit: true,
-    onEdit: (increment: number) => adjustColorValue(red, increment)
+    onEdit: (increment: number) => adjustColorValue(red, increment),
   },
   {
     label: 'Green',
     value: `${green.value}`,
     canEdit: true,
-    onEdit: (increment: number) => adjustColorValue(green, increment)
+    onEdit: (increment: number) => adjustColorValue(green, increment),
   },
   {
     label: 'Blue',
     value: `${blue.value}`,
     canEdit: true,
-    onEdit: (increment: number) => adjustColorValue(blue, increment)
+    onEdit: (increment: number) => adjustColorValue(blue, increment),
   },
   {
     label: 'White',
     value: `${white.value}`,
     canEdit: true,
-    onEdit: (increment: number) => adjustColorValue(white, increment)
+    onEdit: (increment: number) => adjustColorValue(white, increment),
   },
-//   {
-//     label: 'Preview',
-//     value: 'RGBW',
-//     customStyle: {
-//       backgroundColor: `rgb(${Math.min(255, red.value + white.value)}, ${Math.min(255, green.value + white.value)}, ${Math.min(255, blue.value + white.value)})`,
-//       width: '32px',
-//       height: '24px'
-//     }
-//   }
+  //   {
+  //     label: 'Preview',
+  //     value: 'RGBW',
+  //   }
 ]);
 
 // Handle selection of a menu item
@@ -104,9 +99,9 @@ const updateLED = () => {
     red: red.value,
     green: green.value,
     blue: blue.value,
-    white: white.value
+    white: white.value,
   };
-  
+
   // Send command to Arduino via IPC
   window.ipcRenderer.invoke(
     'update-projector-led',

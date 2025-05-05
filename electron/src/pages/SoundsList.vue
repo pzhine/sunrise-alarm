@@ -202,7 +202,6 @@ const selectSound = (sound: any) => {
             country: countryName.value,
           },
     };
-    console.log('Navigating to SoundPlayer with params:', p);
     router.push(p);
   }
 };

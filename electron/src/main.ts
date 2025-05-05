@@ -47,7 +47,7 @@ const routes = [
     component: () => import('./pages/SoundPlayer.vue'),
   },
   {
-    path: '/sounds/player-menu/:id/:name/:previewUrl/:duration/:currentTime?/:totalTime?/:category?/:country?',
+    path: '/sounds/player-menu/:id?/:name?/:previewUrl?/:duration?/:currentTime?/:totalTime?/:category?/:country?',
     name: 'SoundPlayerMenu',
     component: () => import('./pages/SoundPlayerMenu.vue'),
   },

@@ -32,8 +32,8 @@ const menuItems = computed(() => {
   const items = [
     // {
     //   label: 'Load Timeline',
-    //   value: appStore.sunriseTimeline.length 
-    //     ? `${appStore.sunriseTimeline.length} steps loaded` 
+    //   value: appStore.sunriseTimeline.length
+    //     ? `${appStore.sunriseTimeline.length} steps loaded`
     //     : 'Default',
     //   onSelect: () => loadSunriseTimeline(),
     // },
@@ -52,10 +52,9 @@ const menuItems = computed(() => {
     {
       label: appStore.sunriseActive ? 'Stop Sunrise' : 'Start Sunrise',
       onSelect: () => toggleSunrise(),
-      customStyle: appStore.sunriseActive ? 'color: #ff6b6b;' : 'color: #51cf66;'
-    }
+    },
   ];
-  
+
   return items;
 });
 
@@ -70,28 +69,30 @@ const toggleSunrise = async () => {
 
 // Adjust sunrise duration with the edit controls
 const adjustDuration = (increment: number) => {
-  let newDuration = appStore.sunriseDuration + (increment * 30); // Adjust in 30-second increments
-  
+  let newDuration = appStore.sunriseDuration + increment * 30; // Adjust in 30-second increments
+
   // Ensure duration is between 30 seconds and 30 minutes
   newDuration = Math.max(30, Math.min(1800, newDuration));
-  
+
   appStore.sunriseDuration = newDuration;
 };
 
 // Adjust sunrise brightness with the edit controls
 const adjustBrightness = (increment: number) => {
   let newBrightness = appStore.sunriseBrightness + increment; // Adjust in 1% increments
-  
+
   // Ensure brightness is between 0% and 100%
   newBrightness = Math.max(0, Math.min(100, newBrightness));
-  
+
   appStore.setSunriseBrightness(newBrightness);
 };
 
 // Load the default timeline example
 const loadDefaultTimeline = async () => {
   try {
-    const timeline = await window.ipcRenderer.invoke('load-default-sunrise-timeline');
+    const timeline = await window.ipcRenderer.invoke(
+      'load-default-sunrise-timeline'
+    );
     if (timeline && timeline.length > 0) {
       appStore.sunriseTimeline = timeline;
       return true;

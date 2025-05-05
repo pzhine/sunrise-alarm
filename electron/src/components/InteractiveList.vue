@@ -31,6 +31,9 @@
         'p-4 flex justify-between items-center': true,
         'bg-[var(--color-li-highlight)]':
           index === highlightedIndex && !isBackButtonHighlighted,
+        ...(isObject(item) && item.customClass
+          ? { [item.customClass]: true }
+          : {}),
       }"
       @click="handleItemClick(item, index)"
       @keydown.enter.prevent="selectItem(item)"
@@ -49,11 +52,6 @@
         >
           {{ item.value }}
         </span>
-        <div
-          v-if="isObject(item) && item.customStyle"
-          class="color-preview ml-3"
-          :style="item.customStyle"
-        ></div>
       </div>
     </li>
   </ul>
@@ -82,8 +80,7 @@ export type ListItem =
       onSelect?: () => void;
       onEdit?: (increment: number) => void;
       canEdit?: boolean;
-      customStyle?: string | { [key: string]: string }; // Add customStyle property
-      [key: string]: any;
+      customClass?: string;
     };
 
 const props = defineProps<{

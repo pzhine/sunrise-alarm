@@ -17,7 +17,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import InteractiveList from '../components/InteractiveList.vue';
+import InteractiveList, { ListItem } from '../components/InteractiveList.vue';
 import { useAppStore } from '../stores/appState';
 import {
   isGlobalSoundPlaying,
@@ -36,7 +36,7 @@ const playbackCheckInterval = ref<number | null>(null);
 
 // Define menu items with their current values from the app store
 const menuItems = computed(() => {
-  const items = [];
+  const items: ListItem[] = [];
 
   // Add "Now Playing" option only if a sound is currently playing
   if (isPlaying.value) {
@@ -46,6 +46,7 @@ const menuItems = computed(() => {
         label: 'Now Playing',
         value: currentSound.name,
         onSelect: () => goToNowPlaying(),
+        customClass: 'text-blue-500',
       });
     }
   }
@@ -102,7 +103,7 @@ const menuItems = computed(() => {
 const goToNowPlaying = () => {
   // Now we can simply navigate to the route without parameters
   // The SoundPlayer component will use the currently playing sound info
-  router.push({ name: 'SoundPlayer' });
+  router.push({ name: 'SoundPlayerMenu' });
 };
 
 // Handle menu item selection (for any additional processing if needed)

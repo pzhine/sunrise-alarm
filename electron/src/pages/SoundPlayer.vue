@@ -146,7 +146,6 @@ const goToSoundPlayerMenu = () => {
   removeEventListeners();
 
   const currentSound = getCurrentSoundInfo();
-  console.log('[SoundPlayer] Going to SoundPlayerMenu', currentSound);
   if (currentSound) {
     router.push({
       name: 'SoundPlayerMenu',

@@ -15,23 +15,62 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import InteractiveList from '../components/InteractiveList.vue';
 import { useAppStore } from '../stores/appState';
-import { stopGlobalSound } from '../services/audioService';
+import { getCurrentSoundInfo, stopGlobalSound } from '../services/audioService';
 import TimeoutRedirect from '../components/TimeoutRedirect.vue';
 
 const route = useRoute();
 const router = useRouter();
 const appStore = useAppStore();
 
-const soundId = computed(() => Number(route.params.id));
-const soundName = computed(() => route.params.name as string);
-const previewUrl = computed(() => route.params.previewUrl as string);
-const duration = computed(() => Number(route.params.duration) || 0);
-const category = computed(() => (route.params.category as string) || '');
-const country = computed(() => (route.params.country as string) || '');
+// Check if we have a currently playing sound
+const currentPlayingSound = ref(getCurrentSoundInfo());
+
+// Use route params if available, otherwise fall back to currently playing sound
+const soundId = computed(() => {
+  if (route.params.id) {
+    return Number(route.params.id);
+  }
+  return currentPlayingSound.value?.id || 0;
+});
+
+const soundName = computed(() => {
+  if (route.params.name) {
+    return route.params.name as string;
+  }
+  return currentPlayingSound.value?.name || 'Unknown';
+});
+
+const previewUrl = computed(() => {
+  if (route.params.previewUrl) {
+    return route.params.previewUrl as string;
+  }
+  return currentPlayingSound.value?.previewUrl || '';
+});
+
+const duration = computed(() => {
+  if (route.params.duration) {
+    return Number(route.params.duration) || 0;
+  }
+  return currentPlayingSound.value?.duration || 0;
+});
+
+const category = computed(() => {
+  if (route.params.category) {
+    return route.params.category as string;
+  }
+  return currentPlayingSound.value?.category || '';
+});
+
+const country = computed(() => {
+  if (route.params.country) {
+    return route.params.country as string;
+  }
+  return currentPlayingSound.value?.country || '';
+});
 
 // Check if current sound is in favorites
 const isInFavorites = computed(() =>

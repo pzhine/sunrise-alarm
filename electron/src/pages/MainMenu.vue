@@ -67,6 +67,10 @@ const menuItems = computed(() => {
       onSelect: () => router.push('/sunrise'),
     },
     {
+      label: 'Sunrise Animation',
+      onSelect: () => router.push('/sunrise-animation'),
+    },
+    {
       label: 'Volume',
       value: `${appStore.volume}%`,
       onSelect: () => router.push('/level/volume'),

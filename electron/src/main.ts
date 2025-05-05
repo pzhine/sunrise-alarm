@@ -89,6 +89,11 @@ const routes = [
     name: 'Sunrise',
     component: () => import('./pages/Sunrise.vue'),
   },
+  {
+    path: '/sunrise-animation',
+    name: 'SunriseAnimation',
+    component: () => import('./animations/Synthrise.vue'),
+  },
 ];
 
 const router = createRouter({

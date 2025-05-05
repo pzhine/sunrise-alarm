@@ -1,11 +1,43 @@
 [
   {
-    "name": "Nature Sounds",
-    "searchPhrase": "morning nature sounds"
+    "name": "Morning on the Farm",
+    "searchPhrase": "morning farm sounds"
   },
   {
-    "name": "Birds",
+    "name": "Early Birds",
     "searchPhrase": "birds chirping morning"
+  },
+  {
+    "name": "Wind Chimes",
+    "searchPhrase": "wind chimes"
+  },
+  {
+    "name": "Waterfall",
+    "searchPhrase": "waterfall sounds"
+  },
+  {
+    "name": "Crickets",
+    "searchPhrase": "crickets chirping"
+  },
+  {
+    "name": "Ambient Music",
+    "searchPhrase": "ambient music relaxing"
+  },
+  {
+    "name": "Yoga Music",
+    "searchPhrase": "yoga music"
+  },
+  {
+    "name": "Stream",
+    "searchPhrase": "stream water flowing"
+  },
+  {
+    "name": "Fireplace",
+    "searchPhrase": "fireplace crackling"
+  },
+  {
+    "name": "Campfire",
+    "searchPhrase": "campfire crackling"
   },
   {
     "name": "Ocean",
@@ -16,19 +48,23 @@
     "searchPhrase": "rain gentle sounds"
   },
   {
-    "name": "Forest",
-    "searchPhrase": "forest ambience"
+    "name": "Thunderstorm",
+    "searchPhrase": "thunderstorm sounds"
   },
   {
-    "name": "Meditation",
-    "searchPhrase": "meditation bells"
+    "name": "Fan Noise",
+    "searchPhrase": "fan noise"
   },
   {
-    "name": "Piano",
-    "searchPhrase": "soft piano"
+    "name": "White Noise",
+    "searchPhrase": "white noise"
   },
   {
-    "name": "Classical",
-    "searchPhrase": "classical morning music"
+    "name": "Brown Noise",
+    "searchPhrase": "brown noise"
+  },
+  {
+    "name": "Pink Noise",
+    "searchPhrase": "pink noise"
   }
 ]

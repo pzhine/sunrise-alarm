@@ -7,6 +7,11 @@
       @back="router.push('/')"
     />
   </div>
+  <TimeoutRedirect
+    :ms="INACTIVITY_TIMEOUT"
+    :redirectRoute="'/'"
+    :resetOnActivity="'wheel'"
+  />
 </template>
 
 <script setup lang="ts">
@@ -14,7 +19,11 @@ import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import InteractiveList from '../components/InteractiveList.vue';
 import { useAppStore } from '../stores/appState';
-import { isGlobalSoundPlaying, getCurrentSoundInfo } from '../services/audioService';
+import {
+  isGlobalSoundPlaying,
+  getCurrentSoundInfo,
+} from '../services/audioService';
+import TimeoutRedirect from '../components/TimeoutRedirect.vue';
 
 const router = useRouter();
 const appStore = useAppStore();
@@ -28,7 +37,7 @@ const playbackCheckInterval = ref<number | null>(null);
 // Define menu items with their current values from the app store
 const menuItems = computed(() => {
   const items = [];
-  
+
   // Add "Now Playing" option only if a sound is currently playing
   if (isPlaying.value) {
     const currentSound = getCurrentSoundInfo();
@@ -40,17 +49,21 @@ const menuItems = computed(() => {
       });
     }
   }
-  
+
   // Standard menu items
   items.push(
     {
-      label: 'Set Alarm',
-      value: `${appStore.formattedAlarmTime} [${appStore.alarmSound?.name}]`,
+      label: 'Alarm',
+      value: `${appStore.formattedAlarmTime}`,
       onSelect: () => router.push('/alarm'),
     },
     {
-      label: 'Browse Sounds',
+      label: 'Sounds',
       onSelect: () => router.push('/sounds'),
+    },
+    {
+      label: 'Sunrise',
+      onSelect: () => router.push('/sunrise'),
     },
     {
       label: 'Volume',
@@ -67,16 +80,11 @@ const menuItems = computed(() => {
       value: `${appStore.lampBrightness}%`,
       onSelect: () => router.push('/level/lampBrightness'),
     },
-    {
-      label: 'Sunrise',
-      value: appStore.sunriseActive ? 'Active' : 'Setup',
-      onSelect: () => router.push('/sunrise'),
-    },
-    {
-      label: 'Projector Preview',
-      value: 'LED Control',
-      onSelect: () => router.push('/projector'),
-    },
+    // {
+    //   label: 'Projector Preview',
+    //   value: 'LED Control',
+    //   onSelect: () => router.push('/projector'),
+    // },
     {
       label: 'Time Format',
       value: appStore.timeFormat,
@@ -86,7 +94,7 @@ const menuItems = computed(() => {
       },
     }
   );
-  
+
   return items;
 });
 
@@ -102,25 +110,6 @@ const handleMenuSelection = (item: any) => {
   // The onSelect handler will be called automatically by the InteractiveList component
 };
 
-// Create a single event handler for all activity types
-const resetInactivityTimer = () => {
-  // Clear existing timer if it exists
-  if (inactivityTimer.value !== null) {
-    window.clearTimeout(inactivityTimer.value);
-  }
-
-  // Set a new timeout
-  inactivityTimer.value = window.setTimeout(() => {
-    // Navigate back to home page after timeout
-    router.push('/');
-  }, INACTIVITY_TIMEOUT);
-};
-
-// Handle window-level activity events
-const handleActivityEvent = (_event?: Event) => {
-  resetInactivityTimer();
-};
-
 // Check if a sound is playing and update the reactive ref
 const checkIsPlaying = () => {
   isPlaying.value = isGlobalSoundPlaying();
@@ -130,15 +119,7 @@ const checkIsPlaying = () => {
 onMounted(() => {
   // Reset all projector LEDs when returning to main menu
   window.ipcRenderer.invoke('reset-all-projector-leds');
-  
-  // Set initial timer
-  resetInactivityTimer();
 
-  // Add global event listeners to detect user activity
-  window.addEventListener('mousemove', handleActivityEvent);
-  window.addEventListener('keydown', handleActivityEvent);
-  window.addEventListener('wheel', handleActivityEvent);
-  
   // Start interval to check if sound is playing
   playbackCheckInterval.value = window.setInterval(checkIsPlaying, 1000);
 });
@@ -148,13 +129,9 @@ onBeforeUnmount(() => {
   if (inactivityTimer.value !== null) {
     window.clearTimeout(inactivityTimer.value);
   }
-  
+
   if (playbackCheckInterval.value !== null) {
     clearInterval(playbackCheckInterval.value);
   }
-
-  window.removeEventListener('mousemove', handleActivityEvent);
-  window.removeEventListener('keydown', handleActivityEvent);
-  window.removeEventListener('wheel', handleActivityEvent);
 });
 </script>

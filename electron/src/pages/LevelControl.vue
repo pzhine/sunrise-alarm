@@ -12,13 +12,15 @@
     <h1 class="text-2xl font-bold">{{ title }}</h1>
     <div class="text-3xl">{{ level }}%</div>
   </div>
+  <TimeoutRedirect :ms="2000" :resetOnActivity="'wheel'" />
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useAppStore } from '../stores/appState';
 import { debounce } from 'lodash-es';
+import TimeoutRedirect from '../components/TimeoutRedirect.vue';
 
 const props = defineProps<{
   type:
@@ -29,7 +31,9 @@ const props = defineProps<{
 }>();
 
 const router = useRouter();
+const route = useRoute();
 const appStore = useAppStore();
+let inactivityTimer: number | null = null;
 
 // Title mapping based on type
 const titleMap = {
@@ -111,7 +115,7 @@ const handleRightClick = (event: MouseEvent) => {
     // Make sure any pending changes are saved before navigating
     debouncedSave.flush();
 
-    router.push('/menu');
+    router.back();
   }
 };
 
@@ -142,6 +146,12 @@ onBeforeUnmount(() => {
   window.removeEventListener('wheel', handleWheel);
   window.removeEventListener('mousedown', handleRightClick);
   window.removeEventListener('contextmenu', (e) => e.preventDefault());
+
+  // Clear any pending inactivity timer
+  if (inactivityTimer) {
+    window.clearTimeout(inactivityTimer);
+    inactivityTimer = null;
+  }
 });
 </script>
 

@@ -31,7 +31,7 @@ export function playGlobalSound(soundInfo: {
   // Create and play new audio
   globalAudioElement = new Audio(soundInfo.previewUrl);
   globalAudioElement.volume = 1; // Set default volume to 100%
-  
+
   // Set the current time if provided and valid
   if (soundInfo.currentTime !== undefined) {
     try {
@@ -40,21 +40,24 @@ export function playGlobalSound(soundInfo: {
       if (!isNaN(time) && isFinite(time) && time >= 0) {
         globalAudioElement.currentTime = time;
       } else {
-        console.warn('Invalid currentTime provided to playGlobalSound:', soundInfo.currentTime);
+        console.warn(
+          'Invalid currentTime provided to playGlobalSound:',
+          soundInfo.currentTime
+        );
       }
     } catch (error) {
       console.error('Error setting currentTime:', error);
     }
   }
-  
+
   // Store sound info
   currentSoundInfo = soundInfo;
-  
+
   // Start playback
-  globalAudioElement.play().catch(err => {
+  globalAudioElement.play().catch((err) => {
     console.error('Error playing audio:', err);
   });
-  
+
   // Loop the sound to keep it playing continuously
   globalAudioElement.loop = true;
 }
@@ -85,20 +88,28 @@ export function getCurrentSoundInfo(): {
   if (!globalAudioElement || !currentSoundInfo) {
     return null;
   }
-  
+
   // Update the current time
   return {
     ...currentSoundInfo,
-    currentTime: globalAudioElement.currentTime
+    currentTime: globalAudioElement.currentTime,
   };
 }
 
 // Set the volume of the global audio
 export function setGlobalVolume(volume: number): void {
-  if (globalAudioElement && process.env.NODE_ENV === 'development' ) {
+  const clampedVolume = Math.max(0, Math.min(volume, 1)); // Clamp between 0-1
+  if (globalAudioElement && process.env.NODE_ENV === 'development') {
     console.log('Setting client volume to:', volume);
-    globalAudioElement.volume = Math.max(0, Math.min(volume, 1)); // Clamp between 0-1
+    globalAudioElement.volume = clampedVolume;
+    return;
   }
+  // Update the system volume using general invoke method
+  window.ipcRenderer
+    .invoke('set-system-volume', clampedVolume * 100)
+    .catch((error) => {
+      console.error('Failed to set system volume:', error);
+    });
 }
 
 // Stop playing a preview

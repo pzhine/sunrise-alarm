@@ -3,7 +3,6 @@
     <InteractiveList
       :items="soundCategories"
       :showBackButton="true"
-      @select="selectCategory"
       @back="router.push('/menu')"
     />
   </div>
@@ -16,24 +15,22 @@ import InteractiveList from '../components/InteractiveList.vue';
 import soundCategoriesData from '../../assets/soundCategories.json';
 
 const router = useRouter();
-const soundCategories = ref<
-  { label: string; value: string; onSelect: () => void }[]
->([]);
+const soundCategories = ref<{ label: string; onSelect: () => void }[]>([]);
 
 onMounted(() => {
   // Transform the data to the format expected by InteractiveList
   soundCategories.value = soundCategoriesData.map((category) => ({
     label: category.name,
-    value: category.searchPhrase,
     onSelect: () => selectCategory(category),
   }));
 });
 
 const selectCategory = (category: any) => {
+  console.log('Selected category:', category.searchPhrase);
   router.push({
     name: 'SoundCountries',
     params: {
-      searchPhrase: encodeURIComponent(category.searchPhrase || category.value),
+      searchPhrase: encodeURIComponent(category.searchPhrase),
     },
   });
 };

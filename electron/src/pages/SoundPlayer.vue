@@ -1,29 +1,29 @@
 <template>
   <div class="p-8 flex flex-col items-center justify-center h-full w-full">
     <div class="text-2xl mb-8">{{ soundName }}</div>
-    
+
     <div class="w-full max-w-md bg-gray-200 rounded-full h-4 mb-8">
-      <div 
+      <div
         class="bg-blue-500 h-4 rounded-full transition-all duration-300"
         :style="{ width: `${playbackProgress}%` }"
       ></div>
     </div>
-    
+
     <div class="text-lg mb-4">Volume: {{ volume }}%</div>
   </div>
+  <TimeoutRedirect :ms="30000" :redirectRoute="'/'" />
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAppStore } from '../stores/appState';
-import { 
-  playGlobalSound, 
-  stopGlobalSound, 
-  getCurrentSoundInfo, 
+import {
+  playGlobalSound,
+  getCurrentSoundInfo,
   setGlobalVolume,
-  isGlobalSoundPlaying 
 } from '../services/audioService';
+import TimeoutRedirect from '../components/TimeoutRedirect.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -63,20 +63,11 @@ const duration = computed(() => {
 
 // Ensure initialTime is a valid, finite number
 const initialTime = computed(() => {
-  // First check if we have currentTime in route params
-  if (route.params.currentTime) {
-    const time = Number(route.params.currentTime);
-    // Check if it's a valid, finite number
-    if (!isNaN(time) && isFinite(time) && time >= 0) {
-      return time;
-    }
-  }
-  
   // If not in route params or invalid, use the current playing sound's time
   if (currentPlayingSound.value?.currentTime !== undefined) {
     return currentPlayingSound.value.currentTime;
   }
-  
+
   // Default to 0 if nothing else is available
   return 0;
 });
@@ -89,21 +80,21 @@ const progressUpdateInterval = ref<number | null>(null);
 const startPlayback = () => {
   // Check if this is the same sound that's already playing
   const currentSound = getCurrentSoundInfo();
-  
+
   if (currentSound && currentSound.id === soundId.value) {
     // Already playing this sound, do nothing
     return;
   }
-  
+
   // Play the sound globally
   playGlobalSound({
     id: soundId.value,
     name: soundName.value,
     previewUrl: previewUrl.value,
     duration: duration.value,
-    currentTime: initialTime.value // Access .value of the computed ref
+    currentTime: 0, // Access .value of the computed ref
   });
-  
+
   // Set volume based on app state
   setGlobalVolume(volume.value / 100);
 };
@@ -148,7 +139,7 @@ const handleClick = () => {
 const goToSoundPlayerMenu = () => {
   // First, remove all event listeners to prevent them from sticking around
   removeEventListeners();
-  
+
   const currentSound = getCurrentSoundInfo();
   if (currentSound) {
     router.push({
@@ -158,8 +149,8 @@ const goToSoundPlayerMenu = () => {
         name: currentSound.name,
         previewUrl: currentSound.previewUrl,
         duration: String(currentSound.duration),
-        currentTime: String(currentSound.currentTime || 0)
-      }
+        currentTime: String(currentSound.currentTime || 0),
+      },
     });
   }
 };
@@ -188,10 +179,10 @@ const removeEventListeners = () => {
 onMounted(() => {
   // Start playback
   startPlayback();
-  
+
   // Set up interval to update progress regularly
   progressUpdateInterval.value = window.setInterval(updateProgress, 200);
-  
+
   // Add event listeners with a delay to prevent catching clicks from the previous screen
   setTimeout(() => {
     addEventListeners();
@@ -205,7 +196,7 @@ onBeforeUnmount(() => {
     clearInterval(progressUpdateInterval.value);
     progressUpdateInterval.value = null;
   }
-  
+
   // Remove event listeners
   removeEventListeners();
 });

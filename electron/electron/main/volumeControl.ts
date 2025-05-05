@@ -20,7 +20,10 @@ function executeCommand(command: string): Promise<string> {
 // Set system volume in Ubuntu (0-100 percentage)
 export async function setSystemVolume(volumeLevel: number): Promise<void> {
   if (VITE_DEV_SERVER_URL) {
-    console.log('Skipping volume control in development mode:', VITE_DEV_SERVER_URL);
+    console.log(
+      'Skipping volume control in development mode:',
+      VITE_DEV_SERVER_URL
+    );
     return;
   }
   try {
@@ -38,8 +41,11 @@ export async function setSystemVolume(volumeLevel: number): Promise<void> {
 // Get current system volume level
 export async function getSystemVolume(): Promise<number> {
   if (VITE_DEV_SERVER_URL) {
-    console.log('Skipping volume control in development mode:', VITE_DEV_SERVER_URL);
-    return;
+    console.log(
+      'Skipping volume control in development mode:',
+      VITE_DEV_SERVER_URL
+    );
+    return 50;
   }
   try {
     // Get current volume using amixer

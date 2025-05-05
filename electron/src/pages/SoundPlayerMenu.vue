@@ -5,17 +5,23 @@
       :items="menuOptions"
       :showBackButton="true"
       @select="handleMenuSelection"
-      @back="() => router.push({ name: 'SoundPlayer' })"
+      @back="backToSoundsList"
+    />
+    <TimeoutRedirect
+      :ms="10000"
+      :redirectRoute="{ name: 'SoundPlayer' }"
+      :resetOnActivity="'wheel'"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import InteractiveList from '../components/InteractiveList.vue';
 import { useAppStore } from '../stores/appState';
 import { stopGlobalSound } from '../services/audioService';
+import TimeoutRedirect from '../components/TimeoutRedirect.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -30,20 +36,20 @@ const duration = computed(() => Number(route.params.duration) || 0);
 const menuOptions = [
   {
     label: 'Set Alarm Sound',
-    onSelect: () => setAsAlarmSound()
+    onSelect: () => setAsAlarmSound(),
   },
   {
     label: 'Stop Sound',
-    onSelect: () => stopSound()
+    onSelect: () => stopSound(),
   },
   {
-    label: 'Back to Sound List',
-    onSelect: () => backToSoundsList()
+    label: 'Back to Sound',
+    onSelect: () => router.push({ name: 'SoundPlayer' }),
   },
   {
     label: 'Back to Clock',
-    onSelect: () => backToClock()
-  }
+    onSelect: () => backToClock(),
+  },
 ];
 
 // Handle menu option selection
@@ -59,9 +65,9 @@ const setAsAlarmSound = () => {
     id: soundId.value,
     name: soundName.value,
     previewUrl: previewUrl.value,
-    duration: duration.value
+    duration: duration.value,
   });
-  
+
   // Navigate back to clock after setting the alarm sound
   router.push('/menu');
 };
@@ -75,11 +81,13 @@ const stopSound = () => {
 // Go back to the sounds list screen
 const backToSoundsList = () => {
   // If we have stored the last sound list route, navigate to it
-  if (appStore.lastSoundListRoute?.name === 'SoundsList' && 
-      appStore.lastSoundListRoute?.params) {
+  if (
+    appStore.lastSoundListRoute?.name === 'SoundsList' &&
+    appStore.lastSoundListRoute?.params
+  ) {
     router.push({
       name: 'SoundsList',
-      params: appStore.lastSoundListRoute.params
+      params: appStore.lastSoundListRoute.params,
     });
   } else {
     // Fallback to default sound list if route isn't stored

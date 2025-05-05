@@ -3,10 +3,11 @@
     class="p-8"
     @mousedown="goToMenu"
     @keydown.enter="goToMenu"
+    @wheel="handleWheelEvent"
     tabindex="0"
     ref="clockContainer"
   >
-    <div class="text-8xl mb-10">{{ formattedTime }}</div>
+    <div class="mb-10" style="font-size: 180px">{{ formattedTime }}</div>
   </div>
 </template>
 
@@ -14,6 +15,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAppStore } from '../stores/appState';
+import { isGlobalSoundPlaying } from '../services/audioService';
 
 const router = useRouter();
 const appStore = useAppStore();
@@ -28,6 +30,17 @@ const goToMenu = (event: MouseEvent | KeyboardEvent) => {
   router.push('/menu');
 };
 
+// Handle wheel event for volume or brightness control
+const handleWheelEvent = (event: WheelEvent) => {
+  event.preventDefault();
+
+  // Determine mode based on whether sound is playing
+  const mode = isGlobalSoundPlaying() ? 'volume' : 'lampBrightness';
+
+  // Navigate to LevelControl page with appropriate mode
+  router.push(`/level/${mode}`);
+};
+
 // Format time based on timeFormat preference
 const updateFormattedTime = () => {
   const hours = time.value.getHours();
@@ -37,10 +50,10 @@ const updateFormattedTime = () => {
   if (appStore.timeFormat === '12h') {
     const isPM = hours >= 12;
     const hours12 = hours % 12 || 12; // Convert 0 to 12 for 12 AM
-    formattedTime.value = `${hours12}:${minutes}:${seconds} ${isPM ? 'PM' : 'AM'}`;
+    formattedTime.value = `${hours12}:${minutes} ${isPM ? 'PM' : 'AM'}`;
   } else {
     // 24h format
-    formattedTime.value = `${hours.toString().padStart(2, '0')}:${minutes}:${seconds}`;
+    formattedTime.value = `${hours.toString().padStart(2, '0')}:${minutes}`;
   }
 };
 

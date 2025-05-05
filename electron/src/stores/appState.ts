@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { debounce } from 'lodash-es';
 import { AlarmSound } from '../../types/sound';
 import { AppState } from '../../types/state';
+import { setGlobalVolume } from '../services/audioService';
 
 // Create a Pinia store for our application state
 export const useAppStore = defineStore('appState', {
@@ -19,10 +20,10 @@ export const useAppStore = defineStore('appState', {
     lastCountryListRoute: undefined, // Last country list route visited
     projectorPreview: [
       { red: 0, green: 0, blue: 0, white: 0 }, // LED 0
-      { red: 0, green: 0, blue: 0, white: 0 }  // LED 1
+      { red: 0, green: 0, blue: 0, white: 0 }, // LED 1
     ], // Default LED color settings for projector preview
     // Add new sunrise-related state properties
-    sunriseDuration: (600), // Default: 10 minutes in seconds
+    sunriseDuration: 600, // Default: 10 minutes in seconds
     sunriseActive: false,
     sunriseTimeline: [],
     sunriseBrightness: 100, // Default: 100% brightness
@@ -118,13 +119,7 @@ export const useAppStore = defineStore('appState', {
       // Clamp between 0-100
       const newLevel = Math.max(0, Math.min(100, level));
       this.volume = newLevel;
-
-      // Update the system volume using general invoke method
-      window.ipcRenderer
-        .invoke('set-system-volume', newLevel)
-        .catch((error) => {
-          console.error('Failed to set system volume:', error);
-        });
+      setGlobalVolume(newLevel / 100); // Convert to 0-1 range for audio service
     },
 
     // Set the screen brightness
@@ -163,10 +158,13 @@ export const useAppStore = defineStore('appState', {
     },
 
     // Set the last sound list route
-    setLastSoundListRoute(routeName: string, routeParams: Record<string, string>): void {
+    setLastSoundListRoute(
+      routeName: string,
+      routeParams: Record<string, string>
+    ): void {
       this.lastSoundListRoute = {
         name: routeName,
-        params: routeParams
+        params: routeParams,
       };
     },
 
@@ -176,10 +174,13 @@ export const useAppStore = defineStore('appState', {
     },
 
     // Set the last country list route
-    setLastCountryListRoute(routeName: string, routeParams: Record<string, string>): void {
+    setLastCountryListRoute(
+      routeName: string,
+      routeParams: Record<string, string>
+    ): void {
       this.lastCountryListRoute = {
         name: routeName,
-        params: routeParams
+        params: routeParams,
       };
     },
 
@@ -192,7 +193,7 @@ export const useAppStore = defineStore('appState', {
     resetProjectorPreview(): void {
       this.projectorPreview = [
         { red: 0, green: 0, blue: 0, white: 0 }, // LED 0
-        { red: 0, green: 0, blue: 0, white: 0 }  // LED 1
+        { red: 0, green: 0, blue: 0, white: 0 }, // LED 1
       ];
     },
 
@@ -218,15 +219,24 @@ export const useAppStore = defineStore('appState', {
       // When activating, send IPC message to start sunrise playback
       if (this.sunriseActive) {
         // First set the brightness level for the sunrise
-        window.ipcRenderer.invoke('set-strip-brightness', this.sunriseBrightness)
+        window.ipcRenderer
+          .invoke('set-strip-brightness', this.sunriseBrightness)
           .then(() => {
             // Then start the sunrise with the current duration
-            window.ipcRenderer.invoke('start-sunrise', 'default', this.sunriseDuration);
+            window.ipcRenderer.invoke(
+              'start-sunrise',
+              'default',
+              this.sunriseDuration
+            );
           })
           .catch((error) => {
             console.error('Failed to set brightness:', error);
             // Continue with sunrise even if brightness setting fails
-            window.ipcRenderer.invoke('start-sunrise', 'default', this.sunriseDuration);
+            window.ipcRenderer.invoke(
+              'start-sunrise',
+              'default',
+              this.sunriseDuration
+            );
           });
       } else {
         // When deactivating, send IPC message to stop sunrise playback
@@ -237,6 +247,6 @@ export const useAppStore = defineStore('appState', {
     // Set the sunrise brightness
     setSunriseBrightness(level: number): void {
       this.sunriseBrightness = Math.max(0, Math.min(100, level)); // Clamp between 0-100
-    }
-  }
+    },
+  },
 });

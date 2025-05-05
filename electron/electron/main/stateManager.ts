@@ -29,7 +29,7 @@ export function getState(): AppState | null {
   if (stateCache) {
     return stateCache;
   }
-  
+
   try {
     if (fs.existsSync(STATE_FILE_PATH)) {
       const stateJson = fs.readFileSync(STATE_FILE_PATH, 'utf8');
@@ -53,12 +53,14 @@ export function saveState(state: AppState): Promise<boolean> {
     try {
       // Check for lamp brightness changes
       const currentState = stateCache;
-      if (state.lampBrightness !== undefined && 
-          (!currentState || state.lampBrightness !== currentState.lampBrightness)) {
+      if (
+        state.lampBrightness !== undefined &&
+        (!currentState || state.lampBrightness !== currentState.lampBrightness)
+      ) {
         // Send the updated lamp brightness to Arduino
         debouncedSendLampBrightness(state.lampBrightness);
       }
-      
+
       const stateJson = JSON.stringify(state, null, 2);
       fs.writeFileSync(STATE_FILE_PATH, stateJson);
       stateCache = state;
@@ -96,7 +98,10 @@ ipcMain.handle('load-app-state', async () => {
 });
 
 // Create a debounced version of the sendLampBrightnessToSerial function
-const debouncedSendLampBrightness = debounce(sendLampBrightnessToSerial, LAMP_BRIGHTNESS_DEBOUNCE_DELAY);
+const debouncedSendLampBrightness = debounce(
+  sendLampBrightnessToSerial,
+  LAMP_BRIGHTNESS_DEBOUNCE_DELAY
+);
 
 // Handler for updating a specific state property
 ipcMain.handle(
@@ -110,7 +115,7 @@ ipcMain.handle(
 export function initStateManagement() {
   console.log('State management initialized');
   console.log('State file will be saved at:', STATE_FILE_PATH);
-  
+
   // Check for initial lamp brightness setting
   const initialState = getState();
   if (initialState && typeof initialState.lampBrightness !== 'undefined') {
@@ -126,11 +131,11 @@ export function initStateManagement() {
 function sendLampBrightnessToSerial(brightness: number) {
   // Convert brightness percentage (0-100) to LED white value (0-255)
   const whiteValue = Math.floor((brightness / 100) * 255);
-  
+
   // Format for LERP_LED: stripId, pixel, r, g, b, w, duration
   // Using STRIP_BOTTOM (1), pixel 0, color values 0,0,0 (no RGB) and duration from constant
   const command = `LERP_LED ${STRIP_LAMP} 0 0 0 0 ${whiteValue} ${LAMP_BRIGHTNESS_TRANSITION_TIME}`;
-  
+
   console.log(`[stateManager] Sending lamp brightness command: ${command}`);
   sendMessage(command);
 }
@@ -142,11 +147,13 @@ function sendLampBrightnessToSerial(brightness: number) {
 function sendStripBrightnessToSerial(brightness: number) {
   // Scale the brightness from 0-100 to 0-255 for the Arduino
   const brightnessValue = Math.round((brightness / 100) * 255);
-  
+
   // Send to sun center strip (ID 0)
   sendMessage(`SET_BRIGHTNESS ${STRIP_SUN_CENTER} ${brightnessValue}`);
-  
-  console.log(`[stateManager] Set sun center brightness to ${brightness}% (${brightnessValue}/255)`);
+
+  console.log(
+    `[stateManager] Set sun center brightness to ${brightness}% (${brightnessValue}/255)`
+  );
 }
 
 /**
@@ -159,10 +166,18 @@ function sendStripBrightnessToSerial(brightness: number) {
  * @param white White value (0-255, or -1 for no change)
  * @param duration Transition duration in milliseconds
  */
-export function sendLEDToSerial(stripId: number, pixel: number, red: number, green: number, blue: number, white: number, duration: number) {
+export function sendLEDToSerial(
+  stripId: number,
+  pixel: number,
+  red: number,
+  green: number,
+  blue: number,
+  white: number,
+  duration: number
+) {
   // Format for LERP_LED: stripId, pixel, r, g, b, w, duration
   const command = `LERP_LED ${stripId} ${pixel} ${red} ${green} ${blue} ${white} ${duration}`;
-  
+
   console.log(`[stateManager] Sending LED command: ${command}`);
   sendMessage(command);
 }
@@ -175,20 +190,41 @@ export function sendLEDToSerial(stripId: number, pixel: number, red: number, gre
  * @param blue Blue value (0-255)
  * @param white White value (0-255)
  */
-export function sendProjectorLEDToSerial(ledIndex: number, red: number, green: number, blue: number, white: number) {
- sendLEDToSerial(STRIP_SUN_CENTER, ledIndex, red, green, blue, white, PROJECTOR_TRANSITION_TIME);
+export function sendProjectorLEDToSerial(
+  ledIndex: number,
+  red: number,
+  green: number,
+  blue: number,
+  white: number
+) {
+  sendLEDToSerial(
+    STRIP_SUN_CENTER,
+    ledIndex,
+    red,
+    green,
+    blue,
+    white,
+    PROJECTOR_TRANSITION_TIME
+  );
 }
 
 // Handler for updating projector LED colors
 ipcMain.handle(
   'update-projector-led',
-  async (_, ledIndex: number, red: number, green: number, blue: number, white: number) => {
+  async (
+    _,
+    ledIndex: number,
+    red: number,
+    green: number,
+    blue: number,
+    white: number
+  ) => {
     // Ensure values are within valid range (0-255)
     const r = Math.max(0, Math.min(255, red));
     const g = Math.max(0, Math.min(255, green));
     const b = Math.max(0, Math.min(255, blue));
     const w = Math.max(0, Math.min(255, white));
-    
+
     // Send the command to the Arduino
     sendProjectorLEDToSerial(ledIndex, r, g, b, w);
     return true;
@@ -201,12 +237,16 @@ ipcMain.handle(
  */
 export function resetAllProjectorLEDs() {
   console.log('[stateManager] Resetting all projector LEDs to 0');
-  
+
   // For strip ID 1 (projector strip), reset both LED 0 and LED 1
   // LERP_LED: stripId, pixel, r, g, b, w, duration
-  sendMessage(`LERP_LED ${STRIP_SUN_CENTER} 0 0 0 0 0 ${PROJECTOR_TRANSITION_TIME}`);
-  sendMessage(`LERP_LED ${STRIP_SUN_CENTER} 1 0 0 0 0 0 ${PROJECTOR_TRANSITION_TIME}`);
-  
+  sendMessage(
+    `LERP_LED ${STRIP_SUN_CENTER} 0 0 0 0 0 ${PROJECTOR_TRANSITION_TIME}`
+  );
+  sendMessage(
+    `LERP_LED ${STRIP_SUN_CENTER} 1 0 0 0 0 0 ${PROJECTOR_TRANSITION_TIME}`
+  );
+
   // If there are other strips that need to be reset, add them here
   // For example, for strip ID 0 (if it exists)
   // sendMessage(`LERP_LED 0 0 0 0 0 0 ${PROJECTOR_TRANSITION_TIME}`);
@@ -222,7 +262,7 @@ ipcMain.handle('reset-all-projector-leds', async () => {
 ipcMain.handle('set-strip-brightness', async (_, brightness: number) => {
   // Ensure brightness is within valid range (0-100)
   const clampedBrightness = Math.max(0, Math.min(100, brightness));
-  
+
   // Send the command to the Arduino
   sendStripBrightnessToSerial(clampedBrightness);
   return true;

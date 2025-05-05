@@ -9,11 +9,8 @@
   >
     {{ backButtonLabel ?? '← Back' }}
   </button>
-  <div 
-    v-if="showTitle"
-    class="fixed top-8 text-xl font-bold"
-  >
-    {{title}}
+  <div v-if="showTitle" class="fixed top-8 text-xl font-bold">
+    {{ title }}
   </div>
 
   <ul
@@ -38,16 +35,21 @@
       @click="handleItemClick(item, index)"
       @keydown.enter.prevent="selectItem(item)"
     >
-      <span class="truncate text-ellipsis overflow-hidden max-w-[70%]">{{ isObject(item) ? item.label : item }}</span>
+      <span class="truncate text-ellipsis overflow-hidden max-w-[70%]">{{
+        isObject(item) ? item.label : item
+      }}</span>
       <div class="flex items-center">
-        <span 
-          v-if="isObject(item) && 'value' in item" 
+        <span
+          v-if="isObject(item) && 'value' in item"
           class="ml-4 font-medium flex-shrink-0"
-          :class="{ 'bg-[var(--color-li-highlight)] px-2 py-1': isEditing && editingIndex === index }"
+          :class="{
+            'bg-[var(--color-li-highlight)] px-2 py-1':
+              isEditing && editingIndex === index,
+          }"
         >
           {{ item.value }}
         </span>
-        <div 
+        <div
           v-if="isObject(item) && item.customStyle"
           class="color-preview ml-3"
           :style="item.customStyle"
@@ -218,7 +220,7 @@ const handleEnterKey = () => {
     }
     return;
   }
-  
+
   selectItem(currentItem);
 };
 
@@ -229,7 +231,7 @@ const handleBackButton = () => {
     editingIndex.value = -1;
     return;
   }
-  
+
   emit('back');
 };
 
@@ -268,14 +270,14 @@ const selectItem = (item: ListItem): void => {
     editingIndex.value = highlightedIndex.value;
     return;
   }
-  
+
   // If we're in edit mode for this item, exit edit mode
   if (isEditing.value && props.items[editingIndex.value] === item) {
     isEditing.value = false;
     editingIndex.value = -1;
     return;
   }
-  
+
   // If item is an object with onSelect handler, call it
   if (isObject(item) && typeof item.onSelect === 'function') {
     item.onSelect();
@@ -306,11 +308,13 @@ const handleMouseDown = (event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
 
-    if (isBackButtonHighlighted.value) {
-      handleBackButton();
-    } else {
-      selectItem(props.items[highlightedIndex.value]);
-    }
+    nextTick(() => {
+      if (isBackButtonHighlighted.value) {
+        handleBackButton();
+      } else {
+        selectItem(props.items[highlightedIndex.value]);
+      }
+    });
   }
 };
 
@@ -349,7 +353,7 @@ const handleWheel = (event: WheelEvent): void => {
     }
     return;
   }
-  
+
   // Check if the wheel event was triggered by a touch
   // Chrome/Safari touch events don't have wheelDelta
   const isTouchGenerated = (event as any).wheelDeltaY === undefined;

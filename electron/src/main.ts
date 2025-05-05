@@ -111,7 +111,7 @@ const initializeAppState = async () => {
   await appStore.loadState();
 
   // Subscribe to state changes and save when they occur
-  appStore.$subscribe((_, state) => {
+  appStore.$subscribe((_) => {
     appStore.saveState();
   });
 };

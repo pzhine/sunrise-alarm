@@ -4,7 +4,6 @@
     <InteractiveList
       :items="menuOptions"
       :showBackButton="true"
-      @select="handleMenuSelection"
       @back="backToSoundsList"
     />
     <TimeoutRedirect
@@ -32,11 +31,20 @@ const soundName = computed(() => route.params.name as string);
 const previewUrl = computed(() => route.params.previewUrl as string);
 const duration = computed(() => Number(route.params.duration) || 0);
 
+// Check if current sound is in favorites
+const isInFavorites = computed(() =>
+  appStore.isSoundInFavorites(soundId.value)
+);
+
 // Menu options for the interactive list
-const menuOptions = [
+const menuOptions = computed(() => [
   {
     label: 'Set Alarm Sound',
     onSelect: () => setAsAlarmSound(),
+  },
+  {
+    label: isInFavorites.value ? 'Remove from Favorites' : 'Add to Favorites',
+    onSelect: () => toggleFavorite(),
   },
   {
     label: 'Stop Sound',
@@ -50,12 +58,21 @@ const menuOptions = [
     label: 'Back to Clock',
     onSelect: () => backToClock(),
   },
-];
+]);
 
-// Handle menu option selection
-const handleMenuSelection = (item: any) => {
-  if (item.onSelect) {
-    item.onSelect();
+// Toggle favorite status for the current sound
+const toggleFavorite = () => {
+  if (isInFavorites.value) {
+    // Remove from favorites
+    appStore.removeSoundFromFavorites(soundId.value);
+  } else {
+    // Add to favorites
+    appStore.addSoundToFavorites({
+      id: soundId.value,
+      name: soundName.value,
+      previewUrl: previewUrl.value,
+      duration: duration.value,
+    });
   }
 };
 
@@ -68,7 +85,7 @@ const setAsAlarmSound = () => {
     duration: duration.value,
   });
 
-  // Navigate back to clock after setting the alarm sound
+  // Navigate back to menu after setting the alarm sound
   router.push('/menu');
 };
 

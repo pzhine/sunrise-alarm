@@ -1,7 +1,7 @@
 <template>
   <div
     class="p-8"
-    @mousedown="goToMenu"
+    @click.right="goToMenu"
     @keydown.enter="goToMenu"
     @wheel="handleWheelEvent"
     tabindex="0"

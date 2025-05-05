@@ -59,6 +59,12 @@ export async function closeSerialPorts(): Promise<void> {
 messageQueueInterval = setInterval(processMessageQueue, MESSAGE_INTERVAL);
 
 export function startSerialComms() {
+  if (process.env.VITE_DEV_SERVER_URL) {
+    console.log(
+      '[serial] Skipping serial port initialization in development mode'
+    );
+    return; // Don't start serial in dev mode
+  }
   // Don't try to open if already open
   if (port) {
     console.log('[serial] Port already open');

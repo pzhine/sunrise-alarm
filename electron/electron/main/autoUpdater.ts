@@ -21,7 +21,7 @@ function resolvePath(relativePath: string): string {
   const basePath = app.isPackaged
     ? path.dirname(app.getPath('exe'))
     : process.cwd();
-  
+
   return path.join(basePath, relativePath);
 }
 
@@ -249,7 +249,9 @@ export async function installUpdateAndRestart(releasePath: string) {
       if (uploadSuccess) {
         console.log('Arduino sketch uploaded successfully.');
       } else {
-        console.log('Failed to upload Arduino sketch, continuing with app update anyway.');
+        console.log(
+          'Failed to upload Arduino sketch, continuing with app update anyway.'
+        );
       }
     } catch (arduinoError) {
       console.error('Error during Arduino sketch upload:', arduinoError);
@@ -264,9 +266,20 @@ export async function installUpdateAndRestart(releasePath: string) {
     }
 
     // create or overwrite the default sunrise timeline file
-    const defaultTimelinePath = path.join(app.getPath('userData'), 'sunrise-data', 'default.json');
-    const exampleTimelinePath = path.join(releasePath, '..', '..', 'sunrise.example.json');
-    console.log(`Copying timeline from ${exampleTimelinePath} to ${defaultTimelinePath}`);
+    const defaultTimelinePath = path.join(
+      app.getPath('userData'),
+      'sunrise-data',
+      'default.json'
+    );
+    const exampleTimelinePath = path.join(
+      releasePath,
+      '..',
+      '..',
+      'sunrise.example.json'
+    );
+    console.log(
+      `Copying timeline from ${exampleTimelinePath} to ${defaultTimelinePath}`
+    );
     fs.copyFileSync(exampleTimelinePath, defaultTimelinePath);
 
     // Create a shell script that will be fully independent of the parent process
@@ -389,7 +402,7 @@ export async function checkForUpdatesAndInstall(
     sendUpdateStatus('checking');
 
     // Fetch update information from the server
-    const response = await fetch(UPDATE_URL);
+    const response = await fetch(UPDATE_URL, { timeout: 15000 });
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -499,7 +512,9 @@ export function initAutoUpdater() {
 /**
  * Upload Arduino sketch to the board
  */
-export async function uploadArduinoSketch(arduinoPath: string): Promise<boolean> {
+export async function uploadArduinoSketch(
+  arduinoPath: string
+): Promise<boolean> {
   try {
     console.log('Uploading Arduino sketch to the board...');
 

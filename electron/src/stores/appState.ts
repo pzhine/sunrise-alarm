@@ -15,6 +15,7 @@ export const useAppStore = defineStore('appState', {
     timeFormat: '24h', // Default time format
     listPositions: {}, // Empty object to store list positions by route
     alarmSound: null, // Default to no alarm sound selected
+    favoriteSounds: [], // Array to store favorite sounds
     lastConnectedWifi: undefined, // Last successfully connected WiFi network
     lastSoundListRoute: undefined, // Last sound list route visited
     lastCountryListRoute: undefined, // Last country list route visited
@@ -49,6 +50,13 @@ export const useAppStore = defineStore('appState', {
       (state) =>
       (routePath: string): number => {
         return state.listPositions[routePath] ?? 0; // Default to 0 if not found
+      },
+
+    // Check if a sound is in favorites
+    isSoundInFavorites:
+      (state) =>
+      (soundId: number): boolean => {
+        return state.favoriteSounds.some((sound) => sound.id === soundId);
       },
   },
 
@@ -247,6 +255,23 @@ export const useAppStore = defineStore('appState', {
     // Set the sunrise brightness
     setSunriseBrightness(level: number): void {
       this.sunriseBrightness = Math.max(0, Math.min(100, level)); // Clamp between 0-100
+    },
+
+    // Add a sound to favorites
+    addSoundToFavorites(sound: AlarmSound): void {
+      // Check if sound already exists in favorites
+      if (!this.favoriteSounds.some((favSound) => favSound.id === sound.id)) {
+        // Use the $patch method for arrays to ensure reactivity
+        this.favoriteSounds.push(sound);
+      }
+    },
+
+    // Remove a sound from favorites
+    removeSoundFromFavorites(soundId: number): void {
+      // Use the $patch method for arrays to ensure reactivity
+      this.favoriteSounds = this.favoriteSounds.filter(
+        (sound) => sound.id !== soundId
+      );
     },
   },
 });

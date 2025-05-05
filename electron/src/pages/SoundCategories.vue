@@ -47,6 +47,7 @@ const selectCategory = (category: any) => {
   router.push({
     name: 'SoundCountries',
     params: {
+      categoryName: category.name,
       searchPhrase: encodeURIComponent(category.searchPhrase),
     },
   });
@@ -59,6 +60,7 @@ const navigateToFavorites = () => {
       name: 'SoundsList',
       params: {
         searchPhrase: 'favorites',
+        categoryName: 'Favorites',
         country: 'favorites',
       },
     });

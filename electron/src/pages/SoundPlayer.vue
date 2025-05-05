@@ -61,15 +61,18 @@ const duration = computed(() => {
   return currentPlayingSound.value?.duration || 0;
 });
 
-// Ensure initialTime is a valid, finite number
-const initialTime = computed(() => {
-  // If not in route params or invalid, use the current playing sound's time
-  if (currentPlayingSound.value?.currentTime !== undefined) {
-    return currentPlayingSound.value.currentTime;
+const category = computed(() => {
+  if (route.params.category) {
+    return route.params.category as string;
   }
+  return currentPlayingSound.value?.category || '';
+});
 
-  // Default to 0 if nothing else is available
-  return 0;
+const country = computed(() => {
+  if (route.params.country) {
+    return route.params.country as string;
+  }
+  return currentPlayingSound.value?.country || '';
 });
 
 const playbackProgress = ref(0);
@@ -93,6 +96,8 @@ const startPlayback = () => {
     previewUrl: previewUrl.value,
     duration: duration.value,
     currentTime: 0, // Access .value of the computed ref
+    category: category.value,
+    country: country.value,
   });
 
   // Set volume based on app state
@@ -141,6 +146,7 @@ const goToSoundPlayerMenu = () => {
   removeEventListeners();
 
   const currentSound = getCurrentSoundInfo();
+  console.log('[SoundPlayer] Going to SoundPlayerMenu', currentSound);
   if (currentSound) {
     router.push({
       name: 'SoundPlayerMenu',
@@ -150,6 +156,8 @@ const goToSoundPlayerMenu = () => {
         previewUrl: currentSound.previewUrl,
         duration: String(currentSound.duration),
         currentTime: String(currentSound.currentTime || 0),
+        category: currentSound.category,
+        country: currentSound.country,
       },
     });
   }

@@ -1,12 +1,12 @@
+import { AlarmSound } from '../../types/sound';
+
+export interface SoundInfo extends AlarmSound {
+  currentTime?: number;
+}
+
 // Global audio element for persistent playback
 let globalAudioElement: HTMLAudioElement | null = null;
-let currentSoundInfo: {
-  id: number;
-  name: string;
-  previewUrl: string;
-  duration: number;
-  currentTime?: number;
-} | null = null;
+let currentSoundInfo: SoundInfo | null = null;
 
 // Play a preview of a sound
 export function playPreview(previewUrl: string): HTMLAudioElement {
@@ -16,13 +16,7 @@ export function playPreview(previewUrl: string): HTMLAudioElement {
 }
 
 // Play a sound globally so it persists across component navigation
-export function playGlobalSound(soundInfo: {
-  id: number;
-  name: string;
-  previewUrl: string;
-  duration: number;
-  currentTime?: number;
-}): void {
+export function playGlobalSound(soundInfo: SoundInfo): void {
   // Stop any currently playing sound
   if (globalAudioElement) {
     stopGlobalSound();
@@ -78,13 +72,7 @@ export function isGlobalSoundPlaying(): boolean {
 }
 
 // Get current playing sound info
-export function getCurrentSoundInfo(): {
-  id: number;
-  name: string;
-  previewUrl: string;
-  duration: number;
-  currentTime?: number;
-} | null {
+export function getCurrentSoundInfo(): SoundInfo | null {
   if (!globalAudioElement || !currentSoundInfo) {
     return null;
   }

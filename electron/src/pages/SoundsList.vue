@@ -84,30 +84,56 @@ const countryName = computed(() => {
 const searchPhrase = computed(() => {
   return decodeURIComponent(route.params.searchPhrase as string);
 });
+const categoryName = computed(() => {
+  return decodeURIComponent(route.params.categoryName as string);
+});
 
 // Title for the list
 const listTitle = computed(() => {
   if (isFavorites.value) {
     return 'Favorite Sounds';
   }
-  return `"${searchPhrase.value}" from ${countryName.value}`;
+  return `"${categoryName.value}" from ${countryName.value}`;
 });
 
 // Create a formatted list of sounds for the InteractiveList component
 const soundsList = computed(() => {
-  return sounds.value.map((sound) => {
-    // Format duration in minutes:seconds
-    const minutes = Math.floor(sound.duration / 60);
-    const seconds = Math.floor(sound.duration % 60);
-    const formattedDuration = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  return sounds.value
+    .sort((a, b) => {
+      // Sort by duration in descending order
+      return b.duration - a.duration;
+    })
+    .map((sound) => {
+      // Format duration in minutes:seconds
+      const minutes = Math.floor(sound.duration / 60);
+      const seconds = Math.floor(sound.duration % 60);
+      const formattedDuration = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 
-    return {
-      label: removeAudioExtensions(sound.name),
-      data: sound,
-      // Add duration and a checkmark if this is the selected sound
-      value: `${formattedDuration} ${appStore.alarmSound?.id === sound.id ? '✓' : ''}`,
-    };
-  });
+      // For favorites, prepare label with category and country info
+      let label = removeAudioExtensions(sound.name);
+      if (isFavorites.value) {
+        if (sound.country) {
+          label = `[${sound.country}] ${label}`;
+        }
+        if (sound.category) {
+          label = `[${sound.category}] ${label}`;
+        }
+      }
+
+      return {
+        label: label,
+        data: sound,
+        // Add duration and a checkmark if this is the selected sound
+        value: `${formattedDuration} ${appStore.alarmSound?.id === sound.id ? '✓' : ''}`,
+      };
+    })
+    .sort((a, b) => {
+      if (isFavorites.value) {
+        // For favorites, sort by name
+        return a.label.localeCompare(b.label);
+      }
+      return 0; // use default order for non-favorites
+    });
 });
 
 onMounted(async () => {
@@ -152,6 +178,7 @@ onBeforeUnmount(() => {
 onMounted(() => {
   // Store the current sound list route
   appStore.setLastSoundListRoute('SoundsList', {
+    categoryName: route.params.categoryName as string,
     searchPhrase: route.params.searchPhrase as string,
     country: route.params.country as string,
   });
@@ -162,7 +189,7 @@ const selectSound = (sound: any) => {
   const selectedSound = sound.data;
   if (selectedSound) {
     // Navigate to the sound player page
-    router.push({
+    const p = {
       name: 'SoundPlayer',
       params: isFavorites.value
         ? selectedSound
@@ -171,8 +198,12 @@ const selectSound = (sound: any) => {
             name: removeAudioExtensions(selectedSound.name),
             previewUrl: selectedSound.previews['preview-hq-mp3'],
             duration: selectedSound.duration.toString(),
+            category: categoryName.value,
+            country: countryName.value,
           },
-    });
+    };
+    console.log('Navigating to SoundPlayer with params:', p);
+    router.push(p);
   }
 };
 

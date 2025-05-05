@@ -32,22 +32,22 @@ const routes = [
   { path: '/menu', name: 'MainMenu', component: MainMenu },
   { path: '/sounds', name: 'SoundCategories', component: SoundCategories },
   {
-    path: '/sounds/countries/:searchPhrase',
+    path: '/sounds/countries/:searchPhrase/:categoryName',
     name: 'SoundCountries',
     component: () => import('./pages/SoundCountries.vue'),
   },
   {
-    path: '/sounds/list/:searchPhrase/:country',
+    path: '/sounds/list/:searchPhrase/:country/:categoryName',
     name: 'SoundsList',
     component: () => import('./pages/SoundsList.vue'),
   },
   {
-    path: '/sounds/player/:id?/:name?/:previewUrl?/:duration?/:currentTime?',
+    path: '/sounds/player/:id?/:name?/:previewUrl?/:duration?/:currentTime?/:category?/:country?',
     name: 'SoundPlayer',
     component: () => import('./pages/SoundPlayer.vue'),
   },
   {
-    path: '/sounds/player-menu/:id/:name/:previewUrl/:duration/:currentTime?/:totalTime?',
+    path: '/sounds/player-menu/:id/:name/:previewUrl/:duration/:currentTime?/:totalTime?/:category?/:country?',
     name: 'SoundPlayerMenu',
     component: () => import('./pages/SoundPlayerMenu.vue'),
   },

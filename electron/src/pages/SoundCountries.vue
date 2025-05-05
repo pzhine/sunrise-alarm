@@ -9,7 +9,7 @@
     <InteractiveList
       v-else
       :items="countryList"
-      :title="searchPhrase"
+      :title="categoryName"
       :showTitle="true"
       :showBackButton="true"
       @select="selectCountry"
@@ -35,14 +35,21 @@ const soundsByCountry = ref<Record<string, any[]>>({});
 const searchPhrase = computed(() => {
   return decodeURIComponent(route.params.searchPhrase as string);
 });
+const categoryName = computed(() => {
+  return decodeURIComponent(route.params.categoryName as string);
+});
 
 // Create an array of countries for the InteractiveList component
 const countryList = computed(() => {
-  return Object.keys(soundsByCountry.value).map((country) => ({
-    label: country,
-    value: `${soundsByCountry.value[country].length} sounds`,
-    data: soundsByCountry.value[country],
-  }));
+  return Object.keys(soundsByCountry.value)
+    .sort((a, b) => {
+      return soundsByCountry.value[b].length - soundsByCountry.value[a].length;
+    })
+    .map((country) => ({
+      label: country,
+      value: `${soundsByCountry.value[country].length} sounds`,
+      data: soundsByCountry.value[country],
+    }));
 });
 
 onMounted(async () => {
@@ -52,7 +59,7 @@ onMounted(async () => {
 
     // Store the current route information for later navigation
     appStore.setLastCountryListRoute('SoundCountries', {
-      searchPhrase: searchPhrase.value
+      searchPhrase: searchPhrase.value,
     });
 
     // Call the Freesound API through Electron IPC
@@ -75,7 +82,8 @@ const selectCountry = (country: any) => {
   router.push({
     name: 'SoundsList',
     params: {
-      searchPhrase: route.params.searchPhrase,
+      categoryName: categoryName.value,
+      searchPhrase: searchPhrase.value,
       country: encodeURIComponent(country.label),
     },
     // No longer passing the sounds data via router state

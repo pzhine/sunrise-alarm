@@ -30,6 +30,8 @@ const soundId = computed(() => Number(route.params.id));
 const soundName = computed(() => route.params.name as string);
 const previewUrl = computed(() => route.params.previewUrl as string);
 const duration = computed(() => Number(route.params.duration) || 0);
+const category = computed(() => (route.params.category as string) || '');
+const country = computed(() => (route.params.country as string) || '');
 
 // Check if current sound is in favorites
 const isInFavorites = computed(() =>
@@ -72,6 +74,8 @@ const toggleFavorite = () => {
       name: soundName.value,
       previewUrl: previewUrl.value,
       duration: duration.value,
+      category: category.value,
+      country: country.value,
     });
   }
 };
@@ -114,6 +118,6 @@ const backToSoundsList = () => {
 
 // Go back directly to the clock screen
 const backToClock = () => {
-  router.push('/');
+  router.push({ name: 'Clock' });
 };
 </script>

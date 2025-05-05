@@ -92,7 +92,7 @@ const routes = [
   {
     path: '/sunrise-animation',
     name: 'SunriseAnimation',
-    component: () => import('./animations/Synthrise.vue'),
+    component: () => import('./animations/SynthwaveSunrise.vue'),
   },
 ];
 

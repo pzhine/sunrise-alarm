@@ -26,12 +26,22 @@ const gridCellSize = 2.5;
 
 // Animation variables
 let clock: THREE.Clock;
-const animationDuration = 30; // seconds
-const sunStartY = -12;
-const sunEndY = 28;
+const animationDuration = 60; // seconds
+const sunStartY = -10;
+const sunEndY = 7;
 const gridStartColor = new THREE.Color(0x000000); // Black
 const gridEndColor = new THREE.Color(0x00ffff); // Cyan
 let gridColorAttribute: THREE.BufferAttribute | null = null; // To store color buffer
+
+// Background Color Animation
+const bgColorStart = new THREE.Color(0x000000); // Black
+const bgColorMid1 = new THREE.Color(0x490066); // Deep Purple
+const bgColorMid2 = new THREE.Color(0x703800); // Orange
+const bgColorEnd = new THREE.Color(0x00567a); // Sky Blue
+
+// Bloom Animation
+let initialBloomStrength: number;
+let initialBloomRadius: number;
 
 // --- Shaders for the Sun ---
 const sunVertexShader = `
@@ -103,6 +113,11 @@ void main() {
 }
 `;
 
+// Helper function for Cubic Ease-Out
+function easeOutQuint(t: number): number {
+  return 1 - Math.pow(1 - t, 5);
+}
+
 onMounted(() => {
   if (!container.value) return;
 
@@ -113,27 +128,27 @@ onMounted(() => {
 
   // Scene setup
   scene = new THREE.Scene();
-  scene.background = null; // Transparent background
-  scene.fog = new THREE.FogExp2(0x2c003e, 0.05);
+  scene.background = bgColorStart.clone(); // Start with black background
+  // scene.fog = new THREE.FogExp2(0x2c003e, 0.05); // Fog might interfere, removed for now
 
   // Camera setup
   camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
   camera.position.set(0, 3, 10);
-  camera.lookAt(0, 1.5, -1); // Horizon low
+  camera.lookAt(0, 3, -1); // Horizon low
 
   // Renderer setup
   renderer = new THREE.WebGLRenderer({
     antialias: true,
-    alpha: true, // Enable transparency
+    // alpha: false, // Disable transparency if background color is used
   });
-  renderer.setClearColor(0x000000, 0); // Set clear color to transparent black
+  // renderer.setClearColor(0x000000, 0); // Remove transparent clear color
   renderer.setSize(width, height);
   renderer.toneMapping = THREE.ReinhardToneMapping;
   container.value.appendChild(renderer.domElement);
 
   // --- Create Objects ---
   // 1. Sun
-  const sunGeometry = new THREE.CircleGeometry(8, 64);
+  const sunGeometry = new THREE.CircleGeometry(12, 64);
   const sunMaterial = new THREE.ShaderMaterial({
     vertexShader: sunVertexShader,
     fragmentShader: sunFragmentShader,
@@ -144,7 +159,7 @@ onMounted(() => {
       maxStripeThickness: { value: 0.8 },
       minStripeThickness: { value: 0.2 },
       stripeCutoff: { value: 0.75 },
-      horizonYLevel: { value: 0.0 },
+      horizonYLevel: { value: 3 },
     },
     transparent: true,
     depthWrite: false, // Keep for stripe transparency layering
@@ -179,6 +194,8 @@ onMounted(() => {
     0.5, // radius
     0.1 // threshold - Lower threshold to catch dimmer grid lines earlier
   );
+  initialBloomStrength = bloomPass.strength; // Store initial value
+  initialBloomRadius = bloomPass.radius; // Store initial value
   composer.addPass(bloomPass);
 
   // Copy Pass (final output)
@@ -192,16 +209,26 @@ onMounted(() => {
 
     const elapsedTime = clock.getElapsedTime();
     const progress = Math.min(elapsedTime / animationDuration, 1.0);
+    const easedProgress = easeOutQuint(progress); // Apply easing function
 
-    // Animate Sun Position
-    sunMesh.position.y = THREE.MathUtils.lerp(sunStartY, sunEndY, progress);
+    // Animate Sun Position using eased progress
+    sunMesh.position.y = THREE.MathUtils.lerp(
+      sunStartY,
+      sunEndY,
+      easedProgress
+    );
 
-    // Animate Grid Color (by updating geometry attributes)
+    // Animate Grid Color (starting at 25% progress)
     if (gridColorAttribute) {
+      let gridProgress = 0; // Default to start color
+      if (progress >= 0.25) {
+        // Map the range [0.25, 1.0] to [0.0, 1.0]
+        gridProgress = (progress - 0.25) / (1.0 - 0.25);
+      }
       const currentColor = new THREE.Color().lerpColors(
         gridStartColor,
         gridEndColor,
-        progress
+        gridProgress // Use the adjusted progress
       );
       const colorArray = gridColorAttribute.array;
       for (let i = 0; i < colorArray.length; i += 3) {
@@ -212,8 +239,44 @@ onMounted(() => {
       gridColorAttribute.needsUpdate = true; // IMPORTANT: Tell Three.js to update the buffer
     }
 
+    // Animate Background Color
+    const bgCurrentColor = new THREE.Color();
+    if (progress < 0.33) {
+      const phaseProgress = progress / 0.33;
+      bgCurrentColor.lerpColors(bgColorStart, bgColorMid1, phaseProgress);
+    } else if (progress < 0.55) {
+      const phaseProgress = (progress - 0.22) / 0.22;
+      bgCurrentColor.lerpColors(bgColorMid1, bgColorMid2, phaseProgress);
+    } else {
+      const phaseProgress = (progress - 0.66) / 0.44; // Adjust denominator slightly
+      bgCurrentColor.lerpColors(bgColorMid2, bgColorEnd, phaseProgress);
+    }
+    if (scene.background instanceof THREE.Color) {
+      scene.background.copy(bgCurrentColor);
+    }
+
+    // Animate Bloom (last 25%)
+    if (progress >= 0.75) {
+      // Map the range [0.75, 1.0] to [0.0, 1.0]
+      const bloomProgress = (progress - 0.75) / (1.0 - 0.75);
+      bloomPass.strength = THREE.MathUtils.lerp(
+        initialBloomStrength,
+        initialBloomStrength * 0.5,
+        bloomProgress
+      );
+      bloomPass.radius = THREE.MathUtils.lerp(
+        initialBloomRadius,
+        initialBloomRadius * 0.5,
+        bloomProgress
+      );
+    } else {
+      // Ensure bloom is at initial values before 75%
+      bloomPass.strength = initialBloomStrength;
+      bloomPass.radius = initialBloomRadius;
+    }
+
     // Animate grid scrolling
-    gridHelper.position.z = (gridHelper.position.z + 0.05) % gridCellSize;
+    gridHelper.position.z = (gridHelper.position.z + 0.01) % gridCellSize;
 
     // Render scene with post-processing
     composer.render();

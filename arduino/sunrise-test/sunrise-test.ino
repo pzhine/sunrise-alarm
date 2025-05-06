@@ -32,9 +32,11 @@ void setup() {
   center_pixels.setBrightness(CENTER_BRIGHTNESS);
   
   ring_pixels.clear(); 
+  ring_pixels.show();
   center_pixels.clear();
 
-  center_pixels.setPixelColor(1, 0, 0, 255, 0);
+  center_pixels.setPixelColor(0, 5, 5, 5, 5);
+  center_pixels.setPixelColor(1, 5, 5, 5, 5);
   center_pixels.show();
 }
 
@@ -47,6 +49,7 @@ float center1bright = 0;
 float r, g, b, w;
 
 void loop() {
+  return;
   incrementEveryNms(sunbright, 50); 
 
   if (sunbright > 750) {

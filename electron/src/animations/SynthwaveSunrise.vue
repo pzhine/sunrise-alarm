@@ -1,9 +1,14 @@
 <template>
-  <div ref="container" class="synthwave-container bg-purple-600"></div>
+  <div ref="container" class="synthwave-container bg-purple-600">
+    <div v-if="props.debug" class="debug-overlay">
+      <p>Vendor: {{ debugInfo.vendor }}</p>
+      <p>Renderer: {{ debugInfo.renderer }}</p>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, defineProps } from 'vue';
+import { ref, onMounted, onUnmounted, defineProps, reactive } from 'vue';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -18,10 +23,20 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-  lowResolution: { // Added new prop
+  lowResolution: { 
     type: Boolean,
     default: false,
   },
+  debug: { // Added new debug prop
+    type: Boolean,
+    default: true,
+  },
+});
+
+// Reactive state for debug info
+const debugInfo = reactive({
+  vendor: 'N/A',
+  renderer: 'N/A',
 });
 
 const container = ref<HTMLDivElement | null>(null);
@@ -307,6 +322,22 @@ onMounted(() => {
   renderer.toneMapping = THREE.ReinhardToneMapping;
   container.value.appendChild(renderer.domElement);
 
+  // Get GPU info if debug is enabled
+  if (props.debug) {
+    try {
+      const gl = renderer.getContext();
+      const ext = gl.getExtension('WEBGL_debug_renderer_info');
+      if (ext) {
+        debugInfo.vendor = gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) || 'N/A';
+        debugInfo.renderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || 'N/A';
+      }
+    } catch (e) {
+      console.error("Error getting WebGL debug info:", e);
+      debugInfo.vendor = "Error";
+      debugInfo.renderer = "Error getting info";
+    }
+  }
+
   // --- Create Objects ---
   // 1. Sun
   const sunGeometry = new THREE.CircleGeometry(12, 64);
@@ -514,16 +545,30 @@ onMounted(() => {
 });
 </script>
 
-<style>
+<style scoped>
 .synthwave-container {
   width: 100%;
   height: 100vh; /* Make it full viewport height */
   overflow: hidden; /* Prevent scrollbars */
+  position: relative; /* Added for debug overlay positioning */
 }
 
 .synthwave-container canvas { /* Added to scale canvas if rendered at lower res */
   width: 100% !important;
   height: 100% !important;
   display: block;
+}
+
+.debug-overlay {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 10px;
+  border-radius: 5px;
+  font-family: monospace;
+  font-size: 12px;
+  z-index: 1000;
 }
 </style>

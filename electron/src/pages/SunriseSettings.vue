@@ -56,6 +56,11 @@ const menuItems = computed(() => {
       onEdit: (increment: number) => adjustBrightness(increment),
     },
     {
+      label: 'Play Sound',
+      value: appStore.alarmSound ? appStore.alarmSound.name : 'No Sound',
+      onSelect: () => router.push('/sunrise-sounds'),
+    },
+    {
       label: 'Start Sunrise',
       onSelect: () => startSunrise(),
     },

@@ -90,6 +90,11 @@ const routes = [
     component: () => import('./pages/SunriseSettings.vue'),
   },
   {
+    path: '/sunrise-sounds',
+    name: 'SunriseSounds',
+    component: () => import('./pages/SunriseSounds.vue'),
+  },
+  {
     path: '/sunrise-animation',
     name: 'SunriseAnimation',
     component: () => import('./animations/SynthwaveSunrise.vue'),

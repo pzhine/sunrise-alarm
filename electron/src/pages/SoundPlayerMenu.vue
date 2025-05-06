@@ -129,7 +129,7 @@ const setAsAlarmSound = () => {
   });
 
   // Navigate back to menu after setting the alarm sound
-  router.push('/menu');
+  router.push('/sunriseSettings');
 };
 
 // Stop sound playback

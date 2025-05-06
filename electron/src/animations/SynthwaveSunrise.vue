@@ -187,6 +187,9 @@ function cubicBezierEasing(
 
 // Function to update animation state based on progress (Handles Sun, Colors, Bloom)
 function updateAnimationState(progress: number) {
+  // clamp progress to [0, 0.99] to avoid overshooting
+  progress = Math.min(Math.max(progress, 0), 0.99); // Clamp to avoid overshooting
+
   // https://cubic-bezier.com/
   const easedProgress = cubicBezierEasing(progress, 0.86, 0.11, 0.19, 0.81);
 
@@ -218,8 +221,8 @@ function updateAnimationState(progress: number) {
   }
 
   // Animate Bloom
-  if (progress >= 0.75) {
-    const bloomProgress = (progress - 0.75) / (1.0 - 0.75);
+  if (progress >= 0.6) {
+    const bloomProgress = (progress - 0.6) / (1.0 - 0.6);
     bloomPass.strength = THREE.MathUtils.lerp(
       initialBloomStrength,
       initialBloomStrength * 0.5,
@@ -234,8 +237,6 @@ function updateAnimationState(progress: number) {
     bloomPass.strength = initialBloomStrength;
     bloomPass.radius = initialBloomRadius;
   }
-
-  // --- Wave/Scroll logic removed from this function ---
 }
 
 // Function to ONLY update grid waves based on vertex Z and TOTAL scroll offset
@@ -416,7 +417,7 @@ onMounted(() => {
 
   if (props.skipAnimation) {
     // --- Skip Animation (but keep waves/scroll) ---
-    updateAnimationState(1.0); // Set sun, colors, bloom to final state
+    updateAnimationState(0.99); // Set sun, colors, bloom to final state
 
     // Start a simplified animation loop JUST for waves/scroll AND mesh leapfrogging
     const animateWavesOnly = () => {

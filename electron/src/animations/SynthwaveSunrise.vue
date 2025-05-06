@@ -395,8 +395,7 @@ onMounted(() => {
   composer.addPass(renderPass);
 
   // SMAA Pass (before Bloom)
-  const pixelRatio = renderer.getPixelRatio();
-  smaaPass = new SMAAPass(width * pixelRatio, height * pixelRatio);
+  smaaPass = new SMAAPass();
   composer.addPass(smaaPass);
 
   // Bloom Pass (after SMAA)

@@ -16,7 +16,7 @@ import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
 const props = defineProps({
   skipAnimation: {
     type: Boolean,
-    default: false,
+    default: true,
   },
 });
 
@@ -29,12 +29,13 @@ let bloomPass: UnrealBloomPass;
 let smaaPass: SMAAPass;
 let animationFrameId: number;
 let planeGeometry: THREE.PlaneGeometry; // Keep geometry for calculations
-let lineMesh: THREE.LineSegments; // Added LineSegments mesh
+let lineMesh1: THREE.LineSegments; // First grid mesh
+let lineMesh2: THREE.LineSegments; // Second grid mesh
 let sunMesh: THREE.Mesh;
 
 // Animation variables
 let clock: THREE.Clock;
-const animationDuration = 40; // seconds
+const animationDuration = 60; // seconds
 const sunStartY = -24;
 const sunEndY = 7;
 const gridStartColor = new THREE.Color(0x000000); // Black
@@ -55,10 +56,13 @@ let initialBloomStrength: number;
 let initialBloomRadius: number;
 
 // Wave parameters
-const waveFrequency = 0.1;
-const waveAmplitude = 0.5;
+const waveFrequency = (3 * Math.PI) / 100; // Adjusted for periodicity over planeSize
+const waveAmplitude = 1;
 const waveSpeed = 0.5;
-const scrollSpeed = 0.5; // Speed the grid appears to move towards camera
+const scrollSpeed = 2.0; // Or your preferred speed
+
+// Grid parameters
+const planeSize = 200;
 
 // --- Shaders for the Sun ---
 const sunVertexShader = `
@@ -143,11 +147,8 @@ function updateAnimationState(progress: number) {
   sunMesh.position.y = THREE.MathUtils.lerp(sunStartY, sunEndY, easedProgress);
 
   // Animate Grid Color
-  let gridProgress = 0;
-  if (progress >= 0.25) {
-    gridProgress = (progress - 0.25) / (1.0 - 0.25);
-  }
-  lineMaterial.color.lerpColors(gridStartColor, gridEndColor, gridProgress);
+
+  lineMaterial.color.lerpColors(gridStartColor, gridEndColor, progress);
 
   // Animate Background Color
   const bgCurrentColor = new THREE.Color();
@@ -186,33 +187,33 @@ function updateAnimationState(progress: number) {
   // --- Wave/Scroll logic removed from this function ---
 }
 
-// Function to ONLY update grid waves and scroll based on elapsed time
-function updateGridWaves(elapsedTime: number) {
+// Function to ONLY update grid waves based on vertex Z and TOTAL scroll offset
+function updateGridWaves(totalScrollOffset: number) {
   if (planePositionAttribute && originalPlaneYPositions) {
     const planePosArray = planePositionAttribute.array as Float32Array;
-    const scrollOffset = elapsedTime * scrollSpeed;
 
     for (let i = 0; i < planePositionAttribute.count; i++) {
-      const x = planePosArray[i * 3 + 0]; // World X
-      const z = planePosArray[i * 3 + 2]; // World Z (since rotated)
+      const x = planePosArray[i * 3 + 0];
+      const z = planePosArray[i * 3 + 2];
       const originalY = originalPlaneYPositions[i];
+      const waveInputZ = z + totalScrollOffset;
+      const elapsedTimeEquivalent = totalScrollOffset / scrollSpeed;
 
-      // Calculate wave input Z, offset by scroll amount
-      const waveInputZ = z + scrollOffset;
-
-      // Calculate wave offset based on X, scrolled Z, and time
+      // --- Modified Complex Wave Calculation ---
+      // Removed '* 0.5' from the cos term's frequency component
       const waveOffset =
-        Math.sin(x * waveFrequency + elapsedTime * waveSpeed) *
+        Math.sin(x * waveFrequency + elapsedTimeEquivalent * waveSpeed) *
         Math.cos(
-          waveInputZ * waveFrequency * 0.5 + elapsedTime * waveSpeed * 0.3
+          waveInputZ * waveFrequency + elapsedTimeEquivalent * waveSpeed * 0.3 // Use waveFrequency directly
         ) *
         waveAmplitude;
+      // --- End Wave Calculation ---
 
-      // Update the Y position in the plane's buffer
       planePosArray[i * 3 + 1] = originalY + waveOffset;
     }
-    planePositionAttribute.needsUpdate = true;
+    planePositionAttribute.needsUpdate = true; // Mark calculation buffer
     if (linePositionAttribute) {
+      // Copy updated positions to the single line geometry buffer
       (linePositionAttribute.array as Float32Array).set(planePosArray);
       linePositionAttribute.needsUpdate = true;
     }
@@ -266,7 +267,7 @@ onMounted(() => {
   sunMesh.position.set(0, sunStartY, -15); // Start below horizon
   scene.add(sunMesh);
 
-  // 2. Grid Lines (using LineSegments based on PlaneGeometry)
+  // 2. Grid Lines (using TWO LineSegments based on ONE PlaneGeometry)
   const planeSize = 200;
   const planeSegmentsW = 80; // Width segments
   const planeSegmentsH = 80; // Height segments
@@ -325,10 +326,16 @@ onMounted(() => {
     color: gridStartColor, // Start black
   });
 
-  // Create the LineSegments mesh
-  lineMesh = new THREE.LineSegments(lineGeom, lineMaterial);
-  lineMesh.position.y = 0; // Position at Y=0
-  scene.add(lineMesh);
+  // Create TWO LineSegments meshes using the same geometry and material
+  lineMesh1 = new THREE.LineSegments(lineGeom, lineMaterial);
+  lineMesh1.position.y = 0;
+  lineMesh1.position.z = 0; // Start at origin
+  scene.add(lineMesh1);
+
+  lineMesh2 = new THREE.LineSegments(lineGeom, lineMaterial);
+  lineMesh2.position.y = 0;
+  lineMesh2.position.z = -planeSize; // Start one planeSize behind
+  scene.add(lineMesh2);
 
   // --- Post-processing Setup (Single Bloom) ---
   composer = new EffectComposer(renderer);
@@ -360,17 +367,20 @@ onMounted(() => {
     // --- Skip Animation (but keep waves/scroll) ---
     updateAnimationState(1.0); // Set sun, colors, bloom to final state
 
-    // Start a simplified animation loop JUST for waves/scroll AND mesh movement
+    // Start a simplified animation loop JUST for waves/scroll AND mesh leapfrogging
     const animateWavesOnly = () => {
       animationFrameId = requestAnimationFrame(animateWavesOnly);
       const elapsedTime = clock.getElapsedTime(); // Get real time
+      const totalScrollOffset = elapsedTime * scrollSpeed; // Calculate total scroll
 
-      // Update waves based on vertex positions relative to mesh origin
-      updateGridWaves(elapsedTime);
+      // Update waves based on vertex positions and TOTAL scroll offset
+      // This updates the buffer shared by both meshes
+      updateGridWaves(totalScrollOffset);
 
-      // Move the entire mesh along Z-axis
-      // Negative Z moves away from camera, simulating camera moving forward
-      lineMesh.position.z = elapsedTime * scrollSpeed; // CORRECTED SIGN
+      // Move the meshes along Z-axis using MODULO for wrapping the PAIR
+      const currentZ = totalScrollOffset % planeSize;
+      lineMesh1.position.z = currentZ;
+      lineMesh2.position.z = currentZ - planeSize; // Keep mesh2 exactly one planeSize behind
 
       composer.render(); // Render the scene
     };
@@ -381,12 +391,16 @@ onMounted(() => {
       animationFrameId = requestAnimationFrame(animate);
       const elapsedTime = clock.getElapsedTime();
       const progress = Math.min(elapsedTime / animationDuration, 1.0);
+      const totalScrollOffset = elapsedTime * scrollSpeed; // Calculate total scroll
 
-      updateAnimationState(progress); // RESTORED CALL
-      updateGridWaves(elapsedTime); // Update waves and scroll based on real time
+      updateAnimationState(progress); // Update sun, colors, bloom based on progress
+      // Update waves based on vertex positions and TOTAL scroll offset
+      updateGridWaves(totalScrollOffset);
 
-      // Move the entire mesh along Z-axis
-      lineMesh.position.z = elapsedTime * scrollSpeed;
+      // Move the meshes along Z-axis using MODULO for wrapping the PAIR
+      const currentZ = totalScrollOffset % planeSize;
+      lineMesh1.position.z = currentZ;
+      lineMesh2.position.z = currentZ - planeSize; // Keep mesh2 exactly one planeSize behind
 
       composer.render();
     };

@@ -18,6 +18,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  lowResolution: { // Added new prop
+    type: Boolean,
+    default: false,
+  },
 });
 
 const container = ref<HTMLDivElement | null>(null);
@@ -277,8 +281,13 @@ onMounted(() => {
 
   clock = new THREE.Clock();
 
-  const width = container.value.clientWidth;
-  const height = container.value.clientHeight;
+  let width = container.value.clientWidth;
+  let height = container.value.clientHeight;
+
+  if (props.lowResolution) {
+    width /= 2;
+    height /= 2;
+  }
 
   // Scene setup
   scene = new THREE.Scene();
@@ -292,6 +301,7 @@ onMounted(() => {
   // Renderer setup
   renderer = new THREE.WebGLRenderer({
     antialias: true,
+    powerPreference: 'high-performance', // Added to suggest using high performance GPU
   });
   renderer.setSize(width, height);
   renderer.toneMapping = THREE.ReinhardToneMapping;
@@ -395,8 +405,13 @@ onMounted(() => {
   composer.addPass(renderPass);
 
   // SMAA Pass (before Bloom)
-  smaaPass = new SMAAPass();
+  smaaPass = new SMAAPass(); // SMAAPass might need dimensions at initialization or update
   composer.addPass(smaaPass);
+  // Update SMAAPass size if necessary, especially if props.lowResolution is true
+  if (props.lowResolution) {
+    const pixelRatio = renderer.getPixelRatio(); // Consider pixel ratio for SMAA pass
+    smaaPass.setSize(width * pixelRatio, height * pixelRatio);
+  }
 
   // Bloom Pass (after SMAA)
   bloomPass = new UnrealBloomPass(
@@ -461,8 +476,13 @@ onMounted(() => {
   // Handle resize
   const handleResize = () => {
     if (!container.value) return;
-    const newWidth = container.value.clientWidth;
-    const newHeight = container.value.clientHeight;
+    let newWidth = container.value.clientWidth;
+    let newHeight = container.value.clientHeight;
+
+    if (props.lowResolution) {
+      newWidth /= 2;
+      newHeight /= 2;
+    }
 
     camera.aspect = newWidth / newHeight;
     camera.updateProjectionMatrix();
@@ -494,10 +514,16 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
+<style>
 .synthwave-container {
   width: 100%;
   height: 100vh; /* Make it full viewport height */
   overflow: hidden; /* Prevent scrollbars */
+}
+
+.synthwave-container canvas { /* Added to scale canvas if rendered at lower res */
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
 }
 </style>

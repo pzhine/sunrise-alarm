@@ -1,4 +1,5 @@
 <template>
+  <SynthwaveSunrise :skip-animation="true" />
   <div
     class="p-8"
     @mousedown.right="goToMenu"
@@ -16,6 +17,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAppStore } from '../stores/appState';
 import { isGlobalSoundPlaying } from '../services/audioService';
+import SynthwaveSunrise from '../animations/SynthwaveSunrise.vue';
 
 const router = useRouter();
 const appStore = useAppStore();

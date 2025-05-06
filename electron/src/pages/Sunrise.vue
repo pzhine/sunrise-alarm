@@ -5,14 +5,13 @@
       :showBackButton="true"
       :showTitle="true"
       title="Sunrise Settings"
-      @select="handleMenuSelection"
       @back="router.push('/menu')"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import InteractiveList from '../components/InteractiveList.vue';
 import { useAppStore } from '../stores/appState';
@@ -30,13 +29,6 @@ const formatDuration = (seconds: number): string => {
 // Define menu items with their current values
 const menuItems = computed(() => {
   const items = [
-    // {
-    //   label: 'Load Timeline',
-    //   value: appStore.sunriseTimeline.length
-    //     ? `${appStore.sunriseTimeline.length} steps loaded`
-    //     : 'Default',
-    //   onSelect: () => loadSunriseTimeline(),
-    // },
     {
       label: 'Duration',
       value: formatDuration(appStore.sunriseDuration),
@@ -50,21 +42,16 @@ const menuItems = computed(() => {
       onEdit: (increment: number) => adjustBrightness(increment),
     },
     {
-      label: appStore.sunriseActive ? 'Stop Sunrise' : 'Start Sunrise',
-      onSelect: () => toggleSunrise(),
+      label: 'Start Sunrise',
+      onSelect: () => startSunrise(),
     },
   ];
 
   return items;
 });
 
-// Toggle sunrise on/off
-const toggleSunrise = async () => {
-  if (appStore.sunriseTimeline.length === 0) {
-    // If no timeline is loaded, load the default one
-    await loadDefaultTimeline();
-  }
-  appStore.toggleSunriseActive();
+const startSunrise = async () => {
+  appStore.startSunrise();
 };
 
 // Adjust sunrise duration with the edit controls
@@ -79,40 +66,11 @@ const adjustDuration = (increment: number) => {
 
 // Adjust sunrise brightness with the edit controls
 const adjustBrightness = (increment: number) => {
-  let newBrightness = appStore.sunriseBrightness + increment; // Adjust in 1% increments
+  let newBrightness = appStore.sunriseBrightness + increment * 10; // Adjust in 10% increments
 
   // Ensure brightness is between 0% and 100%
   newBrightness = Math.max(0, Math.min(100, newBrightness));
 
   appStore.setSunriseBrightness(newBrightness);
 };
-
-// Load the default timeline example
-const loadDefaultTimeline = async () => {
-  try {
-    const timeline = await window.ipcRenderer.invoke(
-      'load-default-sunrise-timeline'
-    );
-    if (timeline && timeline.length > 0) {
-      appStore.sunriseTimeline = timeline;
-      return true;
-    }
-    return false;
-  } catch (error) {
-    console.error('Failed to load default sunrise timeline:', error);
-    return false;
-  }
-};
-
-// Handle menu item selection
-const handleMenuSelection = (item: any) => {
-  // The onSelect handler will be called automatically by the InteractiveList component
-};
-
-onMounted(async () => {
-  // If no timeline is loaded yet, try to load the default one
-  if (appStore.sunriseTimeline.length === 0) {
-    await loadDefaultTimeline();
-  }
-});
 </script>

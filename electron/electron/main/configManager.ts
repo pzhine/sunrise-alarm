@@ -22,7 +22,8 @@ export interface AppConfig {
     cliPath: string;
     boardType: string; // fqbn
     port: string;
-  }
+    mockSerialInDev: boolean; // Use mock serial port in dev mode
+  };
 }
 
 // Configuration object that will be loaded from config.json

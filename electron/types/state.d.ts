@@ -56,7 +56,6 @@ export interface AppState {
   projectorPreview: RGBW[]; // Store LED color settings as an array of RGBW values
   sunriseDuration: number;
   sunriseActive: boolean;
-  sunriseTimeline: SunriseStep[];
   sunriseBrightness: number; // Global brightness for sunrise (0-100)
 }
 

@@ -26,7 +26,6 @@ export const useAppStore = defineStore('appState', {
     // Add new sunrise-related state properties
     sunriseDuration: 600, // Default: 10 minutes in seconds
     sunriseActive: false,
-    sunriseTimeline: [],
     sunriseBrightness: 100, // Default: 100% brightness
   }),
 
@@ -222,33 +221,37 @@ export const useAppStore = defineStore('appState', {
     },
 
     // Toggle sunrise active state
-    toggleSunriseActive(): void {
-      this.sunriseActive = !this.sunriseActive;
-      // When activating, send IPC message to start sunrise playback
-      if (this.sunriseActive) {
-        // First set the brightness level for the sunrise
-        window.ipcRenderer
-          .invoke('set-strip-brightness', this.sunriseBrightness)
-          .then(() => {
-            // Then start the sunrise with the current duration
-            window.ipcRenderer.invoke(
-              'start-sunrise',
-              'default',
-              this.sunriseDuration
-            );
-          })
-          .catch((error) => {
-            console.error('Failed to set brightness:', error);
-            // Continue with sunrise even if brightness setting fails
-            window.ipcRenderer.invoke(
-              'start-sunrise',
-              'default',
-              this.sunriseDuration
-            );
-          });
-      } else {
-        // When deactivating, send IPC message to stop sunrise playback
-        window.ipcRenderer.invoke('stop-sunrise');
+    async startSunrise() {
+      // First set the brightness level for the sunrise
+      try {
+        await window.ipcRenderer.invoke(
+          'set-strip-brightness',
+          this.sunriseBrightness
+        );
+      } catch (error) {
+        console.error('Failed to set brightness:', error);
+      }
+      // Then start the sunrise with the current duration
+      try {
+        const started = await window.ipcRenderer.invoke(
+          'start-sunrise',
+          this.sunriseDuration
+        );
+        if (started) {
+          this.sunriseActive = true;
+        }
+      } catch (error) {
+        console.error('Failed to start sunrise:', error);
+      }
+
+      // When deactivating, send IPC message to stop sunrise playback
+    },
+
+    async stopSunrise() {
+      try {
+        await window.ipcRenderer.invoke('stop-sunrise');
+      } catch (error) {
+        console.error('Failed to stop sunrise:', error);
       }
     },
 

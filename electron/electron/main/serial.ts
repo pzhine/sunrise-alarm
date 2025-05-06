@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
 import { SerialPort, ReadlineParser } from 'serialport';
+import { getConfig } from './configManager';
 
 const MAX_RETRIES = 4;
 const MESSAGE_INTERVAL = 300;
@@ -59,7 +60,7 @@ export async function closeSerialPorts(): Promise<void> {
 messageQueueInterval = setInterval(processMessageQueue, MESSAGE_INTERVAL);
 
 export function startSerialComms() {
-  if (process.env.VITE_DEV_SERVER_URL) {
+  if (process.env.VITE_DEV_SERVER_URL && getConfig().arduino.mockSerialInDev) {
     console.log(
       '[serial] Skipping serial port initialization in development mode'
     );

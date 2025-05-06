@@ -265,23 +265,6 @@ export async function installUpdateAndRestart(releasePath: string) {
       fs.mkdirSync(installDir, { recursive: true });
     }
 
-    // create or overwrite the default sunrise timeline file
-    const defaultTimelinePath = path.join(
-      app.getPath('userData'),
-      'sunrise-data',
-      'default.json'
-    );
-    const exampleTimelinePath = path.join(
-      releasePath,
-      '..',
-      '..',
-      'sunrise.example.json'
-    );
-    console.log(
-      `Copying timeline from ${exampleTimelinePath} to ${defaultTimelinePath}`
-    );
-    fs.copyFileSync(exampleTimelinePath, defaultTimelinePath);
-
     // Create a shell script that will be fully independent of the parent process
     const scriptPath = path.join(app.getPath('temp'), 'update-and-restart.sh');
     const scriptContent = `#!/bin/bash

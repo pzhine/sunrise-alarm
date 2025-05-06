@@ -1,5 +1,4 @@
 <template>
-  <SynthwaveSunrise :skip-animation="true" />
   <div
     class="p-8"
     @mousedown.right="goToMenu"

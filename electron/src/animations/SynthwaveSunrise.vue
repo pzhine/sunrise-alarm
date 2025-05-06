@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, defineProps } from 'vue';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -12,26 +12,37 @@ import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
 
+// Define props
+const props = defineProps({
+  skipAnimation: {
+    type: Boolean,
+    default: false,
+  },
+});
+
 const container = ref<HTMLDivElement | null>(null);
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let renderer: THREE.WebGLRenderer;
-let composer: EffectComposer; // Single composer for combined bloom
+let composer: EffectComposer;
 let bloomPass: UnrealBloomPass;
 let smaaPass: SMAAPass;
 let animationFrameId: number;
-let gridHelper: THREE.GridHelper;
+let planeGeometry: THREE.PlaneGeometry; // Keep geometry for calculations
+let lineMesh: THREE.LineSegments; // Added LineSegments mesh
 let sunMesh: THREE.Mesh;
-const gridCellSize = 2.5;
 
 // Animation variables
 let clock: THREE.Clock;
-const animationDuration = 60; // seconds
-const sunStartY = -10;
+const animationDuration = 40; // seconds
+const sunStartY = -24;
 const sunEndY = 7;
 const gridStartColor = new THREE.Color(0x000000); // Black
-const gridEndColor = new THREE.Color(0x00ffff); // Cyan
-let gridColorAttribute: THREE.BufferAttribute | null = null; // To store color buffer
+const gridEndColor = new THREE.Color(0x009999); // Cyan
+let planePositionAttribute: THREE.BufferAttribute | null = null; // From invisible plane
+let linePositionAttribute: THREE.BufferAttribute | null = null; // For visible lines
+let originalPlaneYPositions: Float32Array | null = null;
+let lineMaterial: THREE.LineBasicMaterial; // Changed material reference
 
 // Background Color Animation
 const bgColorStart = new THREE.Color(0x000000); // Black
@@ -42,6 +53,12 @@ const bgColorEnd = new THREE.Color(0x00567a); // Sky Blue
 // Bloom Animation
 let initialBloomStrength: number;
 let initialBloomRadius: number;
+
+// Wave parameters
+const waveFrequency = 0.1;
+const waveAmplitude = 0.5;
+const waveSpeed = 0.5;
+const scrollSpeed = 0.5; // Speed the grid appears to move towards camera
 
 // --- Shaders for the Sun ---
 const sunVertexShader = `
@@ -114,14 +131,98 @@ void main() {
 `;
 
 // Helper function for Cubic Ease-Out
-function easeOutQuint(t: number): number {
-  return 1 - Math.pow(1 - t, 5);
+function easeOutQuart(t: number): number {
+  return 1 - Math.pow(1 - t, 4);
+}
+
+// Function to update animation state based on progress (Handles Sun, Colors, Bloom)
+function updateAnimationState(progress: number) {
+  const easedProgress = easeOutQuart(progress);
+
+  // Animate Sun Position
+  sunMesh.position.y = THREE.MathUtils.lerp(sunStartY, sunEndY, easedProgress);
+
+  // Animate Grid Color
+  let gridProgress = 0;
+  if (progress >= 0.25) {
+    gridProgress = (progress - 0.25) / (1.0 - 0.25);
+  }
+  lineMaterial.color.lerpColors(gridStartColor, gridEndColor, gridProgress);
+
+  // Animate Background Color
+  const bgCurrentColor = new THREE.Color();
+  if (progress < 0.22) {
+    const phaseProgress = progress / 0.22;
+    bgCurrentColor.lerpColors(bgColorStart, bgColorMid1, phaseProgress);
+  } else if (progress < 0.35) {
+    const phaseProgress = (progress - 0.22) / 0.22;
+    bgCurrentColor.lerpColors(bgColorMid1, bgColorMid2, phaseProgress);
+  } else {
+    const phaseProgress = (progress - 0.44) / 0.64;
+    bgCurrentColor.lerpColors(bgColorMid2, bgColorEnd, phaseProgress);
+  }
+  if (scene.background instanceof THREE.Color) {
+    scene.background.copy(bgCurrentColor);
+  }
+
+  // Animate Bloom
+  if (progress >= 0.75) {
+    const bloomProgress = (progress - 0.75) / (1.0 - 0.75);
+    bloomPass.strength = THREE.MathUtils.lerp(
+      initialBloomStrength,
+      initialBloomStrength * 0.5,
+      bloomProgress
+    );
+    bloomPass.radius = THREE.MathUtils.lerp(
+      initialBloomRadius,
+      initialBloomRadius * 0.5,
+      bloomProgress
+    );
+  } else {
+    bloomPass.strength = initialBloomStrength;
+    bloomPass.radius = initialBloomRadius;
+  }
+
+  // --- Wave/Scroll logic removed from this function ---
+}
+
+// Function to ONLY update grid waves and scroll based on elapsed time
+function updateGridWaves(elapsedTime: number) {
+  if (planePositionAttribute && originalPlaneYPositions) {
+    const planePosArray = planePositionAttribute.array as Float32Array;
+    const scrollOffset = elapsedTime * scrollSpeed;
+
+    for (let i = 0; i < planePositionAttribute.count; i++) {
+      const x = planePosArray[i * 3 + 0]; // World X
+      const z = planePosArray[i * 3 + 2]; // World Z (since rotated)
+      const originalY = originalPlaneYPositions[i];
+
+      // Calculate wave input Z, offset by scroll amount
+      const waveInputZ = z + scrollOffset;
+
+      // Calculate wave offset based on X, scrolled Z, and time
+      const waveOffset =
+        Math.sin(x * waveFrequency + elapsedTime * waveSpeed) *
+        Math.cos(
+          waveInputZ * waveFrequency * 0.5 + elapsedTime * waveSpeed * 0.3
+        ) *
+        waveAmplitude;
+
+      // Update the Y position in the plane's buffer
+      planePosArray[i * 3 + 1] = originalY + waveOffset;
+    }
+    planePositionAttribute.needsUpdate = true;
+    if (linePositionAttribute) {
+      (linePositionAttribute.array as Float32Array).set(planePosArray);
+      linePositionAttribute.needsUpdate = true;
+    }
+  }
 }
 
 onMounted(() => {
   if (!container.value) return;
 
-  clock = new THREE.Clock(); // Initialize clock
+  clock = new THREE.Clock();
 
   const width = container.value.clientWidth;
   const height = container.value.clientHeight;
@@ -129,7 +230,6 @@ onMounted(() => {
   // Scene setup
   scene = new THREE.Scene();
   scene.background = bgColorStart.clone(); // Start with black background
-  // scene.fog = new THREE.FogExp2(0x2c003e, 0.05); // Fog might interfere, removed for now
 
   // Camera setup
   camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
@@ -139,9 +239,7 @@ onMounted(() => {
   // Renderer setup
   renderer = new THREE.WebGLRenderer({
     antialias: true,
-    // alpha: false, // Disable transparency if background color is used
   });
-  // renderer.setClearColor(0x000000, 0); // Remove transparent clear color
   renderer.setSize(width, height);
   renderer.toneMapping = THREE.ReinhardToneMapping;
   container.value.appendChild(renderer.domElement);
@@ -168,14 +266,69 @@ onMounted(() => {
   sunMesh.position.set(0, sunStartY, -15); // Start below horizon
   scene.add(sunMesh);
 
-  // 2. Grid
-  gridHelper = new THREE.GridHelper(200, 80, gridStartColor, gridStartColor); // Start black
-  gridHelper.position.y = 0;
-  // Get the color attribute buffer
-  gridColorAttribute = gridHelper.geometry.getAttribute(
-    'color'
+  // 2. Grid Lines (using LineSegments based on PlaneGeometry)
+  const planeSize = 200;
+  const planeSegmentsW = 80; // Width segments
+  const planeSegmentsH = 80; // Height segments
+  // Create PlaneGeometry only for vertex calculations
+  planeGeometry = new THREE.PlaneGeometry(
+    planeSize,
+    planeSize,
+    planeSegmentsW,
+    planeSegmentsH
+  );
+  planeGeometry.rotateX(-Math.PI / 2); // Rotate to lie flat initially
+
+  // Get position data from the calculation geometry
+  planePositionAttribute = planeGeometry.getAttribute(
+    'position'
   ) as THREE.BufferAttribute;
-  scene.add(gridHelper);
+  originalPlaneYPositions = new Float32Array(planePositionAttribute.count);
+  for (let i = 0; i < planePositionAttribute.count; i++) {
+    originalPlaneYPositions[i] = planePositionAttribute.getY(i); // Store original world Y (which is 0)
+  }
+
+  // Create geometry for the visible lines
+  const lineGeom = new THREE.BufferGeometry();
+  // Create and copy initial positions for the line geometry
+  const linePositions = new Float32Array(planePositionAttribute.array.length);
+  linePositions.set(planePositionAttribute.array);
+  linePositionAttribute = new THREE.BufferAttribute(linePositions, 3);
+  lineGeom.setAttribute('position', linePositionAttribute);
+
+  // Generate indices for horizontal and vertical lines ONLY
+  const indices = [];
+  const w = planeSegmentsW;
+  const h = planeSegmentsH;
+  for (let j = 0; j <= h; j++) {
+    // Rows
+    for (let i = 0; i < w; i++) {
+      // Columns
+      const idx1 = j * (w + 1) + i;
+      const idx2 = idx1 + 1;
+      indices.push(idx1, idx2); // Horizontal segment
+    }
+  }
+  for (let i = 0; i <= w; i++) {
+    // Columns
+    for (let j = 0; j < h; j++) {
+      // Rows
+      const idx1 = j * (w + 1) + i;
+      const idx2 = idx1 + (w + 1);
+      indices.push(idx1, idx2); // Vertical segment
+    }
+  }
+  lineGeom.setIndex(indices);
+
+  // Create material for the lines
+  lineMaterial = new THREE.LineBasicMaterial({
+    color: gridStartColor, // Start black
+  });
+
+  // Create the LineSegments mesh
+  lineMesh = new THREE.LineSegments(lineGeom, lineMaterial);
+  lineMesh.position.y = 0; // Position at Y=0
+  scene.add(lineMesh);
 
   // --- Post-processing Setup (Single Bloom) ---
   composer = new EffectComposer(renderer);
@@ -203,86 +356,42 @@ onMounted(() => {
   copyPass.renderToScreen = true;
   composer.addPass(copyPass);
 
-  // --- Animation Loop ---
-  const animate = () => {
-    animationFrameId = requestAnimationFrame(animate);
+  if (props.skipAnimation) {
+    // --- Skip Animation (but keep waves/scroll) ---
+    updateAnimationState(1.0); // Set sun, colors, bloom to final state
 
-    const elapsedTime = clock.getElapsedTime();
-    const progress = Math.min(elapsedTime / animationDuration, 1.0);
-    const easedProgress = easeOutQuint(progress); // Apply easing function
+    // Start a simplified animation loop JUST for waves/scroll AND mesh movement
+    const animateWavesOnly = () => {
+      animationFrameId = requestAnimationFrame(animateWavesOnly);
+      const elapsedTime = clock.getElapsedTime(); // Get real time
 
-    // Animate Sun Position using eased progress
-    sunMesh.position.y = THREE.MathUtils.lerp(
-      sunStartY,
-      sunEndY,
-      easedProgress
-    );
+      // Update waves based on vertex positions relative to mesh origin
+      updateGridWaves(elapsedTime);
 
-    // Animate Grid Color (starting at 25% progress)
-    if (gridColorAttribute) {
-      let gridProgress = 0; // Default to start color
-      if (progress >= 0.25) {
-        // Map the range [0.25, 1.0] to [0.0, 1.0]
-        gridProgress = (progress - 0.25) / (1.0 - 0.25);
-      }
-      const currentColor = new THREE.Color().lerpColors(
-        gridStartColor,
-        gridEndColor,
-        gridProgress // Use the adjusted progress
-      );
-      const colorArray = gridColorAttribute.array;
-      for (let i = 0; i < colorArray.length; i += 3) {
-        colorArray[i] = currentColor.r;
-        colorArray[i + 1] = currentColor.g;
-        colorArray[i + 2] = currentColor.b;
-      }
-      gridColorAttribute.needsUpdate = true; // IMPORTANT: Tell Three.js to update the buffer
-    }
+      // Move the entire mesh along Z-axis
+      // Negative Z moves away from camera, simulating camera moving forward
+      lineMesh.position.z = elapsedTime * scrollSpeed; // CORRECTED SIGN
 
-    // Animate Background Color
-    const bgCurrentColor = new THREE.Color();
-    if (progress < 0.33) {
-      const phaseProgress = progress / 0.33;
-      bgCurrentColor.lerpColors(bgColorStart, bgColorMid1, phaseProgress);
-    } else if (progress < 0.55) {
-      const phaseProgress = (progress - 0.22) / 0.22;
-      bgCurrentColor.lerpColors(bgColorMid1, bgColorMid2, phaseProgress);
-    } else {
-      const phaseProgress = (progress - 0.66) / 0.44; // Adjust denominator slightly
-      bgCurrentColor.lerpColors(bgColorMid2, bgColorEnd, phaseProgress);
-    }
-    if (scene.background instanceof THREE.Color) {
-      scene.background.copy(bgCurrentColor);
-    }
+      composer.render(); // Render the scene
+    };
+    animateWavesOnly(); // Start the wave-only loop
+  } else {
+    // --- Start Full Animation Loop ---
+    const animate = () => {
+      animationFrameId = requestAnimationFrame(animate);
+      const elapsedTime = clock.getElapsedTime();
+      const progress = Math.min(elapsedTime / animationDuration, 1.0);
 
-    // Animate Bloom (last 25%)
-    if (progress >= 0.75) {
-      // Map the range [0.75, 1.0] to [0.0, 1.0]
-      const bloomProgress = (progress - 0.75) / (1.0 - 0.75);
-      bloomPass.strength = THREE.MathUtils.lerp(
-        initialBloomStrength,
-        initialBloomStrength * 0.5,
-        bloomProgress
-      );
-      bloomPass.radius = THREE.MathUtils.lerp(
-        initialBloomRadius,
-        initialBloomRadius * 0.5,
-        bloomProgress
-      );
-    } else {
-      // Ensure bloom is at initial values before 75%
-      bloomPass.strength = initialBloomStrength;
-      bloomPass.radius = initialBloomRadius;
-    }
+      updateAnimationState(progress); // RESTORED CALL
+      updateGridWaves(elapsedTime); // Update waves and scroll based on real time
 
-    // Animate grid scrolling
-    gridHelper.position.z = (gridHelper.position.z + 0.01) % gridCellSize;
+      // Move the entire mesh along Z-axis
+      lineMesh.position.z = elapsedTime * scrollSpeed;
 
-    // Render scene with post-processing
-    composer.render();
-  };
-
-  animate();
+      composer.render();
+    };
+    animate(); // Start the full loop
+  }
 
   // Handle resize
   const handleResize = () => {
@@ -313,9 +422,9 @@ onMounted(() => {
     composer?.dispose();
     sunGeometry?.dispose();
     sunMaterial?.dispose();
-    gridHelper?.geometry?.dispose();
-    (gridHelper?.material as THREE.Material)?.dispose();
-    // Dispose passes if necessary (usually handled by composer)
+    planeGeometry?.dispose(); // Dispose calculation geometry
+    lineGeom?.dispose(); // Dispose line geometry
+    lineMaterial?.dispose(); // Dispose line material
   });
 });
 </script>

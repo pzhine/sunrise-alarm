@@ -21,6 +21,76 @@ let animationFrameId: number;
 let gridHelper: THREE.GridHelper;
 const gridCellSize = 2.5; // Calculate cell size: 200 / 80
 
+// --- Shaders for the Sun ---
+const sunVertexShader = `
+varying vec2 vUv;
+varying vec3 vWorldPosition;
+
+void main() {
+  vUv = uv;
+  vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+  vWorldPosition = worldPosition.xyz;
+  gl_Position = projectionMatrix * viewMatrix * worldPosition;
+}
+`;
+
+const sunFragmentShader = `
+varying vec2 vUv;
+varying vec3 vWorldPosition; // Receive world position
+
+uniform vec3 topColor;
+uniform vec3 bottomColor;
+uniform float numStripes;
+uniform float maxStripeThickness;
+uniform float minStripeThickness;
+uniform float stripeCutoff;
+uniform float horizonYLevel; // Add uniform for horizon Y level
+
+void main() {
+  // Discard fragments below the horizon line
+  if (vWorldPosition.y < horizonYLevel) {
+    discard;
+  }
+
+  // Calculate distance from center (0.5, 0.5) in UV space
+  float dist = distance(vUv, vec2(0.5));
+
+  // Discard fragments outside the circle radius (0.5)
+  if (dist > 0.5) {
+    discard;
+  }
+
+  // Calculate gradient color based on vertical position (vUv.y)
+  float gradientY = clamp(vUv.y, 0.0, 1.0);
+  vec3 gradientColor = mix(bottomColor, topColor, gradientY);
+
+  // Calculate stripes only below the cutoff
+  float stripeAlpha = 1.0; // Default to solid color (no stripe)
+  if (vUv.y < stripeCutoff) {
+    // Calculate varying stripe thickness based on vertical position
+    float currentStripeThickness = mix(maxStripeThickness, minStripeThickness, vUv.y / stripeCutoff);
+    float stripePattern = fract(vUv.y * numStripes);
+    stripeAlpha = step(currentStripeThickness, stripePattern);
+  }
+
+  // Apply stripe transparency
+  vec3 finalColor = gradientColor;
+  float finalAlpha = 1.0;
+
+  if (stripeAlpha < 1.0) { // If it's a stripe area
+      finalColor = vec3(0.0); // Make stripe black/transparent
+      finalAlpha = 0.0;
+  }
+
+  // Discard fully transparent fragments
+  if (finalAlpha < 0.01) {
+      discard;
+  }
+
+  gl_FragColor = vec4(finalColor, finalAlpha);
+}
+`;
+
 onMounted(() => {
   if (!container.value) return;
 
@@ -65,11 +135,25 @@ onMounted(() => {
   // --- Add Synthwave Elements ---
 
   // 1. Sun
-  const sunGeometry = new THREE.CircleGeometry(1.5, 64); // Increased radius
-  // Basic pink material for now, shader needed for gradient + lines
-  const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xff61a6 });
+  const sunGeometry = new THREE.CircleGeometry(10, 64);
+  const sunMaterial = new THREE.ShaderMaterial({
+    vertexShader: sunVertexShader,
+    fragmentShader: sunFragmentShader,
+    uniforms: {
+      topColor: { value: new THREE.Color(0xff61a6) }, // Pink
+      bottomColor: { value: new THREE.Color(0xffa74f) }, // Orange
+      numStripes: { value: 10.0 }, // Number of stripes
+      maxStripeThickness: { value: 0.8 }, // Thickest stripe at bottom (0.0-1.0)
+      minStripeThickness: { value: 0.2 }, // Thinnest stripe at top (0.0-1.0)
+      stripeCutoff: { value: 0.75 }, // Stop stripes at 75% height (0.0-1.0)
+      horizonYLevel: { value: 0.0 }, // Set horizon level to grid's Y position
+    },
+    transparent: true, // Enable transparency for the stripes/edges
+    depthWrite: false, // Disable depth writing for correct layering
+  });
   const sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
-  sunMesh.position.set(0, 2, -15); // Position sun further back
+  sunMesh.position.set(0, 2, -15);
+  // sunMesh.renderOrder = 1; // No longer strictly needed with shader masking
   scene.add(sunMesh);
 
   // 2. Grid
@@ -84,7 +168,7 @@ onMounted(() => {
   scene.add(gridHelper);
 
   // Adjust camera lookAt
-  camera.lookAt(0, 0, -1); // Look towards the negative Z direction (horizon)
+  camera.lookAt(0, 1.5, -1);
 
   // Animation loop
   const animate = () => {

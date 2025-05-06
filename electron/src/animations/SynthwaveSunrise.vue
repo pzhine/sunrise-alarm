@@ -8,18 +8,30 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js'; // Import SMAAPass
+import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
 
 const container = ref<HTMLDivElement | null>(null);
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let renderer: THREE.WebGLRenderer;
-let composer: EffectComposer;
+let composer: EffectComposer; // Single composer for combined bloom
 let bloomPass: UnrealBloomPass;
-let smaaPass: SMAAPass; // Add variable for SMAAPass
+let smaaPass: SMAAPass;
 let animationFrameId: number;
 let gridHelper: THREE.GridHelper;
-const gridCellSize = 2.5; // Calculate cell size: 200 / 80
+let sunMesh: THREE.Mesh;
+const gridCellSize = 2.5;
+
+// Animation variables
+let clock: THREE.Clock;
+const animationDuration = 30; // seconds
+const sunStartY = -12;
+const sunEndY = 28;
+const gridStartColor = new THREE.Color(0x000000); // Black
+const gridEndColor = new THREE.Color(0x00ffff); // Cyan
+let gridColorAttribute: THREE.BufferAttribute | null = null; // To store color buffer
 
 // --- Shaders for the Sun ---
 const sunVertexShader = `
@@ -94,90 +106,116 @@ void main() {
 onMounted(() => {
   if (!container.value) return;
 
-  // Scene setup
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x6d005f); // Dark purple background
-  scene.fog = new THREE.FogExp2(0x2c003e, 0.05); // Add exponential fog matching background
+  clock = new THREE.Clock(); // Initialize clock
 
-  // Camera setup
   const width = container.value.clientWidth;
   const height = container.value.clientHeight;
+
+  // Scene setup
+  scene = new THREE.Scene();
+  scene.background = null; // Transparent background
+  scene.fog = new THREE.FogExp2(0x2c003e, 0.05);
+
+  // Camera setup
   camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-  // Move camera up and slightly back, looking down towards the horizon
   camera.position.set(0, 3, 10);
+  camera.lookAt(0, 1.5, -1); // Horizon low
 
   // Renderer setup
-  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: true, // Enable transparency
+  });
+  renderer.setClearColor(0x000000, 0); // Set clear color to transparent black
   renderer.setSize(width, height);
-  renderer.toneMapping = THREE.ReinhardToneMapping; // Add tone mapping for bloom
+  renderer.toneMapping = THREE.ReinhardToneMapping;
   container.value.appendChild(renderer.domElement);
 
-  // Post-processing Composer
-  composer = new EffectComposer(renderer);
-  const renderPass = new RenderPass(scene, camera);
-  composer.addPass(renderPass);
-
-  // SMAA Pass (Anti-aliasing)
-  // Get pixel ratio for high-DPI displays
-  const pixelRatio = renderer.getPixelRatio();
-  smaaPass = new SMAAPass(width * pixelRatio, height * pixelRatio);
-
-  // Bloom Pass (Glow Effect)
-  bloomPass = new UnrealBloomPass(
-    new THREE.Vector2(width, height),
-    1, // strength
-    0.2, // radius
-    0.05 // threshold - adjust this to control what glows
-  );
-  composer.addPass(bloomPass);
-  composer.addPass(smaaPass); // Add SMAA after bloom
-
-  // --- Add Synthwave Elements ---
-
+  // --- Create Objects ---
   // 1. Sun
-  const sunGeometry = new THREE.CircleGeometry(10, 64);
+  const sunGeometry = new THREE.CircleGeometry(8, 64);
   const sunMaterial = new THREE.ShaderMaterial({
     vertexShader: sunVertexShader,
     fragmentShader: sunFragmentShader,
     uniforms: {
-      topColor: { value: new THREE.Color(0xff61a6) }, // Pink
-      bottomColor: { value: new THREE.Color(0xffa74f) }, // Orange
-      numStripes: { value: 10.0 }, // Number of stripes
-      maxStripeThickness: { value: 0.8 }, // Thickest stripe at bottom (0.0-1.0)
-      minStripeThickness: { value: 0.2 }, // Thinnest stripe at top (0.0-1.0)
-      stripeCutoff: { value: 0.75 }, // Stop stripes at 75% height (0.0-1.0)
-      horizonYLevel: { value: 0.0 }, // Set horizon level to grid's Y position
+      topColor: { value: new THREE.Color(0xff61a6) },
+      bottomColor: { value: new THREE.Color(0xffa74f) },
+      numStripes: { value: 10.0 },
+      maxStripeThickness: { value: 0.8 },
+      minStripeThickness: { value: 0.2 },
+      stripeCutoff: { value: 0.75 },
+      horizonYLevel: { value: 0.0 },
     },
-    transparent: true, // Enable transparency for the stripes/edges
-    depthWrite: false, // Disable depth writing for correct layering
+    transparent: true,
+    depthWrite: false, // Keep for stripe transparency layering
   });
-  const sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
-  sunMesh.position.set(0, 2, -15);
-  // sunMesh.renderOrder = 1; // No longer strictly needed with shader masking
+  sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
+  sunMesh.position.set(0, sunStartY, -15); // Start below horizon
   scene.add(sunMesh);
 
   // 2. Grid
-  gridHelper = new THREE.GridHelper(
-    200, // size
-    80, // divisions
-    0x00ffff, // cyan lines
-    0x00ffff // cyan lines
-  );
-  gridHelper.position.y = 0; // Position grid at the origin y=0
-  // Remove rotation - keep it flat on XZ plane
+  gridHelper = new THREE.GridHelper(200, 80, gridStartColor, gridStartColor); // Start black
+  gridHelper.position.y = 0;
+  // Get the color attribute buffer
+  gridColorAttribute = gridHelper.geometry.getAttribute(
+    'color'
+  ) as THREE.BufferAttribute;
   scene.add(gridHelper);
 
-  // Adjust camera lookAt
-  camera.lookAt(0, 1.5, -1);
+  // --- Post-processing Setup (Single Bloom) ---
+  composer = new EffectComposer(renderer);
+  const renderPass = new RenderPass(scene, camera);
+  composer.addPass(renderPass);
 
-  // Animation loop
+  // SMAA Pass (before Bloom)
+  const pixelRatio = renderer.getPixelRatio();
+  smaaPass = new SMAAPass(width * pixelRatio, height * pixelRatio);
+  composer.addPass(smaaPass);
+
+  // Bloom Pass (after SMAA)
+  bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(width, height),
+    1.0, // strength
+    0.5, // radius
+    0.1 // threshold - Lower threshold to catch dimmer grid lines earlier
+  );
+  composer.addPass(bloomPass);
+
+  // Copy Pass (final output)
+  const copyPass = new ShaderPass(CopyShader);
+  copyPass.renderToScreen = true;
+  composer.addPass(copyPass);
+
+  // --- Animation Loop ---
   const animate = () => {
     animationFrameId = requestAnimationFrame(animate);
 
-    // Animate grid position
+    const elapsedTime = clock.getElapsedTime();
+    const progress = Math.min(elapsedTime / animationDuration, 1.0);
+
+    // Animate Sun Position
+    sunMesh.position.y = THREE.MathUtils.lerp(sunStartY, sunEndY, progress);
+
+    // Animate Grid Color (by updating geometry attributes)
+    if (gridColorAttribute) {
+      const currentColor = new THREE.Color().lerpColors(
+        gridStartColor,
+        gridEndColor,
+        progress
+      );
+      const colorArray = gridColorAttribute.array;
+      for (let i = 0; i < colorArray.length; i += 3) {
+        colorArray[i] = currentColor.r;
+        colorArray[i + 1] = currentColor.g;
+        colorArray[i + 2] = currentColor.b;
+      }
+      gridColorAttribute.needsUpdate = true; // IMPORTANT: Tell Three.js to update the buffer
+    }
+
+    // Animate grid scrolling
     gridHelper.position.z = (gridHelper.position.z + 0.05) % gridCellSize;
 
-    // Use composer to render with post-processing
+    // Render scene with post-processing
     composer.render();
   };
 
@@ -188,11 +226,13 @@ onMounted(() => {
     if (!container.value) return;
     const newWidth = container.value.clientWidth;
     const newHeight = container.value.clientHeight;
+
     camera.aspect = newWidth / newHeight;
     camera.updateProjectionMatrix();
+
     renderer.setSize(newWidth, newHeight);
-    composer.setSize(newWidth, newHeight); // Resize composer too
-    // Update SMAA pass resolution on resize
+    composer.setSize(newWidth, newHeight);
+
     const newPixelRatio = renderer.getPixelRatio();
     smaaPass.setSize(newWidth * newPixelRatio, newHeight * newPixelRatio);
   };
@@ -202,17 +242,17 @@ onMounted(() => {
   onUnmounted(() => {
     cancelAnimationFrame(animationFrameId);
     window.removeEventListener('resize', handleResize);
-    if (container.value) {
+    if (container.value && renderer) {
       container.value.removeChild(renderer.domElement);
     }
-    // Dispose Three.js objects
-    renderer.dispose();
-    composer.dispose(); // Dispose composer
-    // Dispose passes if needed (usually handled by composer)
-    sunGeometry.dispose();
-    sunMaterial.dispose();
-    gridHelper.geometry.dispose();
-    (gridHelper.material as THREE.Material).dispose();
+    // Dispose THREE objects
+    renderer?.dispose();
+    composer?.dispose();
+    sunGeometry?.dispose();
+    sunMaterial?.dispose();
+    gridHelper?.geometry?.dispose();
+    (gridHelper?.material as THREE.Material)?.dispose();
+    // Dispose passes if necessary (usually handled by composer)
   });
 });
 </script>

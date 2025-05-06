@@ -25,11 +25,11 @@ const props = defineProps({
   },
   lowResolution: { 
     type: Boolean,
-    default: false,
+    default: true,
   },
   debug: { // Added new debug prop
     type: Boolean,
-    default: true,
+    default: false,
   },
 });
 
@@ -54,7 +54,7 @@ let sunMesh: THREE.Mesh;
 
 // Animation variables
 let clock: THREE.Clock;
-const animationDuration = 45; // seconds
+const animationDuration = 300; // seconds
 const sunStartY = -10;
 const sunEndY = 7;
 const gridStartColor = new THREE.Color(0x000000); // Black
@@ -300,8 +300,8 @@ onMounted(() => {
   let height = container.value.clientHeight;
 
   if (props.lowResolution) {
-    width /= 2;
-    height /= 2;
+    width /= 4;
+    height /= 4;
   }
 
   // Scene setup
@@ -435,13 +435,9 @@ onMounted(() => {
   const renderPass = new RenderPass(scene, camera);
   composer.addPass(renderPass);
 
-  // SMAA Pass (before Bloom)
-  smaaPass = new SMAAPass(); // SMAAPass might need dimensions at initialization or update
-  composer.addPass(smaaPass);
-  // Update SMAAPass size if necessary, especially if props.lowResolution is true
-  if (props.lowResolution) {
-    const pixelRatio = renderer.getPixelRatio(); // Consider pixel ratio for SMAA pass
-    smaaPass.setSize(width * pixelRatio, height * pixelRatio);
+  if (!props.lowResolution) {
+    smaaPass = new SMAAPass(); // SMAAPass might need dimensions at initialization or update
+    composer.addPass(smaaPass);
   }
 
   // Bloom Pass (after SMAA)
@@ -545,7 +541,7 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
+<style>
 .synthwave-container {
   width: 100%;
   height: 100vh; /* Make it full viewport height */

@@ -31,6 +31,7 @@ export interface SunriseStep {
 // Define the interface for our app state
 export interface AppState {
   volume: number;
+  alarmActive: boolean;
   alarmTime: AlarmTime;
   screenBrightness: number;
   projectorBrightness: number;

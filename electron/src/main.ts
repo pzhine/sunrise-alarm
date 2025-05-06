@@ -5,7 +5,7 @@ import App from './App.vue';
 import Wifi from './pages/Wifi.vue';
 import WifiPassword from './pages/WifiPassword.vue';
 import WifiConnect from './pages/WifiConnect.vue';
-import Clock from './pages/Clock.vue';
+import ClockPage from './pages/ClockPage.vue';
 import MainMenu from './pages/MainMenu.vue';
 import SoundCategories from './pages/SoundCategories.vue';
 import { nextTick } from 'vue';
@@ -28,7 +28,7 @@ const routes = [
     name: 'WifiConnect',
     component: WifiConnect,
   },
-  { path: '/', name: 'Clock', component: Clock },
+  { path: '/', name: 'Clock', component: ClockPage },
   { path: '/menu', name: 'MainMenu', component: MainMenu },
   { path: '/sounds', name: 'SoundCategories', component: SoundCategories },
   {
@@ -85,9 +85,9 @@ const routes = [
     component: () => import('./pages/ProjectorLEDControl.vue'),
   },
   {
-    path: '/sunrise',
-    name: 'Sunrise',
-    component: () => import('./pages/Sunrise.vue'),
+    path: '/sunriseSettings',
+    name: 'SunriseSettings',
+    component: () => import('./pages/SunriseSettings.vue'),
   },
   {
     path: '/sunrise-animation',

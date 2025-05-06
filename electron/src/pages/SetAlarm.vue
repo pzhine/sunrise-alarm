@@ -96,7 +96,7 @@ const handleRightClick = (event: MouseEvent) => {
       // Make sure any pending changes are saved before navigating
       debouncedSave.flush();
       // Return to menu
-      router.push('/menu');
+      router.push('/sunriseSettings');
     }
   }
 };

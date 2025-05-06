@@ -1,52 +1,27 @@
 <template>
   <div
-    class="p-8"
-    @mousedown.right="goToMenu"
-    @keydown.enter="goToMenu"
-    @wheel="handleWheelEvent"
+    class="flex w-full h-full items-center justify-center"
     tabindex="0"
     ref="clockContainer"
   >
-    <div class="mb-10" style="font-size: 180px">{{ formattedTime }}</div>
+    <div style="font-size: 120px">{{ formattedTime }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { onMounted, onUnmounted, ref } from 'vue';
 import { useAppStore } from '../stores/appState';
-import { isGlobalSoundPlaying } from '../services/audioService';
-import SynthwaveSunrise from '../animations/SynthwaveSunrise.vue';
 
-const router = useRouter();
 const appStore = useAppStore();
 const time = ref(new Date());
 const formattedTime = ref('');
 const clockContainer = ref<HTMLDivElement | null>(null);
 
-// Navigation function
-const goToMenu = (event: MouseEvent | KeyboardEvent) => {
-  event.preventDefault();
-  event.stopPropagation();
-  router.push('/menu');
-};
-
-// Handle wheel event for volume or brightness control
-const handleWheelEvent = (event: WheelEvent) => {
-  event.preventDefault();
-
-  // Determine mode based on whether sound is playing
-  const mode = isGlobalSoundPlaying() ? 'volume' : 'lampBrightness';
-
-  // Navigate to LevelControl page with appropriate mode
-  router.push(`/level/${mode}`);
-};
-
 // Format time based on timeFormat preference
 const updateFormattedTime = () => {
   const hours = time.value.getHours();
   const minutes = time.value.getMinutes().toString().padStart(2, '0');
-  const seconds = time.value.getSeconds().toString().padStart(2, '0');
+  // const seconds = time.value.getSeconds().toString().padStart(2, '0');
 
   if (appStore.timeFormat === '12h') {
     const isPM = hours >= 12;
@@ -58,7 +33,7 @@ const updateFormattedTime = () => {
   }
 };
 
-// Update time every second
+// Update time every half second
 let intervalId: number;
 onMounted(() => {
   updateFormattedTime();

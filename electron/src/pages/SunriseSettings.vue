@@ -30,6 +30,20 @@ const formatDuration = (seconds: number): string => {
 const menuItems = computed(() => {
   const items = [
     {
+      label: 'Alarm Active',
+      value: appStore.alarmActive ? 'Yes' : 'No',
+      onSelect: () => {
+        appStore.toggleAlarmActive();
+      },
+    },
+    appStore.alarmActive
+      ? {
+          label: 'Alarm',
+          value: `${appStore.formattedAlarmTime}`,
+          onSelect: () => router.push('/alarm'),
+        }
+      : null,
+    {
       label: 'Duration',
       value: formatDuration(appStore.sunriseDuration),
       canEdit: true,
@@ -45,7 +59,7 @@ const menuItems = computed(() => {
       label: 'Start Sunrise',
       onSelect: () => startSunrise(),
     },
-  ];
+  ].filter((i) => !!i); // Filter out null values
 
   return items;
 });

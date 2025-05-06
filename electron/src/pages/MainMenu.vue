@@ -54,21 +54,12 @@ const menuItems = computed(() => {
   // Standard menu items
   items.push(
     {
-      label: 'Alarm',
-      value: `${appStore.formattedAlarmTime}`,
-      onSelect: () => router.push('/alarm'),
-    },
-    {
       label: 'Sounds',
       onSelect: () => router.push('/sounds'),
     },
     {
       label: 'Sunrise',
-      onSelect: () => router.push('/sunrise'),
-    },
-    {
-      label: 'Sunrise Animation',
-      onSelect: () => router.push('/sunrise-animation'),
+      onSelect: () => router.push('/sunriseSettings'),
     },
     {
       label: 'Volume',

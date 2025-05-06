@@ -8,6 +8,7 @@ import { setGlobalVolume } from '../services/audioService';
 export const useAppStore = defineStore('appState', {
   state: (): AppState => ({
     volume: 50, // Default volume (0-100)
+    alarmActive: false, // Alarm active state
     alarmTime: [7, 0], // Default alarm time [hours, minutes] (7:00 AM)
     screenBrightness: 80, // Default screen brightness (0-100)
     projectorBrightness: 70, // Default projector brightness (0-100)
@@ -99,6 +100,11 @@ export const useAppStore = defineStore('appState', {
       } catch (error) {
         console.error('Failed to sync with system volume:', error);
       }
+    },
+
+    // Toggle the alarm active state
+    toggleAlarmActive(): void {
+      this.alarmActive = !this.alarmActive;
     },
 
     // Set the alarm time

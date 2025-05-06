@@ -16,7 +16,7 @@ import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
 const props = defineProps({
   skipAnimation: {
     type: Boolean,
-    default: true,
+    default: false,
   },
 });
 
@@ -35,8 +35,8 @@ let sunMesh: THREE.Mesh;
 
 // Animation variables
 let clock: THREE.Clock;
-const animationDuration = 60; // seconds
-const sunStartY = -24;
+const animationDuration = 45; // seconds
+const sunStartY = -10;
 const sunEndY = 7;
 const gridStartColor = new THREE.Color(0x000000); // Black
 const gridEndColor = new THREE.Color(0x009999); // Cyan
@@ -47,8 +47,8 @@ let lineMaterial: THREE.LineBasicMaterial; // Changed material reference
 
 // Background Color Animation
 const bgColorStart = new THREE.Color(0x000000); // Black
-const bgColorMid1 = new THREE.Color(0x490066); // Deep Purple
-const bgColorMid2 = new THREE.Color(0x703800); // Orange
+const bgColorMid1 = new THREE.Color(0x66008f); // Deep Purple
+const bgColorMid2 = new THREE.Color(0x8a4500); // Orange
 const bgColorEnd = new THREE.Color(0x00567a); // Sky Blue
 
 // Bloom Animation
@@ -60,9 +60,6 @@ const waveFrequency = (3 * Math.PI) / 100; // Adjusted for periodicity over plan
 const waveAmplitude = 1;
 const waveSpeed = 0.5;
 const scrollSpeed = 2.0; // Or your preferred speed
-
-// Grid parameters
-const planeSize = 200;
 
 // --- Shaders for the Sun ---
 const sunVertexShader = `
@@ -134,32 +131,86 @@ void main() {
 }
 `;
 
-// Helper function for Cubic Ease-Out
-function easeOutQuart(t: number): number {
-  return 1 - Math.pow(1 - t, 4);
+// Helper function for customizable Cubic Bezier easing
+function cubicBezierEasing(
+  t: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
+): number {
+  if (x1 === y1 && x2 === y2) {
+    return t; // Linear easing if control points are diagonal
+  }
+
+  // Precompute coefficients for x(u) = Ax*u^3 + Bx*u^2 + Cx*u
+  const Cx = 3.0 * x1;
+  const Bx = 3.0 * (x2 - x1) - Cx;
+  const Ax = 1.0 - Cx - Bx;
+
+  // Precompute coefficients for y(u) = Ay*u^3 + By*u^2 + Cy*u
+  const Cy = 3.0 * y1;
+  const By = 3.0 * (y2 - y1) - Cy;
+  const Ay = 1.0 - Cy - By;
+
+  // Solve for u given t (where t is the x coordinate)
+  // using Newton-Raphson iteration
+  let u = t; // Initial guess
+  const NEWTON_ITERATIONS = 8;
+  const NEWTON_MIN_STEP = 1e-5; // Tolerance for error
+
+  for (let i = 0; i < NEWTON_ITERATIONS; ++i) {
+    // Calculate x(u) and x'(u)
+    const u2 = u * u;
+    const u3 = u2 * u;
+
+    const currentX = Ax * u3 + Bx * u2 + Cx * u;
+    const currentDerivativeX = 3.0 * Ax * u2 + 2.0 * Bx * u + Cx;
+
+    if (currentDerivativeX === 0) {
+      break; // Avoid division by zero
+    }
+
+    const error = currentX - t;
+    if (Math.abs(error) < NEWTON_MIN_STEP) {
+      break; // Converged
+    }
+    u -= error / currentDerivativeX;
+    u = Math.max(0, Math.min(1, u)); // Clamp u to [0, 1] as it can go out of bounds
+  }
+
+  // Calculate y(u)
+  const u2_final = u * u;
+  const u3_final = u2_final * u;
+  return Ay * u3_final + By * u2_final + Cy * u;
 }
 
 // Function to update animation state based on progress (Handles Sun, Colors, Bloom)
 function updateAnimationState(progress: number) {
-  const easedProgress = easeOutQuart(progress);
+  // https://cubic-bezier.com/
+  const easedProgress = cubicBezierEasing(progress, 0.86, 0.11, 0.19, 0.81);
 
   // Animate Sun Position
   sunMesh.position.y = THREE.MathUtils.lerp(sunStartY, sunEndY, easedProgress);
 
   // Animate Grid Color
 
-  lineMaterial.color.lerpColors(gridStartColor, gridEndColor, progress);
+  lineMaterial.color.lerpColors(
+    gridStartColor,
+    gridEndColor,
+    Math.min(1, progress + 0.05)
+  );
 
   // Animate Background Color
   const bgCurrentColor = new THREE.Color();
   if (progress < 0.22) {
     const phaseProgress = progress / 0.22;
     bgCurrentColor.lerpColors(bgColorStart, bgColorMid1, phaseProgress);
-  } else if (progress < 0.35) {
-    const phaseProgress = (progress - 0.22) / 0.22;
+  } else if (progress < 0.33) {
+    const phaseProgress = (progress - 0.22) / 0.11;
     bgCurrentColor.lerpColors(bgColorMid1, bgColorMid2, phaseProgress);
   } else {
-    const phaseProgress = (progress - 0.44) / 0.64;
+    const phaseProgress = (progress - 0.33) / 0.66;
     bgCurrentColor.lerpColors(bgColorMid2, bgColorEnd, phaseProgress);
   }
   if (scene.background instanceof THREE.Color) {

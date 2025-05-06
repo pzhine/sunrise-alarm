@@ -315,6 +315,7 @@ async function initializeApp() {
   }
 
   setupFileLogging();
+  startSerialComms();
 
   // Set up IPC handler for renderer logs
   ipcMain.on('renderer-log', (_, logType, ...args) => {
@@ -393,8 +394,6 @@ ipcMain.handle('open-win', (_, arg) => {
     childWindow.loadFile(indexHtml, { hash: arg });
   }
 });
-
-startSerialComms();
 
 // Register IPC handlers for Freesound API
 ipcMain.handle('search-sounds', async (_, query) => {

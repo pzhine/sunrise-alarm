@@ -5,7 +5,7 @@
       :showBackButton="true"
       :showTitle="true"
       title="Sunrise Sounds"
-      @back="router.push('/sunrise')"
+      @back="router.push('/sunriseSettings')"
     />
   </div>
 </template>

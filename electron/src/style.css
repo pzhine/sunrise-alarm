@@ -1,5 +1,24 @@
 @import 'tailwindcss';
 
+@font-face {
+  font-family: 'Old-School-Adventures';
+  src: url('./assets/fonts/Old-School-Adventures-847a.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'FrozenCrystalExpanded';
+  src: url('./assets/fonts/FrozenCrystalExpanded-xzK0.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'FrozenCrystalAcademy';
+  src: url('./assets/fonts/FrozenCrystalAcademy-J787.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 * {
   outline: none;
 }

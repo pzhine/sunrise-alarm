@@ -62,7 +62,7 @@ const menuItems = computed(() => {
     },
     {
       label: 'Start Sunrise',
-      onSelect: () => startSunrise(),
+      onSelect: () => router.push('/sunrise-player'),
     },
   ].filter((i) => !!i); // Filter out null values
 

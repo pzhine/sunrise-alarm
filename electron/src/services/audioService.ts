@@ -88,7 +88,7 @@ export function getCurrentSoundInfo(): SoundInfo | null {
 export function setGlobalVolume(volume: number): void {
   const clampedVolume = Math.max(0, Math.min(volume, 1)); // Clamp between 0-1
   if (globalAudioElement && process.env.NODE_ENV === 'development') {
-    console.log('Setting client volume to:', volume);
+    // console.log('Setting client volume to:', volume);
     globalAudioElement.volume = clampedVolume;
     return;
   }

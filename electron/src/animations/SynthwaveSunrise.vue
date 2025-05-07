@@ -19,19 +19,22 @@ import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
 
 // Define props
 const props = defineProps({
-  skipAnimation: {
-    type: Boolean,
-    default: false,
+  duration: {
+    type: Number,
+    default: 60,
   },
-  lowResolution: { 
+  lowResolution: {
     type: Boolean,
     default: true,
   },
-  debug: { // Added new debug prop
+  debug: {
+    // Added new debug prop
     type: Boolean,
     default: false,
   },
 });
+
+console.log('[SynthwaveSunrise] duration:', props.duration);
 
 // Reactive state for debug info
 const debugInfo = reactive({
@@ -54,7 +57,7 @@ let sunMesh: THREE.Mesh;
 
 // Animation variables
 let clock: THREE.Clock;
-const animationDuration = 300; // seconds
+const animationDuration = props.duration; // seconds
 const sunStartY = -10;
 const sunEndY = 7;
 const gridStartColor = new THREE.Color(0x000000); // Black
@@ -329,12 +332,13 @@ onMounted(() => {
       const ext = gl.getExtension('WEBGL_debug_renderer_info');
       if (ext) {
         debugInfo.vendor = gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) || 'N/A';
-        debugInfo.renderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || 'N/A';
+        debugInfo.renderer =
+          gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || 'N/A';
       }
     } catch (e) {
-      console.error("Error getting WebGL debug info:", e);
-      debugInfo.vendor = "Error";
-      debugInfo.renderer = "Error getting info";
+      console.error('Error getting WebGL debug info:', e);
+      debugInfo.vendor = 'Error';
+      debugInfo.renderer = 'Error getting info';
     }
   }
 
@@ -456,7 +460,7 @@ onMounted(() => {
   copyPass.renderToScreen = true;
   composer.addPass(copyPass);
 
-  if (props.skipAnimation) {
+  if (props.duration === 0) {
     // --- Skip Animation (but keep waves/scroll) ---
     updateAnimationState(0.99); // Set sun, colors, bloom to final state
 
@@ -549,7 +553,8 @@ onMounted(() => {
   position: relative; /* Added for debug overlay positioning */
 }
 
-.synthwave-container canvas { /* Added to scale canvas if rendered at lower res */
+.synthwave-container canvas {
+  /* Added to scale canvas if rendered at lower res */
   width: 100% !important;
   height: 100% !important;
   display: block;

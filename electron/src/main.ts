@@ -291,6 +291,33 @@ const checkInternetAndRoute = async (initialStartup = false) => {
 // Set up hourly checks (60 * 60 * 1000 = 3600000 milliseconds = 1 hour)
 setInterval(checkInternetAndRoute, 3600000);
 
+// Check if the alarm should be triggered
+const checkAlarmCondition = () => {
+  const appStore = useAppStore();
+
+  // Only proceed if the alarm is active
+  if (!appStore.alarmActive) return;
+
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+
+  const [alarmHour, alarmMinute] = appStore.alarmTime;
+
+  // Check if it's time to trigger the alarm
+  if (currentHour === alarmHour && currentMinute === alarmMinute) {
+    console.log('Alarm time reached! Redirecting to SunrisePlayer...');
+
+    // Only redirect if we're not already on the SunrisePlayer page
+    if (router.currentRoute.value.name !== 'SunrisePlayer') {
+      router.push({ name: 'SunrisePlayer' });
+    }
+  }
+};
+
+// Set up alarm check every 10
+setInterval(checkAlarmCondition, 10000);
+
 // Perform initialization and checks after the app is mounted
 nextTick(async () => {
   postMessage({ payload: 'removeLoading' }, '*');

@@ -73,9 +73,9 @@ const handleWheel = (event: WheelEvent) => {
     }
   } else if (editMode.value === 'minutes') {
     if (event.deltaY < 0) {
-      minutes.value = (Math.round(minutes.value / 5) * 5 + 5) % 60;
+      minutes.value = (Math.round(minutes.value / 1) * 1 + 1) % 60;
     } else if (event.deltaY > 0) {
-      minutes.value = (Math.round(minutes.value / 5) * 5 - 5 + 60) % 60;
+      minutes.value = (Math.round(minutes.value / 1) * 1 - 1 + 60) % 60;
     }
   }
 

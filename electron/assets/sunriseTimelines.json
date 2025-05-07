@@ -5,11 +5,31 @@
       {
         "strip": "SUN_CENTER",
         "pixel": 0,
+        "red": -1,
+        "green": -1,
+        "blue": 50,
+        "white": -1,
+        "startAt": 25,
+        "duration": 100
+      },
+      {
+        "strip": "SUN_CENTER",
+        "pixel": 0,
+        "red": 25,
+        "green": -1,
+        "blue": -1,
+        "white": -1,
+        "startAt": 150,
+        "duration": 50
+      },
+      {
+        "strip": "SUN_CENTER",
+        "pixel": 0,
         "red": 255,
         "green": -1,
         "blue": 255,
         "white": -1,
-        "startAt": 0,
+        "startAt": 200,
         "duration": 100
       },
       {
@@ -19,7 +39,7 @@
         "green": -1,
         "blue": -1,
         "white": 255,
-        "startAt": 200,
+        "startAt": 400,
         "duration": 100
       },
       {
@@ -29,7 +49,7 @@
         "green": 0,
         "blue": 0,
         "white": 0,
-        "startAt": 300,
+        "startAt": 500,
         "duration": 300
       },
       {
@@ -39,7 +59,7 @@
         "green": -1,
         "blue": 255,
         "white": -1,
-        "startAt": 100,
+        "startAt": 300,
         "duration": 300
       },
       {
@@ -49,7 +69,7 @@
         "green": -1,
         "blue": 100,
         "white": -1,
-        "startAt": 300,
+        "startAt": 500,
         "duration": 250
       },
       {
@@ -59,7 +79,7 @@
         "green": -1,
         "blue": -1,
         "white": 255,
-        "startAt": 180,
+        "startAt": 380,
         "duration": 250
       },
       {
@@ -69,7 +89,7 @@
         "green": -1,
         "blue": -1,
         "white": 255,
-        "startAt": 500,
+        "startAt": 700,
         "duration": 250
       }
     ]

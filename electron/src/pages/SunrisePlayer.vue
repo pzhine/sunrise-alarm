@@ -12,9 +12,6 @@
       :transparent="true"
       :transparentReverse="showTransparentReverse"
     />
-
-    <!-- Touch/click overlay to capture click events -->
-    <div class="touch-overlay" @click="stopSunrise"></div>
   </div>
 </template>
 
@@ -36,7 +33,6 @@ const appStore = useAppStore();
 const animationStartTime = ref(Date.now());
 const volumeUpdateInterval = ref<number | null>(null);
 const showTransparentReverse = ref(false);
-const transparentReverseTimer = ref<number | null>(null);
 const sunriseOpacity = ref(1);
 
 // Computed property to get the total sunrise duration in milliseconds
@@ -53,17 +49,26 @@ const stopSunrise = async () => {
     volumeUpdateInterval.value = null;
   }
 
-  // Clear the transparent reverse timer if it exists
-  if (transparentReverseTimer.value) {
-    clearTimeout(transparentReverseTimer.value);
-    transparentReverseTimer.value = null;
-  }
-
   // Stop the sunrise in the backend
   await appStore.stopSunrise();
 
-  // Navigate back
-  router.back();
+  showTransparentReverse.value = true;
+
+  // Start fading out the SynthwaveSunrise component
+  const fadeOutDuration = 5000;
+  const fadeStep = 1 / (fadeOutDuration / 50); // Update every 50ms
+  const fadeInterval = window.setInterval(() => {
+    sunriseOpacity.value -= fadeStep;
+
+    if (sunriseOpacity.value <= 0) {
+      sunriseOpacity.value = 0;
+      clearInterval(fadeInterval);
+      setTimeout(() => {
+        // After fading out, navigate back to the previous page
+        router.back();
+      }, 2000); // Delay before navigating back
+    }
+  }, 50);
 };
 
 // Function to update audio volume based on elapsed time
@@ -122,23 +127,6 @@ const startSunrise = async () => {
 
   // Start the actual sunrise animation on the Arduino
   await appStore.startSunrise();
-
-  // Set a timer to trigger transparentReverse 5 seconds before the end of sunrise duration
-  transparentReverseTimer.value = window.setTimeout(() => {
-    showTransparentReverse.value = true;
-
-    // Start fading out the SynthwaveSunrise component
-    const fadeOutDuration = 5000; // 5 seconds to match the remaining time
-    const fadeStep = 1 / (fadeOutDuration / 50); // Update every 50ms
-    const fadeInterval = window.setInterval(() => {
-      sunriseOpacity.value -= fadeStep;
-
-      if (sunriseOpacity.value <= 0) {
-        sunriseOpacity.value = 0;
-        clearInterval(fadeInterval);
-      }
-    }, 50);
-  }, sunriseDuration.value - 5000);
 };
 
 onMounted(() => {
@@ -157,12 +145,6 @@ onUnmounted(() => {
   if (volumeUpdateInterval.value) {
     clearInterval(volumeUpdateInterval.value);
     volumeUpdateInterval.value = null;
-  }
-
-  // Clear the transparent reverse timer if it exists
-  if (transparentReverseTimer.value) {
-    clearTimeout(transparentReverseTimer.value);
-    transparentReverseTimer.value = null;
   }
 
   // Remove event listener
@@ -185,34 +167,5 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   z-index: 1;
-}
-
-.clock-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 2;
-  background-color: rgba(
-    0,
-    0,
-    0,
-    0.3
-  ); /* Slight dark overlay to improve contrast */
-  backdrop-filter: blur(2px); /* Slight blur for better readability */
-}
-
-.touch-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 3;
-  cursor: pointer;
 }
 </style>

@@ -3,6 +3,16 @@
     "name": "default",
     "timeline": [
       {
+        "strip": "LAMP",
+        "pixel": 0,
+        "red": 0,
+        "green": 0,
+        "blue": 0,
+        "white": 0,
+        "startAt": 0,
+        "duration": 1
+      },
+      {
         "strip": "SUN_CENTER",
         "pixel": 0,
         "red": -1,

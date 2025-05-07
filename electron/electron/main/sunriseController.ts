@@ -137,13 +137,13 @@ export function startSunrise(timeline: SunriseStep[], duration: number) {
     }, step.startAt);
   });
 
-  // Set a timer to stop the sunrise after the duration has elapsed
-  playbackTimer = setTimeout(
-    () => {
-      stopSunrise();
-    },
-    duration * 1000 + 1000
-  ); // Add a 1-second buffer
+  // // Set a timer to stop the sunrise after the duration has elapsed
+  // playbackTimer = setTimeout(
+  //   () => {
+  //     stopSunrise();
+  //   },
+  //   duration * 1000 + 1000
+  // ); // Add a 1-second buffer
 }
 
 /**
@@ -162,10 +162,10 @@ export function stopSunrise() {
   }
 
   // Reset all LEDs
-  sendLEDToSerial(0, 0, 0, 0, 0, 0, 0); // SUN_CENTER LED 0
-  sendLEDToSerial(0, 1, 0, 0, 0, 0, 0); // SUN_CENTER LED 1
-  sendLEDToSerial(1, 0, 0, 0, 0, 0, 0); // SUN_RING
-  sendLEDToSerial(2, 0, 0, 0, 0, 0, 0); // LAMP
+  sendLEDToSerial(0, 0, 0, 0, 0, 0, 2000); // SUN_CENTER LED 0
+  sendLEDToSerial(0, 1, 0, 0, 0, 0, 2000); // SUN_CENTER LED 1
+  sendLEDToSerial(1, 0, 0, 0, 0, 0, 2000); // SUN_RING
+  sendLEDToSerial(2, 0, 0, 0, 0, 0, 2000); // LAMP
 }
 
 /**

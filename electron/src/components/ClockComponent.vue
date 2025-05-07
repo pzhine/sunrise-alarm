@@ -6,6 +6,8 @@
         'clock-transparent-0': transparent,
         'clock-transparent-1': transparentStage1 || transparentStage2,
         'clock-transparent-2': transparentStage2,
+        'clock-transparent-3': transparentStage3 || transparentStage4,
+        'clock-transparent-4': transparentStage4,
       },
     ]"
     tabindex="0"
@@ -14,7 +16,7 @@
     <div
       :style="{
         'font-size': '120px',
-        'font-weight': transparent ? 'bold' : 'normal',
+        'font-weight': 'normal',
         'font-family': '\'FrozenCrystalExpanded\', sans-serif',
       }"
     >
@@ -36,11 +38,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, computed } from 'vue';
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue';
 import { useAppStore } from '../stores/appState';
 
 const transparentStage1 = ref(false);
 const transparentStage2 = ref(false);
+const transparentStage3 = ref(false);
+const transparentStage4 = ref(false);
 
 const props = defineProps({
   showDate: {
@@ -51,16 +55,25 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  transparentReverse: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-if (props.transparent) {
-  setTimeout(() => {
-    transparentStage1.value = true;
-  }, 3000);
-  setTimeout(() => {
-    transparentStage2.value = true;
-  }, 15000);
-}
+// Watch for transparentReverse changes
+watch(
+  () => props.transparentReverse,
+  (newValue, oldValue) => {
+    if (newValue === true && oldValue === false) {
+      transparentStage3.value = true;
+      setTimeout(() => {
+        transparentStage4.value = true;
+      }, 100);
+    }
+  },
+  { immediate: true }
+);
 
 const appStore = useAppStore();
 const time = ref(new Date());
@@ -122,6 +135,16 @@ onMounted(() => {
 
   // Set focus to make the enter key work
   clockContainer.value?.focus();
+
+  // start transition sequence for transparency
+  if (props.transparent) {
+    setTimeout(() => {
+      transparentStage1.value = true;
+    }, 3000);
+    setTimeout(() => {
+      transparentStage2.value = true;
+    }, 15000);
+  }
 });
 
 // Clear interval when component is unmounted
@@ -148,5 +171,17 @@ onUnmounted(() => {
   mix-blend-mode: soft-light;
   transition: none;
   opacity: 1;
+}
+.clock-transparent-3 {
+  mix-blend-mode: none;
+  transition: none;
+  opacity: 0.3;
+  color: white;
+}
+.clock-transparent-4 {
+  transition: all 5s ease-in-out;
+  color: unset;
+  opacity: 1;
+  margin-top: 0;
 }
 </style>

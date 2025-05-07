@@ -4,10 +4,14 @@
     <SynthwaveSunrise
       class="background-animation"
       :duration="sunriseDuration / 1000"
+      :style="{ opacity: sunriseOpacity }"
     />
 
     <!-- Transparent clock overlay in the foreground -->
-    <ClockComponent :transparent="true" />
+    <ClockComponent
+      :transparent="true"
+      :transparentReverse="showTransparentReverse"
+    />
 
     <!-- Touch/click overlay to capture click events -->
     <div class="touch-overlay" @click="stopSunrise"></div>
@@ -31,6 +35,9 @@ const router = useRouter();
 const appStore = useAppStore();
 const animationStartTime = ref(Date.now());
 const volumeUpdateInterval = ref<number | null>(null);
+const showTransparentReverse = ref(false);
+const transparentReverseTimer = ref<number | null>(null);
+const sunriseOpacity = ref(1);
 
 // Computed property to get the total sunrise duration in milliseconds
 const sunriseDuration = computed(() => appStore.sunriseDuration * 1000);
@@ -44,6 +51,12 @@ const stopSunrise = async () => {
   if (volumeUpdateInterval.value) {
     clearInterval(volumeUpdateInterval.value);
     volumeUpdateInterval.value = null;
+  }
+
+  // Clear the transparent reverse timer if it exists
+  if (transparentReverseTimer.value) {
+    clearTimeout(transparentReverseTimer.value);
+    transparentReverseTimer.value = null;
   }
 
   // Stop the sunrise in the backend
@@ -109,6 +122,23 @@ const startSunrise = async () => {
 
   // Start the actual sunrise animation on the Arduino
   await appStore.startSunrise();
+
+  // Set a timer to trigger transparentReverse 5 seconds before the end of sunrise duration
+  transparentReverseTimer.value = window.setTimeout(() => {
+    showTransparentReverse.value = true;
+
+    // Start fading out the SynthwaveSunrise component
+    const fadeOutDuration = 5000; // 5 seconds to match the remaining time
+    const fadeStep = 1 / (fadeOutDuration / 50); // Update every 50ms
+    const fadeInterval = window.setInterval(() => {
+      sunriseOpacity.value -= fadeStep;
+
+      if (sunriseOpacity.value <= 0) {
+        sunriseOpacity.value = 0;
+        clearInterval(fadeInterval);
+      }
+    }, 50);
+  }, sunriseDuration.value - 5000);
 };
 
 onMounted(() => {
@@ -127,6 +157,12 @@ onUnmounted(() => {
   if (volumeUpdateInterval.value) {
     clearInterval(volumeUpdateInterval.value);
     volumeUpdateInterval.value = null;
+  }
+
+  // Clear the transparent reverse timer if it exists
+  if (transparentReverseTimer.value) {
+    clearTimeout(transparentReverseTimer.value);
+    transparentReverseTimer.value = null;
   }
 
   // Remove event listener

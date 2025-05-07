@@ -167,13 +167,46 @@ function createRateLimitedGeocoder(rateLimit = 10) {
 const rateLimitedGeocoder = createRateLimitedGeocoder(10);
 
 /**
- * Search for sounds with caching
+ * Fetch detailed sound information including analysis data
  */
+export async function getSoundDetails(
+  soundId: number,
+  fields: string = 'id,name,tags,username,license,previews,geotag,duration,analysis'
+): Promise<FreesoundSearchResult> {
+  const API_KEY = getConfig().freesound.apiKey;
+  const url = new URL(`${BASE_URL}/sounds/${soundId}/`);
+
+  // Add query parameters
+  url.searchParams.append('fields', fields);
+  url.searchParams.append('token', API_KEY);
+
+  try {
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Freesound API error: ${response.status} ${response.statusText}`
+      );
+    }
+
+    return (await response.json()) as FreesoundSearchResult;
+  } catch (error) {
+    console.error('Error fetching sound details:', error);
+    throw error;
+  }
+}
+
+// Update the fields parameter to include analysis data
 export async function searchSoundsWithCache(
   query: string,
   page: number = 1,
   pageSize: number = 100,
-  fields: string = 'id,name,tags,username,license,previews,geotag,duration'
+  fields: string = 'id,name,tags,username,license,previews,geotag,duration,analysis'
 ): Promise<FreesoundSearchResponse> {
   const API_KEY = getConfig().freesound.apiKey;
 
@@ -204,7 +237,7 @@ export async function searchSoundsWithCache(
   url.searchParams.append('page_size', pageSize.toString());
   url.searchParams.append('fields', fields);
   url.searchParams.append('token', API_KEY);
-  
+
   // Add filter for sounds that are at least 60 seconds long (1 minute)
   url.searchParams.append('filter', 'duration:[60 TO *]');
 

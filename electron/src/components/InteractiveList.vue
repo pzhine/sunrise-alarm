@@ -9,7 +9,13 @@
   >
     {{ backButtonLabel ?? '← Back' }}
   </button>
-  <div v-if="showTitle" class="fixed top-8 text-xl font-bold">
+  <div
+    v-if="showTitle"
+    class="fixed top-8 text-xl font-bold overflow-hidden overflow-ellipsis"
+    :style="{
+      maxWidth: 'calc(100vw - 16rem)',
+    }"
+  >
     {{ title }}
   </div>
 

@@ -10,6 +10,7 @@ import { initVolumeControl } from './volumeControl';
 import {
   searchSoundsWithCache,
   groupSoundsByCountryWithCache,
+  getSoundDetails,
 } from './freesound';
 import {
   initAutoUpdater,
@@ -401,6 +402,15 @@ ipcMain.handle('search-sounds', async (_, query) => {
     return await searchSoundsWithCache(query);
   } catch (error) {
     console.error('Error in search-sounds IPC handler:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('get-sound-details', async (_, soundId) => {
+  try {
+    return await getSoundDetails(soundId);
+  } catch (error) {
+    console.error('Error in get-sound-details IPC handler:', error);
     throw error;
   }
 });

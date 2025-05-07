@@ -1,16 +1,17 @@
 <template>
   <div class="p-8 w-full">
-    <div class="text-2xl mb-8 text-center">{{ soundName }}</div>
     <InteractiveList
+      :show-title="true"
+      :title="soundName"
       :items="menuOptions"
       :showBackButton="true"
       @back="backToSoundsList"
     />
-    <TimeoutRedirect
+    <!-- <TimeoutRedirect
       :ms="10000"
       :redirectRoute="{ name: 'SoundPlayer' }"
       :resetOnActivity="'wheel'"
-    />
+    /> -->
   </div>
 </template>
 

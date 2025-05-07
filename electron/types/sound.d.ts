@@ -15,7 +15,26 @@ export interface FreesoundSearchResult {
   };
   geotag?: string;
   duration: number;
+  analysis?: {
+    lowlevel?: {
+      average_loudness?: number;
+      dynamic_complexity?: number;
+    };
+    sfx?: {
+      temporal_centroid?: {
+        mean: number;
+      };
+    };
+    loudness?: {
+      integrated?: number;
+      true_peak?: number;
+      momentary?: {
+        max: number;
+      };
+    };
+  };
 }
+
 /**
  * Response from Freesound API search
  */

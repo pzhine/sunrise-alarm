@@ -7,11 +7,11 @@
       :showBackButton="true"
       @back="backToSoundsList"
     />
-    <!-- <TimeoutRedirect
-      :ms="10000"
+    <TimeoutRedirect
+      :ms="15000"
       :redirectRoute="{ name: 'SoundPlayer' }"
       :resetOnActivity="'wheel'"
-    /> -->
+    />
   </div>
 </template>
 

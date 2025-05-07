@@ -11,7 +11,7 @@
   </button>
   <div
     v-if="showTitle"
-    class="fixed top-8 text-xl font-bold overflow-hidden overflow-ellipsis"
+    class="fixed top-8 text-xl font-bold overflow-hidden overflow-ellipsis whitespace-nowrap"
     :style="{
       maxWidth: 'calc(100vw - 16rem)',
     }"

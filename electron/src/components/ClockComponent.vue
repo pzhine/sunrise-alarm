@@ -165,7 +165,7 @@ onUnmounted(() => {
 .clock-transparent-1 {
   margin-top: 200px;
   color: white;
-  opacity: 0.3;
+  opacity: 0.5;
 }
 .clock-transparent-2 {
   mix-blend-mode: soft-light;
@@ -175,7 +175,7 @@ onUnmounted(() => {
 .clock-transparent-3 {
   mix-blend-mode: none;
   transition: none;
-  opacity: 0.3;
+  opacity: 0.7;
   color: white;
 }
 .clock-transparent-4 {

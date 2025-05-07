@@ -19,10 +19,11 @@ function executeCommand(command: string): Promise<string> {
 
 // Set system volume in Ubuntu (0-100 percentage)
 export async function setSystemVolume(volumeLevel: number): Promise<void> {
-  if (VITE_DEV_SERVER_URL) {
+  const platform = process.platform;
+  if (platform !== 'linux') {
     console.log(
-      'Skipping volume control in development mode:',
-      VITE_DEV_SERVER_URL
+      'Skipping volume control: This functionality is only supported on Linux',
+      platform
     );
     return;
   }
@@ -32,7 +33,7 @@ export async function setSystemVolume(volumeLevel: number): Promise<void> {
 
     // Use amixer to set the volume
     await executeCommand(`amixer -D pulse sset Master ${volume}%`);
-    console.log(`System volume set to ${volume}%`);
+    // console.log(`System volume set to ${volume}%`);
   } catch (error) {
     console.error('Failed to set system volume:', error);
   }

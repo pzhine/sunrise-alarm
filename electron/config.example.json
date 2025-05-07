@@ -17,7 +17,10 @@
   "arduino": {
     "cliPath": "C:\\Program Files\\Arduino\\arduino-cli.exe",
     "boardType": "arduino:avr:uno",
-    "port": "COM3",
-    "mockSerialInDev": true
+    "port": "COM3"
+  },
+  "dev": {
+    "mockSerial": true,
+    "mockSystemAudio": true
   }
 }

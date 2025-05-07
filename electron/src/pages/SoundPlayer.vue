@@ -18,11 +18,7 @@
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAppStore } from '../stores/appState';
-import {
-  playGlobalSound,
-  getCurrentSoundInfo,
-  setGlobalVolume,
-} from '../services/audioService';
+import { playGlobalSound, getCurrentSoundInfo } from '../services/audioService';
 import TimeoutRedirect from '../components/TimeoutRedirect.vue';
 
 const route = useRoute();
@@ -99,9 +95,6 @@ const startPlayback = () => {
     category: category.value,
     country: country.value,
   });
-
-  // Set volume based on app state
-  setGlobalVolume(volume.value / 100);
 };
 
 // Update the playback progress
@@ -127,11 +120,9 @@ const handleWheel = (event: WheelEvent) => {
   if (event.deltaY < 0) {
     // Scrolling up - increase volume
     appStore.setVolume(Math.min(appStore.volume + 5, 100));
-    setGlobalVolume(appStore.volume / 100);
   } else if (event.deltaY > 0) {
     // Scrolling down - decrease volume
     appStore.setVolume(Math.max(appStore.volume - 5, 0));
-    setGlobalVolume(appStore.volume / 100);
   }
 };
 
@@ -206,10 +197,5 @@ onBeforeUnmount(() => {
 
   // Remove event listeners
   removeEventListeners();
-});
-
-// Watch for volume changes
-watch(volume, (newVolume) => {
-  setGlobalVolume(newVolume / 100);
 });
 </script>

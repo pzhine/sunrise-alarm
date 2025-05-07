@@ -5,6 +5,7 @@ import { app } from 'electron';
 import { AppState } from '../../types/state';
 import { sendMessage } from './serial';
 import { debounce } from 'lodash-es';
+import { getConfig } from './configManager';
 
 // Define the file path for storing application state
 const STATE_FILE_PATH = path.join(app.getPath('userData'), 'app-state.json');
@@ -34,6 +35,16 @@ export function getState(): AppState | null {
     if (fs.existsSync(STATE_FILE_PATH)) {
       const stateJson = fs.readFileSync(STATE_FILE_PATH, 'utf8');
       stateCache = JSON.parse(stateJson);
+
+      // Always include the latest config when returning state
+      if (stateCache) {
+        try {
+          stateCache.config = getConfig();
+        } catch (error) {
+          console.error('Failed to include config in state:', error);
+        }
+      }
+
       return stateCache;
     }
   } catch (error) {
@@ -61,9 +72,16 @@ export function saveState(state: AppState): Promise<boolean> {
         debouncedSendLampBrightness(state.lampBrightness);
       }
 
-      const stateJson = JSON.stringify(state, null, 2);
+      // Remove the config before saving to disk - we don't want to persist it
+      // as it's managed separately by configManager
+      const stateToPersist = { ...state };
+      delete stateToPersist.config;
+
+      const stateJson = JSON.stringify(stateToPersist, null, 2);
       fs.writeFileSync(STATE_FILE_PATH, stateJson);
-      stateCache = state;
+
+      // Keep config in memory cache, but don't persist it to disk
+      stateCache = { ...stateToPersist, config: state.config };
       resolve(true);
     } catch (error) {
       console.error('Error saving app state:', error);
@@ -121,6 +139,18 @@ export function initStateManagement() {
   if (initialState && typeof initialState.lampBrightness !== 'undefined') {
     // Send initial brightness on startup
     sendLampBrightnessToSerial(initialState.lampBrightness);
+  }
+
+  // Add config to the state if not there already
+  try {
+    if (initialState) {
+      const configData = getConfig();
+      if (configData) {
+        updateState('config', configData);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to add config to state:', error);
   }
 }
 

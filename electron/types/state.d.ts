@@ -28,6 +28,34 @@ export interface SunriseStep {
   duration: number;
 }
 
+// Define the interface for application configuration
+export interface AppConfig {
+  freesound: {
+    clientId: string;
+    apiKey: string;
+  };
+  openWeather: {
+    apiKey: string;
+  };
+  autoUpdate: {
+    updateUrl: string;
+    checkInterval: number;
+    githubRepo: string;
+    buildScript: string;
+    installDir?: string;
+    relativeReleaseDir?: string;
+  };
+  arduino: {
+    cliPath: string;
+    boardType: string;
+    port: string;
+  };
+  dev: {
+    mockSerial: boolean;
+    mockSystemAudio: boolean;
+  };
+}
+
 // Define the interface for our app state
 export interface AppState {
   volume: number;
@@ -58,6 +86,7 @@ export interface AppState {
   sunriseDuration: number;
   sunriseActive: boolean;
   sunriseBrightness: number; // Global brightness for sunrise (0-100)
+  config: AppConfig; // Application configuration from main process
 }
 
 export type UpdateStatus =

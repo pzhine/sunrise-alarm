@@ -1,30 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { app } from 'electron';
-
-export interface AppConfig {
-  freesound: {
-    clientId: string;
-    apiKey: string;
-  };
-  openWeather: {
-    apiKey: string;
-  };
-  autoUpdate: {
-    updateUrl: string;
-    checkInterval: number;
-    githubRepo: string;
-    buildScript: string;
-    installDir?: string; // Directory where app files will be installed
-    relativeReleaseDir?: string; // Path to unpacked release files relative to electron dir
-  };
-  arduino: {
-    cliPath: string;
-    boardType: string; // fqbn
-    port: string;
-    mockSerialInDev: boolean; // Use mock serial port in dev mode
-  };
-}
+import { AppConfig } from '../../types/state';
 
 // Configuration object that will be loaded from config.json
 let config: AppConfig;

@@ -3,6 +3,7 @@ import { debounce } from 'lodash-es';
 import { AlarmSound } from '../../types/sound';
 import { AppState } from '../../types/state';
 import { setGlobalVolume } from '../services/audioService';
+import defaultConfig from '../../config.example.json';
 
 // Create a Pinia store for our application state
 export const useAppStore = defineStore('appState', {
@@ -28,6 +29,7 @@ export const useAppStore = defineStore('appState', {
     sunriseDuration: 600, // Default: 10 minutes in seconds
     sunriseActive: false,
     sunriseBrightness: 100, // Default: 100% brightness
+    config: defaultConfig,
   }),
 
   getters: {
@@ -74,6 +76,7 @@ export const useAppStore = defineStore('appState', {
     async loadState() {
       try {
         const savedState = await window.ipcRenderer.invoke('load-app-state');
+        console.log('Loaded saved state:', savedState);
         if (savedState) {
           // Replace the entire state with the saved one
           this.$patch(savedState);

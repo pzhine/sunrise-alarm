@@ -1,4 +1,5 @@
 import { AlarmSound } from '../../types/sound';
+import { useAppStore } from '../stores/appState';
 
 export interface SoundInfo extends AlarmSound {
   currentTime?: number;
@@ -7,6 +8,7 @@ export interface SoundInfo extends AlarmSound {
 // Global audio element for persistent playback
 let globalAudioElement: HTMLAudioElement | null = null;
 let currentSoundInfo: SoundInfo | null = null;
+let mockVolume = 1; // Default mock volume
 
 // Play a preview of a sound
 export function playPreview(previewUrl: string): HTMLAudioElement {
@@ -24,7 +26,17 @@ export function playGlobalSound(soundInfo: SoundInfo): void {
 
   // Create and play new audio
   globalAudioElement = new Audio(soundInfo.previewUrl);
-  globalAudioElement.volume = 1; // Set default volume to 100%
+
+  if (
+    process.env.NODE_ENV === 'development' &&
+    useAppStore().config?.dev.mockSystemAudio
+  ) {
+    globalAudioElement.volume = mockVolume;
+  } else {
+    // In production or if not mocking, the volume is controlled by the system, so
+    // it stays at 100% here
+    globalAudioElement.volume = 1; // Set default volume to 100%
+  }
 
   // Set the current time if provided and valid
   if (soundInfo.currentTime !== undefined) {
@@ -84,12 +96,20 @@ export function getCurrentSoundInfo(): SoundInfo | null {
   };
 }
 
-// Set the volume of the global audio
+// Set the volume of the global audio. Normally, this shouldn't be called directly from a page
+// or component, but rather through the appState.setVolume method.
 export function setGlobalVolume(volume: number): void {
+  // console.log('Setting global volume to:', volume);
   const clampedVolume = Math.max(0, Math.min(volume, 1)); // Clamp between 0-1
-  if (globalAudioElement && process.env.NODE_ENV === 'development') {
+  if (
+    process.env.NODE_ENV === 'development' &&
+    useAppStore().config.dev.mockSystemAudio
+  ) {
     // console.log('Setting client volume to:', volume);
-    globalAudioElement.volume = clampedVolume;
+    mockVolume = clampedVolume;
+    if (globalAudioElement) {
+      globalAudioElement.volume = clampedVolume;
+    }
     return;
   }
   // Update the system volume using general invoke method

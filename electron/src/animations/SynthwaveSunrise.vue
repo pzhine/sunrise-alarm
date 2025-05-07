@@ -16,6 +16,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
+import { cubicBezierEasing } from './animationUtils';
 
 // Define props
 const props = defineProps({
@@ -152,60 +153,6 @@ void main() {
   gl_FragColor = vec4(finalColor, finalAlpha);
 }
 `;
-
-// Helper function for customizable Cubic Bezier easing
-function cubicBezierEasing(
-  t: number,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number
-): number {
-  if (x1 === y1 && x2 === y2) {
-    return t; // Linear easing if control points are diagonal
-  }
-
-  // Precompute coefficients for x(u) = Ax*u^3 + Bx*u^2 + Cx*u
-  const Cx = 3.0 * x1;
-  const Bx = 3.0 * (x2 - x1) - Cx;
-  const Ax = 1.0 - Cx - Bx;
-
-  // Precompute coefficients for y(u) = Ay*u^3 + By*u^2 + Cy*u
-  const Cy = 3.0 * y1;
-  const By = 3.0 * (y2 - y1) - Cy;
-  const Ay = 1.0 - Cy - By;
-
-  // Solve for u given t (where t is the x coordinate)
-  // using Newton-Raphson iteration
-  let u = t; // Initial guess
-  const NEWTON_ITERATIONS = 8;
-  const NEWTON_MIN_STEP = 1e-5; // Tolerance for error
-
-  for (let i = 0; i < NEWTON_ITERATIONS; ++i) {
-    // Calculate x(u) and x'(u)
-    const u2 = u * u;
-    const u3 = u2 * u;
-
-    const currentX = Ax * u3 + Bx * u2 + Cx * u;
-    const currentDerivativeX = 3.0 * Ax * u2 + 2.0 * Bx * u + Cx;
-
-    if (currentDerivativeX === 0) {
-      break; // Avoid division by zero
-    }
-
-    const error = currentX - t;
-    if (Math.abs(error) < NEWTON_MIN_STEP) {
-      break; // Converged
-    }
-    u -= error / currentDerivativeX;
-    u = Math.max(0, Math.min(1, u)); // Clamp u to [0, 1] as it can go out of bounds
-  }
-
-  // Calculate y(u)
-  const u2_final = u * u;
-  const u3_final = u2_final * u;
-  return Ay * u3_final + By * u2_final + Cy * u;
-}
 
 // Function to update animation state based on progress (Handles Sun, Colors, Bloom)
 function updateAnimationState(progress: number) {

@@ -60,7 +60,7 @@ export async function closeSerialPorts(): Promise<void> {
 messageQueueInterval = setInterval(processMessageQueue, MESSAGE_INTERVAL);
 
 export function startSerialComms() {
-  if (process.env.VITE_DEV_SERVER_URL && getConfig().arduino.mockSerialInDev) {
+  if (process.env.VITE_DEV_SERVER_URL && getConfig().dev.mockSerial) {
     console.log(
       '[serial] Skipping serial port initialization in development mode'
     );

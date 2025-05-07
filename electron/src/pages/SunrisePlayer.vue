@@ -24,7 +24,6 @@ import { useAppStore } from '../stores/appState';
 import {
   playGlobalSound,
   stopGlobalSound,
-  setGlobalVolume,
   getCurrentSoundInfo,
 } from '../services/audioService';
 
@@ -34,6 +33,7 @@ const animationStartTime = ref(Date.now());
 const volumeUpdateInterval = ref<number | null>(null);
 const showTransparentReverse = ref(false);
 const sunriseOpacity = ref(1);
+const targetVolume = ref(appStore.volume / 100);
 
 // Computed property to get the total sunrise duration in milliseconds
 const sunriseDuration = computed(() => appStore.sunriseDuration * 1000);
@@ -42,6 +42,9 @@ const sunriseDuration = computed(() => appStore.sunriseDuration * 1000);
 const stopSunrise = async () => {
   // Stop the audio
   stopGlobalSound();
+
+  // restore volume
+  appStore.setVolume(targetVolume.value * 100);
 
   // Clear the volume update interval
   if (volumeUpdateInterval.value) {
@@ -79,11 +82,10 @@ const updateVolume = () => {
   const progress = Math.min(elapsedTime / sunriseDuration.value, 1);
 
   // Gradually increase volume from 0 to the user's preferred volume
-  const targetVolume = appStore.volume / 100;
-  const currentVolume = progress * targetVolume;
+  const currentVolume = progress * targetVolume.value;
 
   // Set the global audio volume
-  setGlobalVolume(currentVolume);
+  appStore.setVolume(currentVolume * 100);
 
   // If we've reached the end of the animation duration, clear the interval
   if (progress >= 1) {
@@ -98,6 +100,9 @@ const updateVolume = () => {
 const startAudio = () => {
   if (!appStore.alarmSound) return;
 
+  // Set the initial volume to 0
+  appStore.setVolume(0);
+
   // Play the sound globally with the audioService
   playGlobalSound({
     id: appStore.alarmSound.id,
@@ -108,9 +113,6 @@ const startAudio = () => {
     country: appStore.alarmSound.country,
     currentTime: 0,
   });
-
-  // Initialize volume to 0
-  setGlobalVolume(0);
 
   // Start the volume update interval
   volumeUpdateInterval.value = window.setInterval(updateVolume, 100);

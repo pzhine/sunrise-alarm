@@ -38,7 +38,7 @@ const menuItems = computed(() => {
     },
     appStore.alarmActive
       ? {
-          label: 'Alarm',
+          label: 'Alarm Time',
           value: `${appStore.formattedAlarmTime}`,
           onSelect: () => router.push('/alarm'),
         }

@@ -1,26 +1,20 @@
 <template>
-  <div
-    @mousedown.right="goToMenu"
-    @keydown.enter="goToMenu"
-    @wheel="handleWheelEvent"
-    tabindex="0"
-    ref="clockContainer"
-  >
+  <div tabindex="0" ref="clockContainer">
     <ClockComponent />
   </div>
 </template>
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import { useAppStore } from '../stores/appState';
 import { isGlobalSoundPlaying } from '../services/audioService';
 import ClockComponent from '../components/ClockComponent.vue';
+import { onMounted, onUnmounted } from 'vue';
 
 const router = useRouter();
-const appStore = useAppStore();
 
 // Navigation function
-const goToMenu = (event: MouseEvent | KeyboardEvent) => {
+const goToMenu = (event: MouseEvent) => {
+  if (event.button !== 2) return; // Only handle right-click
   event.preventDefault();
   event.stopPropagation();
   router.push('/menu');
@@ -36,4 +30,14 @@ const handleWheelEvent = (event: WheelEvent) => {
   // Navigate to LevelControl page with appropriate mode
   router.push(`/level/${mode}`);
 };
+
+onMounted(() => {
+  window.addEventListener('mousedown', goToMenu);
+  window.addEventListener('wheel', handleWheelEvent, { passive: false });
+});
+
+onUnmounted(() => {
+  window.removeEventListener('mousedown', goToMenu);
+  window.removeEventListener('wheel', handleWheelEvent);
+});
 </script>

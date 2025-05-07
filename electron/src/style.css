@@ -31,6 +31,10 @@ textarea:focus {
 }
 
 @layer base {
+  html {
+    font-size: 24px;
+  }
+
   button:active {
     background-color: var(--color-li-highlight);
   }

@@ -68,5 +68,6 @@ textarea:focus {
   :root {
     --color-li-highlight: theme('colors.gray.700');
     --color-li-hover: theme('colors.gray.900');
+    --header-height: 3.4rem;
   }
 }

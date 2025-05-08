@@ -1,5 +1,5 @@
 <template>
-  <div class="p-8 w-full">
+  <div class="w-full">
     <InteractiveList
       :show-title="true"
       :title="soundName"

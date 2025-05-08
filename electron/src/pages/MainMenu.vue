@@ -1,17 +1,19 @@
 <template>
-  <div class="p-8 w-full">
+  <div class="w-full">
     <InteractiveList
+      :title="'Main Menu'"
+      :show-title="true"
       :items="menuItems"
       :showBackButton="true"
       @select="handleMenuSelection"
       @back="router.push('/')"
     />
   </div>
-  <TimeoutRedirect
+  <!-- <TimeoutRedirect
     :ms="INACTIVITY_TIMEOUT"
     :redirectRoute="'/'"
     :resetOnActivity="'wheel'"
-  />
+  /> -->
 </template>
 
 <script setup lang="ts">

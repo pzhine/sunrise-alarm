@@ -1,5 +1,5 @@
 <template>
-  <div class="p-8" style="{{ fontSize: '12px' }}">
+  <div class="">
     <button
       class="self-start mb-4 px-4 py-2 rounded border"
       @click="router.back()"
@@ -110,7 +110,7 @@ onMounted(() => {
 });
 </script>
 
-<style>
+<style scoped>
 html {
   font-size: 16px;
 }

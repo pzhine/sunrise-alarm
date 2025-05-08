@@ -1,5 +1,5 @@
 <template>
-  <div class="p-8 w-full">
+  <div class="w-full">
     <InteractiveList
       :items="ledOptions"
       :showBackButton="true"
@@ -39,7 +39,7 @@ const handleLEDSelection = (selected: ListItem) => {
     console.error('Invalid selection received');
     return;
   }
-console.log('selected:', selected);
+  console.log('selected:', selected);
   router.push({
     name: 'ProjectorLEDControl',
     params: { ledIndex: selected.value },
@@ -63,7 +63,7 @@ onMounted(() => {
         );
       }
     });
-    
+
     console.log('[ProjectorPreview] Sent saved LED settings to Arduino');
   }
 });

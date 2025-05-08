@@ -1,5 +1,5 @@
 <template>
-  <div class="p-8 w-full">
+  <div class="w-full">
     <div v-if="isLoading" class="flex justify-center items-center h-64">
       <div class="text-xl">Loading sounds...</div>
     </div>

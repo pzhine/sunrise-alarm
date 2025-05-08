@@ -1,5 +1,5 @@
 <template>
-  <div class="p-8 flex flex-col items-center justify-center h-full w-full">
+  <div class="flex flex-col items-center justify-center h-full w-full">
     <div class="text-2xl mb-8">{{ soundName }}</div>
 
     <div class="w-full max-w-md bg-gray-200 rounded-full h-4 mb-8">

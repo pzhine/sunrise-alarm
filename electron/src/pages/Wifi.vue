@@ -1,5 +1,5 @@
 <template>
-  <div id="wifi" class="p-8 w-full">
+  <div id="wifi" class="w-full">
     <h1 class="text-xl font-bold mb-4">Available WiFi Networks</h1>
     <InteractiveList :items="wifiNetworks" @select="selectNetwork" />
   </div>

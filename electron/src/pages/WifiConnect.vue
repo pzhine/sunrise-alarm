@@ -1,5 +1,5 @@
 <template>
-  <div class="p-8">
+  <div class="">
     <h1 class="text-xl font-bold mb-4">Connecting to {{ networkName }}</h1>
     <template v-if="isConnecting">
       <p class="mt-4">Please wait...</p>

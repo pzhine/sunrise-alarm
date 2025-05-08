@@ -1,29 +1,37 @@
 <template>
-  <button
-    v-if="showBackButton"
-    @click="handleBackButton"
-    :class="{
-      'fixed top-4 left-4 p-3 border-b border-r z-10': true,
-      'bg-[var(--color-li-highlight)]': isBackButtonHighlighted,
-    }"
-  >
-    {{ backButtonLabel ?? '← Back' }}
-  </button>
   <div
-    v-if="showTitle"
-    class="fixed top-8 text-xl font-bold overflow-hidden overflow-ellipsis whitespace-nowrap"
-    :style="{
-      maxWidth: 'calc(100vw - 16rem)',
-    }"
+    v-if="showTitle || showBackButton"
+    class="fixed top-0 left-0 border-b z-10 flex flex-row w-full h-[var(--header-height)] bg-[var(--color-li-background)]"
   >
-    {{ title }}
+    <button
+      v-if="showBackButton"
+      @click="handleBackButton"
+      :class="{
+        'border-r px-4': true,
+        'bg-[var(--color-li-highlight)]': isBackButtonHighlighted,
+      }"
+    >
+      {{ backButtonLabel ?? '← Back' }}
+    </button>
+    <div
+      class="px-4 text-xl font-bold overflow-hidden overflow-ellipsis whitespace-nowrap flex items-center"
+    >
+      {{ title }}
+    </div>
   </div>
 
   <ul
     :class="{
-      'w-full divide-y overflow-y-auto': true,
-      'max-h-[calc(100vh-3rem)] mt-[3rem]': showBackButton,
+      'w-full divide-y overflow-y-auto h-full': true,
     }"
+    :style="
+      showBackButton || showTitle
+        ? {
+            maxHeight: 'calc(100vh - var(--header-height))',
+            marginTop: 'var(--header-height)',
+          }
+        : {}
+    "
     @keydown.up.prevent="navigateList('up')"
     @keydown.down.prevent="navigateList('down')"
     @keydown.enter.prevent="handleEnterKey"
@@ -34,7 +42,7 @@
       v-for="(item, index) in items"
       :key="index"
       :class="{
-        'p-4 flex justify-between items-center': true,
+        'py-4 px-6 flex justify-between items-center': true,
         'bg-[var(--color-li-highlight)]':
           index === highlightedIndex && !isBackButtonHighlighted,
         ...(isObject(item) && item.customClass
@@ -76,6 +84,7 @@ import {
 } from 'vue';
 import { useAppStore } from '../stores/appState';
 import { useRoute } from 'vue-router';
+import { max } from 'lodash-es';
 
 // Define item type
 export type ListItem =
@@ -158,8 +167,8 @@ const navigateList = (direction: 'up' | 'down'): void => {
     if (direction === 'up') {
       if (isBackButtonHighlighted.value) {
         // From back button, go to last list item
-        isBackButtonHighlighted.value = false;
-        highlightedIndex.value = props.items.length - 1;
+        // isBackButtonHighlighted.value = false;
+        // highlightedIndex.value = props.items.length - 1;
       } else if (highlightedIndex.value === 0) {
         // From first list item, go to back button
         isBackButtonHighlighted.value = true;
@@ -176,8 +185,8 @@ const navigateList = (direction: 'up' | 'down'): void => {
         highlightedIndex.value = 0;
       } else if (highlightedIndex.value === props.items.length - 1) {
         // From last list item, go to back button
-        isBackButtonHighlighted.value = true;
-        highlightedIndex.value = -1; // Use -1 to indicate no list item is selected
+        // isBackButtonHighlighted.value = true;
+        // highlightedIndex.value = -1; // Use -1 to indicate no list item is selected
       } else {
         // Navigate down through list items
         highlightedIndex.value =
@@ -239,7 +248,7 @@ const handleBackButton = () => {
 };
 
 // Rest of the component code
-const scrollToHighlighted = (): void => {
+const scrollToHighlighted = (smooth: boolean = true): void => {
   if (!listContainer.value) return;
 
   const container = listContainer.value;
@@ -256,13 +265,15 @@ const scrollToHighlighted = (): void => {
   const containerRect = container.getBoundingClientRect();
   const elementRect = highlightedElement.getBoundingClientRect();
 
+  const behavior = smooth ? 'smooth' : 'instant';
+
   // If element is above the visible area
   if (elementRect.top < containerRect.top) {
-    highlightedElement.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    highlightedElement.scrollIntoView({ block: 'start', behavior });
   }
   // If element is below the visible area
   else if (elementRect.bottom > containerRect.bottom) {
-    highlightedElement.scrollIntoView({ block: 'end', behavior: 'smooth' });
+    highlightedElement.scrollIntoView({ block: 'end', behavior });
   }
 };
 
@@ -297,6 +308,22 @@ watch(highlightedIndex, (newValue) => {
   nextTick(scrollToHighlighted);
 });
 
+// Watch for changes to the items prop to ensure we scroll after items are populated
+watch(
+  () => props.items,
+  () => {
+    if (props.items.length > 0) {
+      // Wait for the DOM to update with the new items
+      nextTick(() => {
+        scrollToHighlighted(false);
+      });
+    }
+  },
+  {
+    immediate: true,
+  }
+);
+
 // Handle item click
 const handleItemClick = (item: ListItem, index: number) => {
   // Reset back button highlight when clicking list items
@@ -324,9 +351,6 @@ const handleMouseDown = (event: MouseEvent) => {
 onMounted(() => {
   nextTick(() => {
     listContainer.value?.focus();
-
-    // If we have a saved position, scroll to it
-    scrollToHighlighted();
 
     // Add wheel event listener to window
     window.addEventListener('wheel', handleWheel, { passive: false });

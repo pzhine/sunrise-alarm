@@ -1,6 +1,8 @@
 <template>
-  <div class="p-8 w-full">
+  <div class="w-full">
     <InteractiveList
+      :title="'Sounds'"
+      :show-title="true"
       :items="soundCategories"
       :showBackButton="true"
       @back="router.push('/menu')"

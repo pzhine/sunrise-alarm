@@ -1,5 +1,5 @@
 <template>
-  <div class="p-8">
+  <div class="p-8" style="{{ fontSize: '12px' }}">
     <button
       class="self-start mb-4 px-4 py-2 rounded border"
       @click="router.back()"
@@ -109,3 +109,9 @@ onMounted(() => {
   passwordInput.value?.focus();
 });
 </script>
+
+<style>
+html {
+  font-size: 16px;
+}
+</style>

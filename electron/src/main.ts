@@ -28,7 +28,7 @@ const routes = [
     name: 'WifiConnect',
     component: WifiConnect,
   },
-  { path: '/', name: 'Clock', component: ClockPage },
+  { path: '/', name: 'Wifi', component: Wifi },
   { path: '/menu', name: 'MainMenu', component: MainMenu },
   { path: '/sounds', name: 'SoundCategories', component: SoundCategories },
   {

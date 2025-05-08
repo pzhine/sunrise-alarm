@@ -233,7 +233,7 @@ onMounted(() => {
       // Start of transition to stage 1 (lasts 10s)
       // Target: marginTop: 200px, color: white, opacity: 0.5
       animateStyle(
-        0.5,
+        0.3,
         () => clockStyles.opacity,
         (val) => {
           lastOpacityValue.value = val; // Store the last opacity value

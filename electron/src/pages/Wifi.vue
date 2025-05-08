@@ -25,11 +25,12 @@ const fetchWifiNetworks = async (): Promise<void> => {
 };
 
 const selectNetwork = (item: ListItem): void => {
-  if (typeof item === 'string') {
-    console.log(`Selected network: ${item}`);
-  } else {
-    console.log(`Selected network: ${item.label}`);
-  }
+  const network = typeof item === 'string' ? item : item.label;
+  console.log(`Selected network: ${network}`);
+  router.push({
+    name: 'WifiPassword',
+    params: { networkName: network },
+  });
 };
 
 let intervalId: NodeJS.Timeout | undefined;

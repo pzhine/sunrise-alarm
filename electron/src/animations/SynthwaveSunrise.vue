@@ -80,7 +80,7 @@ let initialBloomRadius: number;
 
 // Wave parameters
 const waveFrequency = (3 * Math.PI) / 100; // Adjusted for periodicity over planeSize
-const waveAmplitude = 1;
+const waveAmplitude = 2;
 const waveSpeed = 0.5;
 const scrollSpeed = 2.0; // Or your preferred speed
 

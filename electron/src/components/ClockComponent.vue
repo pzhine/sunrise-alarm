@@ -6,10 +6,12 @@
     ref="clockContainer"
   >
     <div
+      class="flex items-center justify-center"
       :style="{
         'font-size': '150px',
         'font-weight': 'normal',
-        'font-family': '\'Digital7\', sans-serif',
+        'font-family': '\'FlexiIBM\', sans-serif',
+
       }"
     >
       {{ hoursPart

@@ -13,7 +13,7 @@
     >
       {{ backButtonLabel ?? '← Back' }}
     </button>
-    <div class="px-4 text-xl font-bold flex-1 min-w-0 flex items-center">
+    <div class="px-4 text-xl flex-1 min-w-0 flex items-center">
       <span class="truncate w-full">{{ title }}</span>
     </div>
   </div>

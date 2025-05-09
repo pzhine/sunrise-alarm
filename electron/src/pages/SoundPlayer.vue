@@ -13,7 +13,22 @@
 
     <div class="text-lg mb-4">Volume: {{ volume }}%</div>
 
-    <!-- <div class="mb-6">
+    <!-- <div class="mb-4">
+      <div class="text-sm mb-1">
+        High Frequency Reduction: {{ highFreqReduction }}dB
+      </div>
+      <input
+        type="range"
+        min="-12"
+        max="0"
+        step="1"
+        v-model="highFreqReduction"
+        @change="updateEQ"
+        class="w-64"
+      />
+    </div>
+
+    <div class="mb-6">
       <button
         @click.stop="toggleCompression"
         class="px-4 py-2 rounded-md text-white"
@@ -88,6 +103,7 @@ const playbackProgress = ref(0);
 const volume = computed(() => appStore.volume);
 const progressUpdateInterval = ref<number | null>(null);
 const useCompression = ref(false);
+const highFreqReduction = ref(-8);
 
 // Start or resume global sound playback
 const startPlayback = () => {
@@ -110,6 +126,7 @@ const startPlayback = () => {
     country: country.value,
     soundId: soundId.value, // Add soundId for normalization
     useCompressor: useCompression.value,
+    highFreqReduction: highFreqReduction.value,
   });
 };
 
@@ -146,7 +163,7 @@ const handleWheel = (event: WheelEvent) => {
 const handleClick = (event: MouseEvent) => {
   // Check if the click was on the toggle button
   const target = event.target as HTMLElement;
-  if (target && target.tagName === 'BUTTON') {
+  if ((target && target.tagName === 'BUTTON') || target.tagName === 'INPUT') {
     return; // Don't navigate if clicking on a button
   }
 
@@ -216,6 +233,26 @@ const toggleCompression = (event: Event) => {
       country: currentSound.country,
       soundId: currentSound.id,
       useCompressor: useCompression.value,
+      highFreqReduction: highFreqReduction.value,
+    });
+  }
+};
+
+// Update EQ settings
+const updateEQ = () => {
+  const currentSound = getCurrentSoundInfo();
+  if (currentSound) {
+    playGlobalSound({
+      id: currentSound.id,
+      name: currentSound.name,
+      previewUrl: currentSound.previewUrl,
+      duration: currentSound.duration,
+      currentTime: currentSound.currentTime,
+      category: currentSound.category,
+      country: currentSound.country,
+      soundId: currentSound.id,
+      useCompressor: useCompression.value,
+      highFreqReduction: highFreqReduction.value,
     });
   }
 };

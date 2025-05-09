@@ -6,6 +6,11 @@ export interface SoundInfo extends AlarmSound {
   normalize?: boolean; // Added normalize option
   soundId?: number; // The Freesound ID to fetch analysis data
   useCompressor?: boolean; // Whether to apply Web Audio API compression
+  highFreqReduction?: number; // Direct control of high frequency reduction in dB
+  eqSettings?: {
+    highShelfFrequency?: number; // Frequency above which to reduce gain (default 3000Hz)
+    highShelfGain?: number; // Gain reduction in dB for high frequencies (default -6dB)
+  }; // EQ settings for frequency response adjustment
 }
 
 // Global audio element for persistent playback
@@ -18,6 +23,7 @@ let audioContext: AudioContext | null = null;
 let mediaElementSource: MediaElementAudioSourceNode | null = null;
 let compressorNode: DynamicsCompressorNode | null = null;
 let gainNode: GainNode | null = null; // Added GainNode for makeup gain
+let highShelfFilter: BiquadFilterNode | null = null; // High shelf filter for reducing high frequencies
 
 // Cache for normalized gain values to prevent repeated analysis
 const normalizedGainCache: Record<string, number> = {};
@@ -27,7 +33,7 @@ const TARGET_LEVEL = 0.5;
 // Maximum gain to apply during normalization to prevent excessive amplification of very quiet sounds
 const MAX_GAIN = 5.0;
 // Default gain when analysis data is not available
-const DEFAULT_GAIN = 0.0;
+const DEFAULT_GAIN = 1.0;
 // Target integrated loudness in LUFS for consistent loudness across tracks
 const TARGET_LUFS = -14; // Increased from -16 for louder output
 // Target true peak in dBFS
@@ -275,6 +281,10 @@ export async function playGlobalSound(
         gainNode.disconnect();
         gainNode = null;
       }
+      if (highShelfFilter) {
+        highShelfFilter.disconnect();
+        highShelfFilter = null;
+      }
 
       // Create and connect Web Audio API nodes
       globalAudioElement.src = soundInfo.previewUrl;
@@ -290,6 +300,23 @@ export async function playGlobalSound(
       // Always create gain node for normalization
       gainNode = audioContext.createGain();
       gainNode.gain.value = normalizationGain;
+
+      // Create high shelf filter to reduce high frequencies
+      highShelfFilter = audioContext.createBiquadFilter();
+      highShelfFilter.type = 'highshelf';
+      highShelfFilter.frequency.value = 3000; // Frequency above which to reduce gain (3kHz)
+
+      // Use highFreqReduction directly if provided, or use eqSettings.highShelfGain, or default to -6dB
+      const highShelfGain =
+        soundInfo.highFreqReduction !== undefined
+          ? Number(soundInfo.highFreqReduction)
+          : (soundInfo.eqSettings?.highShelfGain ?? -6);
+
+      highShelfFilter.gain.value = highShelfGain; // Apply gain reduction
+
+      console.log(
+        `Sound #${soundInfo.soundId}: High frequency reduction: ${highShelfGain}dB at ${highShelfFilter.frequency.value}Hz`
+      );
 
       if (useCompressor) {
         // Create and configure compressor if enabled
@@ -308,8 +335,11 @@ export async function playGlobalSound(
         mediaElementSource.connect(gainNode);
       }
 
+      // Connect gain node to high shelf filter
+      gainNode.connect(highShelfFilter);
+
       // Final connection to output
-      gainNode.connect(audioContext.destination);
+      highShelfFilter.connect(audioContext.destination);
 
       // Play the normalized sound
       playNonNormalized(soundInfo);
@@ -356,6 +386,10 @@ export function stopGlobalSound(): void {
   if (gainNode) {
     gainNode.disconnect();
     gainNode = null;
+  }
+  if (highShelfFilter) {
+    highShelfFilter.disconnect();
+    highShelfFilter = null;
   }
 
   globalAudioElement = null;

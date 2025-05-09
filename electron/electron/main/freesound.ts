@@ -209,21 +209,21 @@ export async function getSoundDetails(
     const soundData = (await response.json()) as FreesoundSearchResult;
 
     // Log the analysis data for debugging
-    // console.log(`Sound #${soundId} Analysis Data:`);
-    // console.log(
-    //   JSON.stringify(
-    //     {
-    //       name: soundData.name,
-    //       id: soundData.id,
-    //       analysis: {
-    //         lowlevel: soundData.analysis?.lowlevel,
-    //         loudness: soundData.analysis?.loudness,
-    //       },
-    //     },
-    //     null,
-    //     2
-    //   )
-    // );
+    console.log(`Sound #${soundId} Analysis Data:`);
+    console.log(
+      JSON.stringify(
+        {
+          name: soundData.name,
+          id: soundData.id,
+          analysis: {
+            lowlevel: soundData.analysis?.lowlevel,
+            loudness: soundData.analysis?.loudness,
+          },
+        },
+        null,
+        2
+      )
+    );
 
     return soundData;
   } catch (error) {

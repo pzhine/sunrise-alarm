@@ -264,22 +264,22 @@ export async function playGlobalSound(
       globalAudioElement.src = soundInfo.previewUrl;
       mediaElementSource =
         audioContext.createMediaElementSource(globalAudioElement);
-      compressorNode = audioContext.createDynamicsCompressor();
+      // compressorNode = audioContext.createDynamicsCompressor();
       gainNode = audioContext.createGain();
 
       // Configure compressor for dynamic range reduction
-      compressorNode.threshold.value = -24; // Start compressing at -24dB
-      compressorNode.knee.value = 30; // Smooth knee for natural compression
-      compressorNode.ratio.value = 4; // 4:1 compression ratio
-      compressorNode.attack.value = 0.003; // Fast but not instantaneous attack
-      compressorNode.release.value = 0.25; // Moderate release time
+      // compressorNode.threshold.value = -24; // Start compressing at -24dB
+      // compressorNode.knee.value = 30; // Smooth knee for natural compression
+      // compressorNode.ratio.value = 4; // 4:1 compression ratio
+      // compressorNode.attack.value = 0.003; // Fast but not instantaneous attack
+      // compressorNode.release.value = 0.25; // Moderate release time
 
       // Apply calculated gain
       gainNode.gain.value = normalizationGain;
 
       // Connect audio graph
-      mediaElementSource.connect(compressorNode);
-      compressorNode.connect(gainNode);
+      // mediaElementSource.connect(compressorNode);
+      // compressorNode.connect(gainNode);
       gainNode.connect(audioContext.destination);
 
       // Play the normalized sound

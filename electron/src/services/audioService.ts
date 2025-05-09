@@ -23,8 +23,7 @@ let audioContext: AudioContext | null = null;
 let mediaElementSource: MediaElementAudioSourceNode | null = null;
 let compressorNode: DynamicsCompressorNode | null = null;
 let gainNode: GainNode | null = null; // Added GainNode for makeup gain
-let highShelfFilter: BiquadFilterNode | null = null; // High shelf filter for reducing high frequencies
-let limiterNode: DynamicsCompressorNode | null = null; // Limiter to control peak loudness
+let parametricEQ: BiquadFilterNode | null = null; // Parametric EQ filter for reducing frequencies around 1.5kHz
 
 // Cache for normalized gain values to prevent repeated analysis
 const normalizedGainCache: Record<string, number> = {};
@@ -168,9 +167,7 @@ async function calculateNormalizedGainFromAPI(
         console.log(
           `Sound #${soundId}: Current True Peak: ${truePeak}, Target: ${TARGET_TRUE_PEAK}, Gain: ${gain}`
         );
-      } else if (
-        analysis.lowlevel?.average_loudness
-      ) {
+      } else if (analysis.lowlevel?.average_loudness) {
         // average_loudness is RMS-like, higher values mean louder sounds
         const avgLoudness = analysis.lowlevel.average_loudness;
 
@@ -291,13 +288,9 @@ export async function playGlobalSound(
         gainNode.disconnect();
         gainNode = null;
       }
-      if (highShelfFilter) {
-        highShelfFilter.disconnect();
-        highShelfFilter = null;
-      }
-      if (limiterNode) {
-        limiterNode.disconnect();
-        limiterNode = null;
+      if (parametricEQ) {
+        parametricEQ.disconnect();
+        parametricEQ = null;
       }
 
       // Create and connect Web Audio API nodes
@@ -315,10 +308,11 @@ export async function playGlobalSound(
       gainNode = audioContext.createGain();
       gainNode.gain.value = normalizationGain;
 
-      // Create high shelf filter to reduce high frequencies
-      highShelfFilter = audioContext.createBiquadFilter();
-      highShelfFilter.type = 'highshelf';
-      highShelfFilter.frequency.value = 3200; // Frequency above which to reduce gain (3kHz)
+      // Create parametric EQ filter to reduce frequencies around 1.5kHz
+      parametricEQ = audioContext.createBiquadFilter();
+      parametricEQ.type = 'peaking';
+      parametricEQ.frequency.value = 1500; // Center frequency for reduction (1.5kHz)
+      parametricEQ.Q.value = 1; // Quality factor for the filter
 
       // Use highFreqReduction directly if provided, or use eqSettings.highShelfGain, or default to -6dB
       const highShelfGain =
@@ -326,10 +320,10 @@ export async function playGlobalSound(
           ? Number(soundInfo.highFreqReduction)
           : (soundInfo.eqSettings?.highShelfGain ?? -6);
 
-      highShelfFilter.gain.value = highShelfGain; // Apply gain reduction
+      parametricEQ.gain.value = highShelfGain; // Apply gain reduction
 
       console.log(
-        `Sound #${soundInfo.soundId}: High frequency reduction: ${highShelfGain}dB at ${highShelfFilter.frequency.value}Hz`
+        `Sound #${soundInfo.soundId}: Frequency reduction: ${highShelfGain}dB at ${parametricEQ.frequency.value}Hz`
       );
 
       if (useCompressor) {
@@ -349,26 +343,11 @@ export async function playGlobalSound(
         mediaElementSource.connect(gainNode);
       }
 
-      // Connect gain node to high shelf filter
-      gainNode.connect(highShelfFilter);
+      // Connect gain node to parametric EQ filter
+      gainNode.connect(parametricEQ);
 
-      // Create and configure limiter
-      limiterNode = audioContext.createDynamicsCompressor();
-      limiterNode.threshold.value = -1.5; // Limit peaks above -1.5dB
-      limiterNode.knee.value = 0; // Hard knee for strict limiting
-      limiterNode.ratio.value = 20; // High ratio for true limiting behavior
-      limiterNode.attack.value = 0.001; // Very fast attack to catch transients
-      limiterNode.release.value = 0.1; // Quick release for transparent limiting
-
-      console.log(
-        `Sound #${soundInfo.soundId}: Peak limiter enabled at ${limiterNode.threshold.value}dB threshold`
-      );
-
-      // Connect high shelf filter to limiter
-      highShelfFilter.connect(limiterNode);
-
-      // Final connection to output
-      limiterNode.connect(audioContext.destination);
+      // Connect parametric EQ filter to limiter
+      parametricEQ.connect(audioContext.destination);
 
       // Play the normalized sound
       playNonNormalized(soundInfo);
@@ -416,13 +395,9 @@ export function stopGlobalSound(): void {
     gainNode.disconnect();
     gainNode = null;
   }
-  if (highShelfFilter) {
-    highShelfFilter.disconnect();
-    highShelfFilter = null;
-  }
-  if (limiterNode) {
-    limiterNode.disconnect();
-    limiterNode = null;
+  if (parametricEQ) {
+    parametricEQ.disconnect();
+    parametricEQ = null;
   }
 
   globalAudioElement = null;
@@ -469,6 +444,14 @@ export function setGlobalVolume(volume: number): void {
     .catch((error) => {
       console.error('Failed to set system volume:', error);
     });
+}
+
+// Update the center frequency of the parametric EQ
+export function updateParametricEQFrequency(frequency: number): void {
+  if (parametricEQ && audioContext) {
+    parametricEQ.frequency.value = frequency;
+    console.log(`Updated parametric EQ center frequency to: ${frequency} Hz`);
+  }
 }
 
 // Stop playing a preview

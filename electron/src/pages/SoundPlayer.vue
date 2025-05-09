@@ -13,31 +13,18 @@
 
     <div class="text-lg mb-4">Volume: {{ volume }}%</div>
 
-    <!-- <div class="mb-4">
-      <div class="text-sm mb-1">
-        High Frequency Reduction: {{ highFreqReduction }}dB
-      </div>
+    <div class="w-full max-w-md mb-8">
+      <div class="text-lg mb-2">Frequency: {{ centerFrequency }} Hz</div>
       <input
         type="range"
-        min="-12"
-        max="0"
-        step="1"
-        v-model="highFreqReduction"
-        @change="updateEQ"
-        class="w-64"
+        min="500"
+        max="5000"
+        step="100"
+        v-model="centerFrequency"
+        class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+        @change="updateFrequency"
       />
     </div>
-
-    <div class="mb-6">
-      <button
-        @click.stop="toggleCompression"
-        class="px-4 py-2 rounded-md text-white"
-        :class="useCompression ? 'bg-blue-500' : 'bg-gray-500'"
-      >
-        Compression: {{ useCompression ? 'ON' : 'OFF' }}
-      </button>
-      <div class="text-sm mt-2 text-gray-600">Double-click for menu</div>
-    </div> -->
   </div>
   <TimeoutRedirect :ms="30000" :redirectRoute="'/'" />
 </template>
@@ -46,7 +33,11 @@
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAppStore } from '../stores/appState';
-import { playGlobalSound, getCurrentSoundInfo } from '../services/audioService';
+import {
+  playGlobalSound,
+  getCurrentSoundInfo,
+  updateParametricEQFrequency,
+} from '../services/audioService';
 import TimeoutRedirect from '../components/TimeoutRedirect.vue';
 
 const route = useRoute();
@@ -102,8 +93,7 @@ const country = computed(() => {
 const playbackProgress = ref(0);
 const volume = computed(() => appStore.volume);
 const progressUpdateInterval = ref<number | null>(null);
-const useCompression = ref(false);
-const highFreqReduction = ref(-4);
+const centerFrequency = ref(1500); // Default to match the 1.5 kHz in audioService
 
 // Start or resume global sound playback
 const startPlayback = () => {
@@ -125,8 +115,8 @@ const startPlayback = () => {
     category: category.value,
     country: country.value,
     soundId: soundId.value, // Add soundId for normalization
-    useCompressor: useCompression.value,
-    highFreqReduction: highFreqReduction.value,
+    useCompressor: false,
+    highFreqReduction: -16,
   });
 };
 
@@ -212,51 +202,6 @@ const removeEventListeners = () => {
   window.removeEventListener('contextmenu', handleContextMenu);
 };
 
-// Toggle compression
-const toggleCompression = (event: Event) => {
-  // Stop event propagation to prevent menu navigation
-  event.stopPropagation();
-
-  // Toggle compression setting
-  useCompression.value = !useCompression.value;
-
-  // Restart playback with new setting
-  const currentSound = getCurrentSoundInfo();
-  if (currentSound) {
-    playGlobalSound({
-      id: currentSound.id,
-      name: currentSound.name,
-      previewUrl: currentSound.previewUrl,
-      duration: currentSound.duration,
-      currentTime: currentSound.currentTime,
-      category: currentSound.category,
-      country: currentSound.country,
-      soundId: currentSound.id,
-      useCompressor: useCompression.value,
-      highFreqReduction: highFreqReduction.value,
-    });
-  }
-};
-
-// Update EQ settings
-const updateEQ = () => {
-  const currentSound = getCurrentSoundInfo();
-  if (currentSound) {
-    playGlobalSound({
-      id: currentSound.id,
-      name: currentSound.name,
-      previewUrl: currentSound.previewUrl,
-      duration: currentSound.duration,
-      currentTime: currentSound.currentTime,
-      category: currentSound.category,
-      country: currentSound.country,
-      soundId: currentSound.id,
-      useCompressor: useCompression.value,
-      highFreqReduction: highFreqReduction.value,
-    });
-  }
-};
-
 // Set up progress tracking and event listeners
 onMounted(() => {
   // Start playback
@@ -282,4 +227,10 @@ onBeforeUnmount(() => {
   // Remove event listeners
   removeEventListeners();
 });
+
+// Update frequency
+const updateFrequency = () => {
+  // Call the function with the new frequency value
+  updateParametricEQFrequency(centerFrequency.value);
+};
 </script>

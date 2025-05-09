@@ -22,7 +22,7 @@ let gainNode: GainNode | null = null; // Added GainNode for makeup gain
 const normalizedGainCache: Record<string, number> = {};
 
 // Target level for normalization (0.8 = -1.93dBFS)
-const TARGET_LEVEL = 0.8;
+const TARGET_LEVEL = 0.5;
 // Maximum gain to apply during normalization to prevent excessive amplification of very quiet sounds
 const MAX_GAIN = 5.0;
 // Default gain when analysis data is not available

@@ -13,7 +13,7 @@
 
     <div class="text-lg mb-4">Volume: {{ volume }}%</div>
 
-    <div class="w-full max-w-md mb-8">
+    <!-- <div class="w-full max-w-md mb-8">
       <div class="text-lg mb-2">Frequency: {{ centerFrequency }} Hz</div>
       <input
         type="range"
@@ -24,7 +24,7 @@
         class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
         @change="updateFrequency"
       />
-    </div>
+    </div> -->
   </div>
   <TimeoutRedirect :ms="30000" :redirectRoute="'/'" />
 </template>
@@ -93,7 +93,7 @@ const country = computed(() => {
 const playbackProgress = ref(0);
 const volume = computed(() => appStore.volume);
 const progressUpdateInterval = ref<number | null>(null);
-const centerFrequency = ref(1500); // Default to match the 1.5 kHz in audioService
+const centerFrequency = ref(2500); // Default to match the 1.5 kHz in audioService
 
 // Start or resume global sound playback
 const startPlayback = () => {

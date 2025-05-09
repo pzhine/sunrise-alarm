@@ -8,7 +8,7 @@
     <div
       class="flex items-center justify-center"
       :style="{
-        'font-size': '150px',
+        'font-size': '180px',
         'font-weight': 'normal',
         'font-family': '\'FlexiIBM\', sans-serif',
 

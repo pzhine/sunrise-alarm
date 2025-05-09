@@ -62,7 +62,13 @@
 }
 @font-face {
   font-family: 'DS-Digital';
-  src: url('./assets/fonts/DS-DIGIB.TTF') format('opentype');
+  src: url('./assets/fonts/DS-DIGII.TTF') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SegmentLED';
+  src: url('./assets/fonts/SegmentLED.ttf') format('opentype');
   font-weight: normal;
   font-style: normal;
 }

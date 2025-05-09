@@ -12,8 +12,19 @@
     </div>
 
     <div class="text-lg mb-4">Volume: {{ volume }}%</div>
+    <!-- 
+    <div class="mb-6">
+      <button
+        @click.stop="toggleCompression"
+        class="px-4 py-2 rounded-md text-white"
+        :class="useCompression ? 'bg-blue-500' : 'bg-gray-500'"
+      >
+        Compression: {{ useCompression ? 'ON' : 'OFF' }}
+      </button>
+      <div class="text-sm mt-2 text-gray-600">Double-click for menu</div>
+    </div> -->
   </div>
-  <!-- <TimeoutRedirect :ms="30000" :redirectRoute="'/'" /> -->
+  <TimeoutRedirect :ms="30000" :redirectRoute="'/'" />
 </template>
 
 <script setup lang="ts">
@@ -76,6 +87,7 @@ const country = computed(() => {
 const playbackProgress = ref(0);
 const volume = computed(() => appStore.volume);
 const progressUpdateInterval = ref<number | null>(null);
+const useCompression = ref(false);
 
 // Start or resume global sound playback
 const startPlayback = () => {
@@ -96,6 +108,8 @@ const startPlayback = () => {
     currentTime: 0, // Access .value of the computed ref
     category: category.value,
     country: country.value,
+    soundId: soundId.value, // Add soundId for normalization
+    useCompressor: useCompression.value,
   });
 };
 
@@ -129,7 +143,13 @@ const handleWheel = (event: WheelEvent) => {
 };
 
 // Handle mouse clicks to go to menu
-const handleClick = () => {
+const handleClick = (event: MouseEvent) => {
+  // Check if the click was on the toggle button
+  const target = event.target as HTMLElement;
+  if (target && target.tagName === 'BUTTON') {
+    return; // Don't navigate if clicking on a button
+  }
+
   goToSoundPlayerMenu();
 };
 
@@ -163,9 +183,9 @@ const addEventListeners = () => {
 };
 
 // Separate handler for contextmenu to make it easier to remove
-const handleContextMenu = (e: Event) => {
+const handleContextMenu = (e: MouseEvent) => {
   e.preventDefault();
-  handleClick();
+  handleClick(e);
 };
 
 // Helper function to remove all event listeners
@@ -173,6 +193,31 @@ const removeEventListeners = () => {
   window.removeEventListener('wheel', handleWheel);
   window.removeEventListener('click', handleClick);
   window.removeEventListener('contextmenu', handleContextMenu);
+};
+
+// Toggle compression
+const toggleCompression = (event: Event) => {
+  // Stop event propagation to prevent menu navigation
+  event.stopPropagation();
+
+  // Toggle compression setting
+  useCompression.value = !useCompression.value;
+
+  // Restart playback with new setting
+  const currentSound = getCurrentSoundInfo();
+  if (currentSound) {
+    playGlobalSound({
+      id: currentSound.id,
+      name: currentSound.name,
+      previewUrl: currentSound.previewUrl,
+      duration: currentSound.duration,
+      currentTime: currentSound.currentTime,
+      category: currentSound.category,
+      country: currentSound.country,
+      soundId: currentSound.id,
+      useCompressor: useCompression.value,
+    });
+  }
 };
 
 // Set up progress tracking and event listeners

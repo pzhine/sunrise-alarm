@@ -5,6 +5,7 @@ export interface SoundInfo extends AlarmSound {
   currentTime?: number;
   normalize?: boolean; // Added normalize option
   soundId?: number; // The Freesound ID to fetch analysis data
+  useCompressor?: boolean; // Whether to apply Web Audio API compression
 }
 
 // Global audio element for persistent playback
@@ -27,6 +28,10 @@ const TARGET_LEVEL = 0.5;
 const MAX_GAIN = 5.0;
 // Default gain when analysis data is not available
 const DEFAULT_GAIN = 1.0;
+// Target integrated loudness in LUFS for consistent loudness across tracks
+const TARGET_LUFS = -16; // Industry standard for streaming
+// Target true peak in dBFS
+const TARGET_TRUE_PEAK = -2;
 
 // Play a preview of a sound
 export function playPreview(previewUrl: string): HTMLAudioElement {
@@ -129,25 +134,36 @@ async function calculateNormalizedGainFromAPI(
 
       if (analysis.loudness?.integrated !== undefined) {
         // Integrated loudness is in LUFS (typically negative values)
-        // Target is around -14 LUFS for web audio (typical streaming target)
-        const targetLUFS = -14;
         const currentLUFS = analysis.loudness.integrated;
 
         // Calculate gain in dB then convert to amplitude ratio
-        const gainDB = targetLUFS - currentLUFS;
+        const gainDB = TARGET_LUFS - currentLUFS;
         gain = Math.pow(10, gainDB / 20);
+
+        console.log(
+          `Sound #${soundId}: Current LUFS: ${currentLUFS}, Target: ${TARGET_LUFS}, Gain: ${gain}`
+        );
       } else if (analysis.loudness?.true_peak !== undefined) {
         // True peak is in dBFS (0 dBFS is max, negative values are below)
         const truePeak = analysis.loudness.true_peak;
 
-        // Calculate gain needed to bring peak to target level (-2 dBFS)
-        const targetPeak = -2;
-        const gainDB = targetPeak - truePeak;
+        // Calculate gain needed to bring peak to target level
+        const gainDB = TARGET_TRUE_PEAK - truePeak;
         gain = Math.pow(10, gainDB / 20);
+
+        console.log(
+          `Sound #${soundId}: Current True Peak: ${truePeak}, Target: ${TARGET_TRUE_PEAK}, Gain: ${gain}`
+        );
       } else if (analysis.lowlevel?.average_loudness !== undefined) {
         // average_loudness is RMS-like, higher values mean louder sounds
+        const avgLoudness = analysis.lowlevel.average_loudness;
+
         // Convert to a gain factor by normalizing to target level
-        gain = TARGET_LEVEL / analysis.lowlevel.average_loudness;
+        gain = TARGET_LEVEL / avgLoudness;
+
+        console.log(
+          `Sound #${soundId}: Average Loudness: ${avgLoudness}, Target Level: ${TARGET_LEVEL}, Gain: ${gain}`
+        );
       }
 
       // Limit the gain to a reasonable range
@@ -264,22 +280,35 @@ export async function playGlobalSound(
       globalAudioElement.src = soundInfo.previewUrl;
       mediaElementSource =
         audioContext.createMediaElementSource(globalAudioElement);
-      // compressorNode = audioContext.createDynamicsCompressor();
+
+      // Check if compression should be applied (default to false)
+      const useCompressor = soundInfo.useCompressor ?? false;
+      console.log(
+        `Sound #${soundInfo.soundId}: Compression ${useCompressor ? 'enabled' : 'disabled'}`
+      );
+
+      // Always create gain node for normalization
       gainNode = audioContext.createGain();
-
-      // Configure compressor for dynamic range reduction
-      // compressorNode.threshold.value = -24; // Start compressing at -24dB
-      // compressorNode.knee.value = 30; // Smooth knee for natural compression
-      // compressorNode.ratio.value = 4; // 4:1 compression ratio
-      // compressorNode.attack.value = 0.003; // Fast but not instantaneous attack
-      // compressorNode.release.value = 0.25; // Moderate release time
-
-      // Apply calculated gain
       gainNode.gain.value = normalizationGain;
 
-      // Connect audio graph
-      // mediaElementSource.connect(compressorNode);
-      // compressorNode.connect(gainNode);
+      if (useCompressor) {
+        // Create and configure compressor if enabled
+        compressorNode = audioContext.createDynamicsCompressor();
+        compressorNode.threshold.value = -24; // Start compressing at -24dB
+        compressorNode.knee.value = 30; // Smooth knee for natural compression
+        compressorNode.ratio.value = 4; // 4:1 compression ratio
+        compressorNode.attack.value = 0.003; // Fast but not instantaneous attack
+        compressorNode.release.value = 0.25; // Moderate release time
+
+        // Connect with compressor in the chain
+        mediaElementSource.connect(compressorNode);
+        compressorNode.connect(gainNode);
+      } else {
+        // Connect without compressor - direct to gain node
+        mediaElementSource.connect(gainNode);
+      }
+
+      // Final connection to output
       gainNode.connect(audioContext.destination);
 
       // Play the normalized sound

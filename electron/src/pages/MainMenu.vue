@@ -9,11 +9,11 @@
       @back="router.push('/')"
     />
   </div>
-  <!-- <TimeoutRedirect
+  <TimeoutRedirect
     :ms="INACTIVITY_TIMEOUT"
     :redirectRoute="'/'"
     :resetOnActivity="'wheel'"
-  /> -->
+  />
 </template>
 
 <script setup lang="ts">

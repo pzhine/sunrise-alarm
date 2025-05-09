@@ -1,6 +1,8 @@
 <template>
-  <div class="flex flex-col items-center justify-center h-full w-full">
-    <div class="text-2xl mb-8">{{ soundName }}</div>
+  <div
+    class="flex flex-col items-center justify-center h-full w-full text-center"
+  >
+    <div class="text-2xl mb-8 max-w-lg text-center">{{ soundName }}</div>
 
     <div class="w-full max-w-md bg-gray-200 rounded-full h-4 mb-8">
       <div
@@ -11,7 +13,7 @@
 
     <div class="text-lg mb-4">Volume: {{ volume }}%</div>
   </div>
-  <TimeoutRedirect :ms="30000" :redirectRoute="'/'" />
+  <!-- <TimeoutRedirect :ms="30000" :redirectRoute="'/'" /> -->
 </template>
 
 <script setup lang="ts">

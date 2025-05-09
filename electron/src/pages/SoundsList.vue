@@ -124,7 +124,7 @@ const soundsList = computed(() => {
         label: label,
         data: sound,
         // Add duration and a checkmark if this is the selected sound
-        value: `${formattedDuration} ${appStore.alarmSound?.id === sound.id ? '✓' : ''}`,
+        value: `${formattedDuration}`,
       };
     })
     .sort((a, b) => {

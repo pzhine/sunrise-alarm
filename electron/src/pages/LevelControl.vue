@@ -12,7 +12,7 @@
     <h1 class="text-2xl font-bold">{{ title }}</h1>
     <div class="text-3xl">{{ level }}%</div>
   </div>
-  <TimeoutRedirect :ms="2000" :resetOnActivity="'wheel'" />
+  <TimeoutRedirect :ms="4000" :resetOnActivity="'wheel'" />
 </template>
 
 <script setup lang="ts">

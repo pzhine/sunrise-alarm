@@ -7,7 +7,7 @@
   >
     <div
       :style="{
-        'font-size': '120px',
+        'font-size': '150px',
         'font-weight': 'normal',
         'font-family': '\'FrozenCrystalExpanded\', sans-serif',
       }"

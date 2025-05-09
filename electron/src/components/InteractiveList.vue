@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="showTitle || showBackButton"
-    class="fixed top-0 left-0 border-b z-10 flex flex-row w-full h-[var(--header-height)] bg-[var(--color-li-background)]"
+    class="fixed top-0 left-0 border-b z-10 flex flex-row w-full h-[var(--header-height)] bg-[var(--color-li-background)] shrink-0"
   >
     <button
       v-if="showBackButton"
@@ -13,10 +13,8 @@
     >
       {{ backButtonLabel ?? '← Back' }}
     </button>
-    <div
-      class="px-4 text-xl font-bold overflow-hidden overflow-ellipsis whitespace-nowrap flex items-center"
-    >
-      {{ title }}
+    <div class="px-4 text-xl font-bold flex-1 min-w-0 flex items-center">
+      <span class="truncate w-full">{{ title }}</span>
     </div>
   </div>
 
@@ -52,13 +50,13 @@
       @click="handleItemClick(item, index)"
       @keydown.enter.prevent="selectItem(item)"
     >
-      <span class="truncate text-ellipsis overflow-hidden max-w-[70%]">{{
+      <span class="truncate overflow-hidden max-w-[85%] shrink-0 min-w-[40%]">{{
         isObject(item) ? item.label : item
       }}</span>
-      <div class="flex items-center">
+      <div class="flex items-center overflow-hidden">
         <span
           v-if="isObject(item) && 'value' in item"
-          class="ml-4 font-medium flex-shrink-0"
+          class="ml-4 font-medium flex-shrink-1 whitespace-nowrap truncate"
           :class="{
             'bg-[var(--color-li-highlight)] px-2 py-1':
               isEditing && editingIndex === index,

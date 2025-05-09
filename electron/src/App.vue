@@ -1,5 +1,11 @@
 <template>
   <router-view />
+  <TimeoutRedirect
+    :ms="45000"
+    redirectRoute="/"
+    resetOnActivity="wheel"
+    :excludeRoutes="['SunrisePlayer', 'sunrise-player']"
+  />
   <UpdateIndicator />
 </template>
 
@@ -7,6 +13,7 @@
 import { useAppStore } from './stores/appState';
 import { computed, watch, onMounted } from 'vue';
 import UpdateIndicator from './components/UpdateIndicator.vue';
+import TimeoutRedirect from './components/TimeoutRedirect.vue';
 
 const appStore = useAppStore();
 

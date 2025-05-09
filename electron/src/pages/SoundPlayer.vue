@@ -12,8 +12,8 @@
     </div>
 
     <div class="text-lg mb-4">Volume: {{ volume }}%</div>
-    <!-- 
-    <div class="mb-6">
+
+    <!-- <div class="mb-6">
       <button
         @click.stop="toggleCompression"
         class="px-4 py-2 rounded-md text-white"

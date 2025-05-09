@@ -27,9 +27,9 @@ const TARGET_LEVEL = 0.5;
 // Maximum gain to apply during normalization to prevent excessive amplification of very quiet sounds
 const MAX_GAIN = 5.0;
 // Default gain when analysis data is not available
-const DEFAULT_GAIN = 1.0;
+const DEFAULT_GAIN = 0.0;
 // Target integrated loudness in LUFS for consistent loudness across tracks
-const TARGET_LUFS = -16; // Industry standard for streaming
+const TARGET_LUFS = -14; // Increased from -16 for louder output
 // Target true peak in dBFS
 const TARGET_TRUE_PEAK = -2;
 

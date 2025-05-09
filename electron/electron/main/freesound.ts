@@ -180,6 +180,18 @@ export async function getSoundDetails(
   url.searchParams.append('fields', fields);
   url.searchParams.append('token', API_KEY);
 
+  // Add descriptors for loudness analysis
+  // These are the specific analysis descriptors we need for normalization
+  url.searchParams.append(
+    'descriptors',
+    [
+      'lowlevel.average_loudness',
+      'loudness.integrated',
+      'loudness.true_peak',
+      'loudness.momentary.max',
+    ].join(',')
+  );
+
   try {
     const response = await fetch(url.toString(), {
       method: 'GET',
@@ -194,7 +206,26 @@ export async function getSoundDetails(
       );
     }
 
-    return (await response.json()) as FreesoundSearchResult;
+    const soundData = (await response.json()) as FreesoundSearchResult;
+
+    // Log the analysis data for debugging
+    // console.log(`Sound #${soundId} Analysis Data:`);
+    // console.log(
+    //   JSON.stringify(
+    //     {
+    //       name: soundData.name,
+    //       id: soundData.id,
+    //       analysis: {
+    //         lowlevel: soundData.analysis?.lowlevel,
+    //         loudness: soundData.analysis?.loudness,
+    //       },
+    //     },
+    //     null,
+    //     2
+    //   )
+    // );
+
+    return soundData;
   } catch (error) {
     console.error('Error fetching sound details:', error);
     throw error;

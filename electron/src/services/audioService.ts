@@ -24,6 +24,7 @@ let mediaElementSource: MediaElementAudioSourceNode | null = null;
 let compressorNode: DynamicsCompressorNode | null = null;
 let gainNode: GainNode | null = null; // Added GainNode for makeup gain
 let highShelfFilter: BiquadFilterNode | null = null; // High shelf filter for reducing high frequencies
+let limiterNode: DynamicsCompressorNode | null = null; // Limiter to control peak loudness
 
 // Cache for normalized gain values to prevent repeated analysis
 const normalizedGainCache: Record<string, number> = {};
@@ -285,6 +286,10 @@ export async function playGlobalSound(
         highShelfFilter.disconnect();
         highShelfFilter = null;
       }
+      if (limiterNode) {
+        limiterNode.disconnect();
+        limiterNode = null;
+      }
 
       // Create and connect Web Audio API nodes
       globalAudioElement.src = soundInfo.previewUrl;
@@ -304,7 +309,7 @@ export async function playGlobalSound(
       // Create high shelf filter to reduce high frequencies
       highShelfFilter = audioContext.createBiquadFilter();
       highShelfFilter.type = 'highshelf';
-      highShelfFilter.frequency.value = 3000; // Frequency above which to reduce gain (3kHz)
+      highShelfFilter.frequency.value = 3200; // Frequency above which to reduce gain (3kHz)
 
       // Use highFreqReduction directly if provided, or use eqSettings.highShelfGain, or default to -6dB
       const highShelfGain =
@@ -338,8 +343,23 @@ export async function playGlobalSound(
       // Connect gain node to high shelf filter
       gainNode.connect(highShelfFilter);
 
+      // Create and configure limiter
+      limiterNode = audioContext.createDynamicsCompressor();
+      limiterNode.threshold.value = -1.5; // Limit peaks above -1.5dB
+      limiterNode.knee.value = 0; // Hard knee for strict limiting
+      limiterNode.ratio.value = 20; // High ratio for true limiting behavior
+      limiterNode.attack.value = 0.001; // Very fast attack to catch transients
+      limiterNode.release.value = 0.1; // Quick release for transparent limiting
+
+      console.log(
+        `Sound #${soundInfo.soundId}: Peak limiter enabled at ${limiterNode.threshold.value}dB threshold`
+      );
+
+      // Connect high shelf filter to limiter
+      highShelfFilter.connect(limiterNode);
+
       // Final connection to output
-      highShelfFilter.connect(audioContext.destination);
+      limiterNode.connect(audioContext.destination);
 
       // Play the normalized sound
       playNonNormalized(soundInfo);
@@ -390,6 +410,10 @@ export function stopGlobalSound(): void {
   if (highShelfFilter) {
     highShelfFilter.disconnect();
     highShelfFilter = null;
+  }
+  if (limiterNode) {
+    limiterNode.disconnect();
+    limiterNode = null;
   }
 
   globalAudioElement = null;

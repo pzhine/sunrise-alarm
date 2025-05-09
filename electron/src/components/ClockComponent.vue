@@ -8,10 +8,10 @@
     <div
       class="flex items-center justify-center"
       :style="{
-        'font-size': '180px',
-        'line-height': '180px',
+        'font-size': '220px',
+        'line-height': '220px',
         'font-weight': 'normal',
-        'font-family': '\'FlexiIBM\', sans-serif',
+        'font-family': '\'DS-Digital\', sans-serif',
       }"
     >
       {{ hoursPart

@@ -14,7 +14,7 @@
     </div>
   </div>
   <div class="flex flex-row fixed py-4 px-6 justify-between w-full items-start">
-    <h1 class="text-2xl font-bold mb-6">Set Alarm</h1>
+    <h1 class="text-2xl mb-6">Set Alarm</h1>
   </div>
 </template>
 

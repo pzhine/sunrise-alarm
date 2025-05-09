@@ -12,7 +12,7 @@
         ← Back
       </button>
       <div
-        class="grow px-4 text-xl font-bold overflow-hidden overflow-ellipsis whitespace-nowrap flex items-center"
+        class="grow px-4 text-xl overflow-hidden overflow-ellipsis whitespace-nowrap flex items-center"
       >
         Password for {{ networkName }}
       </div>

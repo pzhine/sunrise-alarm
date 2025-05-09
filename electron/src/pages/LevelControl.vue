@@ -9,7 +9,7 @@
     </div>
   </div>
   <div class="flex flex-row fixed p-8 justify-between w-full items-start">
-    <h1 class="text-2xl font-bold">{{ title }}</h1>
+    <h1 class="text-2xl">{{ title }}</h1>
     <div class="text-3xl">{{ level }}%</div>
   </div>
   <TimeoutRedirect :ms="4000" :resetOnActivity="'wheel'" />

@@ -74,7 +74,7 @@ textarea:focus {
 
 @layer base {
   html {
-    font-size: 26px;
+    font-size: 30px;
     font-family: FlexiIBM, sans-serif;
     line-height: 24px;
     letter-spacing: 1px;

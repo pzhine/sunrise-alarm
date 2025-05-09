@@ -1,6 +1,6 @@
 <template>
   <div class="">
-    <h1 class="text-xl font-bold mb-4">Connecting to {{ networkName }}</h1>
+    <h1 class="text-xl mb-4">Connecting to {{ networkName }}</h1>
     <template v-if="isConnecting">
       <p class="mt-4">Please wait...</p>
     </template>

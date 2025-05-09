@@ -30,9 +30,10 @@ let limiterNode: DynamicsCompressorNode | null = null; // Limiter to control pea
 const normalizedGainCache: Record<string, number> = {};
 
 // Target level for normalization (0.8 = -1.93dBFS)
-const TARGET_LEVEL = 0.8;
-// Maximum gain to apply during normalization to prevent excessive amplification of very quiet sounds
-const MAX_GAIN = 5.0;
+const TARGET_LEVEL = 0.0001;
+// Maximum gain to
+//  apply during normalization to prevent excessive amplification of very quiet sounds
+const MAX_GAIN = 2.0;
 // Default gain when analysis data is not available
 const DEFAULT_GAIN = 1.0;
 // Target integrated loudness in LUFS for consistent loudness across tracks
@@ -168,8 +169,7 @@ async function calculateNormalizedGainFromAPI(
           `Sound #${soundId}: Current True Peak: ${truePeak}, Target: ${TARGET_TRUE_PEAK}, Gain: ${gain}`
         );
       } else if (
-        analysis.lowlevel?.average_loudness !== undefined &&
-        analysis.lowlevel?.average_loudness !== null
+        analysis.lowlevel?.average_loudness
       ) {
         // average_loudness is RMS-like, higher values mean louder sounds
         const avgLoudness = analysis.lowlevel.average_loudness;

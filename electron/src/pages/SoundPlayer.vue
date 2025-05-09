@@ -103,7 +103,7 @@ const playbackProgress = ref(0);
 const volume = computed(() => appStore.volume);
 const progressUpdateInterval = ref<number | null>(null);
 const useCompression = ref(false);
-const highFreqReduction = ref(-8);
+const highFreqReduction = ref(-4);
 
 // Start or resume global sound playback
 const startPlayback = () => {

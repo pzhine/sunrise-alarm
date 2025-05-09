@@ -8,7 +8,7 @@
     <div
       class="flex items-center justify-center"
       :style="{
-        'font-size': '220px',
+        'font-size': '200px',
         'line-height': '220px',
         'font-weight': 'normal',
         'font-family': '\'DS-Digital\', sans-serif',
@@ -88,7 +88,7 @@ watch(
           )
         : 0;
 
-      const baseReverseDuration = 5000; // Original reverse duration
+      const baseReverseDuration = 3000; // Original reverse duration
       // If progress is 0, reverse should be very quick. Let's set a minimal duration or handle it as immediate.
       // For simplicity, we'll let it be progress * baseReverseDuration, which could be 0.
       // Consider a minimum duration if 0 is not desired, e.g., Math.max(100, progress * baseReverseDuration)

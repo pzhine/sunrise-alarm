@@ -1,11 +1,11 @@
 <template>
   <div>
     <div class="flex items-center justify-center text-8xl mb-8">
-      <span :class="{ 'text-blue-500': editMode === 'hours' }">{{
+      <span :class="{ 'text-blue-400': editMode === 'hours' }">{{
         formattedHours
       }}</span>
       <span class="mx-2">:</span>
-      <span :class="{ 'text-blue-500': editMode === 'minutes' }">{{
+      <span :class="{ 'text-blue-400': editMode === 'minutes' }">{{
         formattedMinutes
       }}</span>
       <span v-if="appStore.timeFormat === '12h'" class="ml-4">{{

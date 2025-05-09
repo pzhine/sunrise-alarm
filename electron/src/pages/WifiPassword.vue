@@ -1,20 +1,42 @@
 <template>
-  <div class="">
-    <button
-      class="self-start mb-4 px-4 py-2 rounded border"
-      @click="router.back()"
+  <div class="w-full">
+    <div
+      class="fixed top-0 left-0 border-b z-10 flex flex-row w-full h-[var(--header-height)] bg-[var(--color-li-background)]"
     >
-      Back
-    </button>
-    <h1 class="text-xl font-bold mb-4">Enter Password for {{ networkName }}</h1>
-    <div class="flex flex-row items-stretch mb-4">
+      <button
+        @click="router.back()"
+        :class="{
+          'border-r px-4': true,
+        }"
+      >
+        ← Back
+      </button>
+      <div
+        class="grow px-4 text-xl font-bold overflow-hidden overflow-ellipsis whitespace-nowrap flex items-center"
+      >
+        Password for {{ networkName }}
+      </div>
+      <button
+        @click="connectToNetwork"
+        :class="{
+          'border-l px-4': true,
+        }"
+      >
+        Connect
+      </button>
+    </div>
+
+    <div class="flex flex-row items-stretch mt-[var(--header-height)]">
       <input
         type="text"
-        class="flex p-2 border rounded"
+        class="flex p-2 border rounded mb-6"
         v-model="password"
         ref="passwordInput"
       />
-      <button class="ml-4 p-3 flex rounded border" @click="removeLastCharacter">
+      <button
+        class="ml-4 p-3 flex rounded border mb-6"
+        @click="removeLastCharacter"
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           class="w-5"
@@ -37,23 +59,20 @@
         v-for="key in row"
         :key="key"
         :class="{
-          'px-4 py-2 m-2 min-w-13 rounded border': true,
+          'px-2 py-0.5 m-1 min-w-10 rounded border': true,
           'bg-[var(--color-li-highlight)]': key === 'SHIFT' && isShiftActive,
+          'border-blue-400 text-blue-400': !key.match(/[a-zA-Z]/),
         }"
         @click="onKeyboard(key)"
       >
         {{ key }}
       </button>
     </div>
-
-    <button class="mt-4 px-4 py-2 rounded border" @click="connectToNetwork">
-      Connect
-    </button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
@@ -62,6 +81,7 @@ const router = useRouter();
 const password = ref('');
 const isShiftActive = ref(false);
 const passwordInput = ref<HTMLInputElement | null>(null);
+const originalFontSize = ref('');
 
 const keyboardKeys = [
   [...'!@#$%&*_-.'.split('')],
@@ -79,7 +99,7 @@ const capKeys = [
   ['SHIFT', ...'ZXCVBNM'.split('')],
 ];
 
-const networkName = computed(() => route.params.networkName as string);
+const networkName = computed(() => route.params?.networkName as string);
 
 const onKeyboard = (key: string): void => {
   if (key === 'SHIFT') {
@@ -104,14 +124,17 @@ const toggleShift = (): void => {
   isShiftActive.value = !isShiftActive.value;
 };
 
-onMounted(() => {
-  // Focus the password input when component is mounted
-  passwordInput.value?.focus();
-});
-</script>
+// onMounted(() => {
+//   // Focus the password input when component is mounted
+//   passwordInput.value?.focus();
 
-<style scoped>
-html {
-  font-size: 16px;
-}
-</style>
+//   // Store the original font size and set it to 16px
+//   originalFontSize.value = document.documentElement.style.fontSize;
+//   document.documentElement.style.fontSize = '18px';
+// });
+
+// onUnmounted(() => {
+//   // Restore the original font size when component is unmounted
+//   document.documentElement.style.fontSize = originalFontSize.value;
+// });
+</script>

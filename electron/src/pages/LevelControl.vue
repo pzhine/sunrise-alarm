@@ -3,7 +3,7 @@
     <div class="w-full h-12 bg-gray-200 rounded-full overflow-hidden">
       <div
         class="h-full transition-all duration-200"
-        :class="recentChange ? 'bg-blue-500' : 'bg-gray-500'"
+        :class="recentChange ? 'bg-blue-400' : 'bg-gray-500'"
         :style="{ width: `${level}%` }"
       ></div>
     </div>

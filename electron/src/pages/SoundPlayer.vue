@@ -4,7 +4,7 @@
 
     <div class="w-full max-w-md bg-gray-200 rounded-full h-4 mb-8">
       <div
-        class="bg-blue-500 h-4 rounded-full transition-all duration-300"
+        class="bg-blue-400 h-4 rounded-full transition-all duration-300"
         :style="{ width: `${playbackProgress}%` }"
       ></div>
     </div>

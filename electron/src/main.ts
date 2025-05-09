@@ -17,6 +17,7 @@ import './style.css';
 const pinia = createPinia();
 
 const routes = [
+  { path: '/', name: 'Clock', component: ClockPage },
   { path: '/wifi', component: Wifi, name: 'Wifi' },
   {
     path: '/wifi-password/:networkName',
@@ -28,7 +29,6 @@ const routes = [
     name: 'WifiConnect',
     component: WifiConnect,
   },
-  { path: '/', name: 'Clock', component: ClockPage },
   { path: '/menu', name: 'MainMenu', component: MainMenu },
   { path: '/sounds', name: 'SoundCategories', component: SoundCategories },
   {

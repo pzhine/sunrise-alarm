@@ -27,7 +27,7 @@ const menuItems = computed(() => {
           label: appStore.alarmSound.name,
           value: 'Preview',
           onSelect: () => previewCurrentSound(),
-          customClass: 'text-blue-500',
+          customClass: 'text-blue-400',
         }
       : null,
     {

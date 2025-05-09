@@ -196,11 +196,16 @@ const navigateList = (direction: 'up' | 'down'): void => {
   } else {
     // Original navigation logic (without back button)
     if (direction === 'up') {
-      highlightedIndex.value =
-        (highlightedIndex.value - 1 + props.items.length) % props.items.length;
+      // highlightedIndex.value =
+      //   (highlightedIndex.value - 1 + props.items.length) % props.items.length;
+      highlightedIndex.value = Math.max(highlightedIndex.value - 1, 0);
     } else if (direction === 'down') {
-      highlightedIndex.value =
-        (highlightedIndex.value + 1) % props.items.length;
+      // highlightedIndex.value =
+      //   (highlightedIndex.value + 1) % props.items.length;
+      highlightedIndex.value = Math.min(
+        highlightedIndex.value + 1,
+        props.items.length - 1
+      );
     }
   }
 

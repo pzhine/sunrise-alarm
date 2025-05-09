@@ -48,7 +48,7 @@ const menuItems = computed(() => {
         label: 'Now Playing',
         value: currentSound.name,
         onSelect: () => goToNowPlaying(),
-        customClass: 'text-blue-500',
+        customClass: 'text-blue-400',
       });
     }
   }

@@ -9,7 +9,7 @@
       :style="{
         'font-size': '150px',
         'font-weight': 'normal',
-        'font-family': '\'FrozenCrystalExpanded\', sans-serif',
+        'font-family': '\'Digital7\', sans-serif',
       }"
     >
       {{ hoursPart

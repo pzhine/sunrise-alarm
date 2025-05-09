@@ -18,6 +18,48 @@
   font-weight: normal;
   font-style: normal;
 }
+@font-face {
+  font-family: 'EditUndo';
+  src: url('./assets/fonts/edit-undo.brk.ttf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'EditUndoDot';
+  src: url('./assets/fonts/edit-undo.dot-brk.ttf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Digital7';
+  src: url('./assets/fonts/digital-7-mono.ttf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'VCR-JP';
+  src: url('./assets/fonts/vcr-jp.ttf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'MobileFont';
+  src: url('./assets/fonts/mobile-font.regular.ttf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'November';
+  src: url('./assets/fonts/november.regular.ttf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'FlexiIBM';
+  src: url('./assets/fonts/Flexi_IBM_VGA_True.ttf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
 
 * {
   outline: none;
@@ -32,7 +74,10 @@ textarea:focus {
 
 @layer base {
   html {
-    font-size: 24px;
+    font-size: 26px;
+    font-family: FlexiIBM, sans-serif;
+    line-height: 24px;
+    letter-spacing: 1px;
   }
 
   button:active {

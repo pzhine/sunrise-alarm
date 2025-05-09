@@ -26,7 +26,7 @@ const props = defineProps({
   },
   lowResolution: {
     type: Boolean,
-    default: true,
+    default: false,
   },
   debug: {
     // Added new debug prop

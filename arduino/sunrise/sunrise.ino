@@ -4,6 +4,18 @@
 // NeoPixel library
 #include <Adafruit_NeoPixel.h>
 
+// Audio amplifier library
+#include "Adafruit_TPA2016.h"
+
+#define AGC_MODE_POP        1
+#define AGC_MODE_CLASSICAL  2
+#define AGC_MODE_JAZZ       3
+#define AGC_MODE_HIPHOP     4
+#define AGC_MODE_ROCK       5
+#define AGC_MODE_VOICE      6
+
+Adafruit_TPA2016 audioamp = Adafruit_TPA2016();
+
 // serial input constants
 #define INPUT_BUFFER_SIZE 64
 #define MAX_INPUT_PARAMS 10
@@ -151,6 +163,12 @@ void setup() {
   ring_pixels.show();
   center_pixels.show();
   bottom_pixels.show();
+
+  // start audio
+  audioamp.begin();
+  audioamp.setGain(0);
+  audioamp.setLimitLevel(18);
+  setAgcMode(AGC_MODE_JAZZ);
 }
 
 void readSerialInput() {
@@ -435,6 +453,46 @@ void updateLedTransitions() {
   }
 }
 
+void setAgcMode(int mode) {
+  switch (mode) {
+    case AGC_MODE_POP: {
+      setAgcParams(TPA2016_AGC_4, 2, 1300, 137);
+      break;
+    }
+    case AGC_MODE_CLASSICAL: {
+      setAgcParams(TPA2016_AGC_2, 2.56, 1150, 137);
+      break;
+    }
+    case AGC_MODE_JAZZ: {
+      setAgcParams(TPA2016_AGC_2, 8, 3288, 0);
+      break;
+    }
+    case AGC_MODE_ROCK: {
+      setAgcParams(TPA2016_AGC_2, 3.84, 4110, 0);
+      break;
+    }
+    case AGC_MODE_HIPHOP: {
+      setAgcParams(TPA2016_AGC_4, 2, 1640, 0);
+      break;
+    }
+    case AGC_MODE_VOICE: {
+      setAgcParams(TPA2016_AGC_4, 2.56, 1640, 0);
+      break;
+    }
+  }
+}
+
+//  TPA2016_AGC_2 (1:2 compression)
+//  TPA2016_AGC_4 (1:4 compression)
+//  TPA2016_AGC_8 (1:8 compression)
+void setAgcParams(int compression, int attack, int release, int hold) {
+  audioamp.setAGCCompression(compression);
+  audioamp.setAttackControl(attack);
+  audioamp.setReleaseControl(release);
+  audioamp.setHoldControl(hold);
+}
+
+// Main loop
 void loop() {
   readAndHandleSerialCommands();
   readAndHandleButton();

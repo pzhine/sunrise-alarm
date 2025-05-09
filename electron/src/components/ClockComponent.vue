@@ -9,9 +9,9 @@
       class="flex items-center justify-center"
       :style="{
         'font-size': '180px',
+        'line-height': '180px',
         'font-weight': 'normal',
         'font-family': '\'FlexiIBM\', sans-serif',
-
       }"
     >
       {{ hoursPart

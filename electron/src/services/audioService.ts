@@ -30,7 +30,7 @@ let limiterNode: DynamicsCompressorNode | null = null; // Limiter to control pea
 const normalizedGainCache: Record<string, number> = {};
 
 // Target level for normalization (0.8 = -1.93dBFS)
-const TARGET_LEVEL = 0.5;
+const TARGET_LEVEL = 0.8;
 // Maximum gain to apply during normalization to prevent excessive amplification of very quiet sounds
 const MAX_GAIN = 5.0;
 // Default gain when analysis data is not available
@@ -139,7 +139,10 @@ async function calculateNormalizedGainFromAPI(
       // Determine the appropriate gain based on available analysis metrics
       // in order of preference: loudness.integrated, loudness.true_peak, average_loudness
 
-      if (analysis.loudness?.integrated !== undefined) {
+      if (
+        analysis.loudness?.integrated !== undefined &&
+        analysis.loudness?.integrated !== null
+      ) {
         // Integrated loudness is in LUFS (typically negative values)
         const currentLUFS = analysis.loudness.integrated;
 
@@ -150,7 +153,10 @@ async function calculateNormalizedGainFromAPI(
         console.log(
           `Sound #${soundId}: Current LUFS: ${currentLUFS}, Target: ${TARGET_LUFS}, Gain: ${gain}`
         );
-      } else if (analysis.loudness?.true_peak !== undefined) {
+      } else if (
+        analysis.loudness?.true_peak !== undefined &&
+        analysis.loudness?.true_peak !== null
+      ) {
         // True peak is in dBFS (0 dBFS is max, negative values are below)
         const truePeak = analysis.loudness.true_peak;
 
@@ -161,7 +167,10 @@ async function calculateNormalizedGainFromAPI(
         console.log(
           `Sound #${soundId}: Current True Peak: ${truePeak}, Target: ${TARGET_TRUE_PEAK}, Gain: ${gain}`
         );
-      } else if (analysis.lowlevel?.average_loudness !== undefined) {
+      } else if (
+        analysis.lowlevel?.average_loudness !== undefined &&
+        analysis.lowlevel?.average_loudness !== null
+      ) {
         // average_loudness is RMS-like, higher values mean louder sounds
         const avgLoudness = analysis.lowlevel.average_loudness;
 

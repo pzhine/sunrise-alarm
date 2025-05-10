@@ -88,7 +88,16 @@ onMounted(() => {
 watch(
   () => route.name,
   (newRoute) => {
-    if (props.excludeRoutes?.includes(newRoute as string)) {
+    if (!newRoute) {
+      return;
+    }
+    let isExcludedRoute = newRoute.toString === props.redirectRoute;
+    if (!isExcludedRoute && props.excludeRoutes) {
+      isExcludedRoute = !!props.excludeRoutes.find((route) =>
+        newRoute.toString().includes(route)
+      );
+    }
+    if (isExcludedRoute) {
       if (timeoutId.value !== null) {
         window.clearTimeout(timeoutId.value);
         timeoutId.value = null;

@@ -4,7 +4,12 @@
     :ms="45000"
     redirectRoute="/"
     resetOnActivity="wheel"
-    :excludeRoutes="['SunrisePlayer', 'sunrise-player']"
+    :excludeRoutes="[
+      'SunrisePlayer', 'sunrise-player',   
+      'Wifi', 'wifi', 
+      'WifiPassword', 'wifi-password', 
+      'WifiConnect', 'wifi-connect'
+    ]"
   />
   <UpdateIndicator />
 </template>

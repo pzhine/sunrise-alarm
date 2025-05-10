@@ -34,7 +34,7 @@ const TARGET_LEVEL = 0.0001;
 //  apply during normalization to prevent excessive amplification of very quiet sounds
 const MAX_GAIN = 2.0;
 // Default gain when analysis data is not available
-const DEFAULT_GAIN = 1.0;
+const DEFAULT_GAIN = 0.5;
 // Target integrated loudness in LUFS for consistent loudness across tracks
 const TARGET_LUFS = -14; // Increased from -16 for louder output
 // Target true peak in dBFS
@@ -329,10 +329,10 @@ export async function playGlobalSound(
       if (useCompressor) {
         // Create and configure compressor if enabled
         compressorNode = audioContext.createDynamicsCompressor();
-        compressorNode.threshold.value = -24; // Start compressing at -24dB
+        compressorNode.threshold.value = -1.5; // Start compressing at -24dB
         compressorNode.knee.value = 30; // Smooth knee for natural compression
         compressorNode.ratio.value = 4; // 4:1 compression ratio
-        compressorNode.attack.value = 0.003; // Fast but not instantaneous attack
+        compressorNode.attack.value = 0.001; 
         compressorNode.release.value = 0.25; // Moderate release time
 
         // Connect with compressor in the chain

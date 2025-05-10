@@ -167,7 +167,7 @@ void setup() {
   // start audio
   audioamp.begin();
   audioamp.setGain(0);
-  audioamp.setLimitLevel(8);
+  audioamp.setLimitLevel(10);
   setAgcMode(AGC_MODE_JAZZ);
 }
 

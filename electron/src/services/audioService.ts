@@ -28,13 +28,13 @@ let parametricEQ: BiquadFilterNode | null = null; // Parametric EQ filter for re
 // Cache for normalized gain values to prevent repeated analysis
 const normalizedGainCache: Record<string, number> = {};
 
-// Target level for normalization (0.8 = -1.93dBFS)
-const TARGET_LEVEL = 0.0001;
+// Target level for normalization 
+const TARGET_LEVEL = 0.00005;
 // Maximum gain to
 //  apply during normalization to prevent excessive amplification of very quiet sounds
 const MAX_GAIN = 2.0;
 // Default gain when analysis data is not available
-const DEFAULT_GAIN = 0.5;
+const DEFAULT_GAIN = 0.3;
 // Target integrated loudness in LUFS for consistent loudness across tracks
 const TARGET_LUFS = -14; // Increased from -16 for louder output
 // Target true peak in dBFS
@@ -329,11 +329,11 @@ export async function playGlobalSound(
       if (useCompressor) {
         // Create and configure compressor if enabled
         compressorNode = audioContext.createDynamicsCompressor();
-        compressorNode.threshold.value = -1.5; // Start compressing at -24dB
-        compressorNode.knee.value = 30; // Smooth knee for natural compression
-        compressorNode.ratio.value = 4; // 4:1 compression ratio
+        compressorNode.threshold.value = -54; // Start compressing at -24dB
+        compressorNode.knee.value = 0; 
+        compressorNode.ratio.value = 20; 
         compressorNode.attack.value = 0.001; 
-        compressorNode.release.value = 0.25; // Moderate release time
+        compressorNode.release.value = 0.05; // Moderate release time
 
         // Connect with compressor in the chain
         mediaElementSource.connect(compressorNode);

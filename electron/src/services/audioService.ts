@@ -24,21 +24,34 @@ let mediaElementSource: MediaElementAudioSourceNode | null = null;
 let compressorNode: DynamicsCompressorNode | null = null;
 let gainNode: GainNode | null = null; // Added GainNode for makeup gain
 let parametricEQ: BiquadFilterNode | null = null; // Parametric EQ filter for reducing frequencies around 1.5kHz
+let analyserNode: AnalyserNode | null = null; // Analyser for real-time level monitoring
+let antiClipNode: GainNode | null = null; // Dynamic gain node to prevent clipping
 
 // Cache for normalized gain values to prevent repeated analysis
 const normalizedGainCache: Record<string, number> = {};
 
 // Target level for normalization 
-const TARGET_LEVEL = 0.00005;
-// Maximum gain to
-//  apply during normalization to prevent excessive amplification of very quiet sounds
-const MAX_GAIN = 2.0;
+const TARGET_LEVEL = 1.0;
+// Maximum gain to apply during normalization to prevent excessive amplification of very quiet sounds
+const MAX_GAIN = 3.0;
 // Default gain when analysis data is not available
-const DEFAULT_GAIN = 0.3;
+const DEFAULT_GAIN = 1.0;
 // Target integrated loudness in LUFS for consistent loudness across tracks
 const TARGET_LUFS = -14; // Increased from -16 for louder output
 // Target true peak in dBFS
 const TARGET_TRUE_PEAK = -2;
+// Anti-clipping threshold (values above this will trigger gain reduction)
+const CLIP_THRESHOLD = 0.02; // 2% of max amplitude for very aggressive anti-clipping
+// Default initial gain for anti-clipping
+const DEFAULT_CLIP_GAIN = 0.5; // Conservative gain to prevent initial audio bursts by attenuating the signal
+// Initial analysis period uses a stricter threshold to catch bursts early
+const INITIAL_CLIP_THRESHOLD = 0.02; // Even lower threshold during initial analysis period (1% of max)
+// Size of analyzer buffer for monitoring audio levels
+const ANALYZER_FFT_SIZE = 2048; // Increased buffer size for better accuracy
+// How quickly we apply gain reduction (in seconds)
+const ATTACK_TIME = 0.005; // Ultra fast attack to catch peaks more aggressively 
+// Duration of initial analysis period (in milliseconds)
+const INITIAL_ANALYSIS_PERIOD = 1000;
 
 // Play a preview of a sound
 export function playPreview(previewUrl: string): HTMLAudioElement {
@@ -61,6 +74,124 @@ function getPeakAmplitude(buffer: AudioBuffer): number {
     }
   }
   return maxPeak;
+}
+
+// Real-time audio analysis to prevent clipping
+function setupAntiClipAnalyzer(): void {
+  if (!audioContext || !analyserNode || !antiClipNode) return;
+  
+  // Create buffer for analyzer data
+  const bufferLength = analyserNode.frequencyBinCount;
+  
+  // Use requestAnimationFrame to continuously monitor audio levels
+  // Keep track of the lowest gain we've applied - initialize with the current gain value
+  let lowestGainApplied = antiClipNode.gain.value;
+  
+  // Track if we're in the initial analysis period
+  let isInitialAnalysisPeriod = true;
+  let initialAnalysisEndTime = Date.now() + INITIAL_ANALYSIS_PERIOD;
+  
+  console.log(`Initial anti-clip gain set to ${lowestGainApplied.toFixed(3)}. Analyzing audio stream for optimal levels...`);
+  
+  // Constants for transient detection
+  const TRANSIENT_IGNORE_FRAMES = 3;  // Number of consecutive frames above threshold to consider it's not a transient
+  const TRANSIENT_LOOKBACK_WINDOW = 10; // Keep track of recent amplitudes to distinguish patterns
+  
+  // Circular buffer to store recent peak amplitudes
+  const recentPeaks = new Array(TRANSIENT_LOOKBACK_WINDOW).fill(0);
+  let peakIndex = 0;
+  let consecutiveFramesAboveThreshold = 0;
+  
+  const analyzeAudio = () => {
+    if (!audioContext || !analyserNode || !antiClipNode || !globalAudioElement) {
+      // Clean up if audio context or nodes don't exist anymore
+      return;
+    }
+    
+    // Use float data for more precision
+    const floatData = new Float32Array(bufferLength);
+    analyserNode.getFloatTimeDomainData(floatData);
+    
+    // Find maximum amplitude in current buffer
+    let maxAmplitude = 0;
+    for (let i = 0; i < bufferLength; i++) {
+      // Float data is already in -1 to 1 range
+      const amplitude = Math.abs(floatData[i]);
+      if (amplitude > maxAmplitude) {
+        maxAmplitude = amplitude;
+      }
+    }
+    
+    // Add the current peak to our circular buffer
+    recentPeaks[peakIndex] = maxAmplitude;
+    peakIndex = (peakIndex + 1) % TRANSIENT_LOOKBACK_WINDOW;
+    
+    // Calculate the average amplitude over the lookback window
+    // This helps distinguish transient pops from sustained high levels
+    const avgAmplitude = recentPeaks.reduce((sum, val) => sum + val, 0) / TRANSIENT_LOOKBACK_WINDOW;
+    
+    // Track how many consecutive frames are above threshold
+    if (maxAmplitude > CLIP_THRESHOLD) {
+      consecutiveFramesAboveThreshold++;
+    } else {
+      consecutiveFramesAboveThreshold = 0;
+    }
+    
+    // Only log periodically or during initial analysis to avoid console spam
+    // if (isInitialAnalysisPeriod || Math.random() < 0.05) { // Log all during initial analysis, then ~5% of frames
+    //   console.log(
+    //     `${isInitialAnalysisPeriod ? '[INITIAL] ' : ''}Peak: ${maxAmplitude.toFixed(3)}, Avg: ${avgAmplitude.toFixed(3)}, ` +
+    //     `Threshold: ${isInitialAnalysisPeriod ? INITIAL_CLIP_THRESHOLD.toFixed(3) : CLIP_THRESHOLD.toFixed(3)}, ` +
+    //     `Current gain: ${antiClipNode.gain.value.toFixed(3)}`
+    //   );
+    // }
+    
+    // If we're in the initial analysis period, be more aggressive with gain reduction
+    const activeThreshold = isInitialAnalysisPeriod ? INITIAL_CLIP_THRESHOLD : CLIP_THRESHOLD;
+    const thresholdMultiplier = isInitialAnalysisPeriod ? 0.5 : 0.7; // More sensitive during initial analysis
+    const framesToConsider = isInitialAnalysisPeriod ? 1 : TRANSIENT_IGNORE_FRAMES; // React faster initially
+    const safetyMargin = isInitialAnalysisPeriod ? 0.8 : 0.9; // More aggressive reduction initially
+    
+    // Check if we're still in the initial analysis period
+    if (isInitialAnalysisPeriod && Date.now() >= initialAnalysisEndTime) {
+      isInitialAnalysisPeriod = false;
+      console.log(`Initial analysis complete - gain set to ${antiClipNode.gain.value.toFixed(3)}. Continuing with dynamic monitoring.`);
+    }
+    
+    // If amplitude exceeds threshold for enough consecutive frames AND
+    // the average level is relatively high (not just a brief pop)
+    if (consecutiveFramesAboveThreshold >= framesToConsider && 
+        avgAmplitude > (activeThreshold * thresholdMultiplier)) {
+      
+      // Calculate how much to reduce by - the closer to 1.0, the more we reduce
+      const reductionFactor = (activeThreshold / maxAmplitude) * safetyMargin;
+      
+      // Only apply new gain if it's lower than the current lowest gain
+      // This ensures we always keep the most aggressive reduction without ever releasing
+      if (reductionFactor < lowestGainApplied) {
+        lowestGainApplied = reductionFactor;
+        
+        // Apply gain reduction immediately with a very short ramp time
+        const currentTime = audioContext.currentTime;
+        antiClipNode.gain.cancelScheduledValues(currentTime);
+        antiClipNode.gain.setValueAtTime(antiClipNode.gain.value, currentTime);
+        antiClipNode.gain.linearRampToValueAtTime(reductionFactor, currentTime + ATTACK_TIME);
+        
+        // console.log(
+        //   `Anti-clip ACTIVE: Reducing gain to ${reductionFactor.toFixed(3)} ` +
+        //   `(peak: ${maxAmplitude.toFixed(3)}, avg: ${avgAmplitude.toFixed(3)}, ` +
+        //   `${isInitialAnalysisPeriod ? 'initial analysis' : 'not a transient'})`
+        // );
+      }
+    }
+    // We never release the gain - it stays at the lowest level needed to prevent clipping
+    
+    // Continue analyzing while audio is playing
+    requestAnimationFrame(analyzeAudio);
+  };
+  
+  // Start the analysis loop
+  analyzeAudio();
 }
 
 // Fetch and analyze audio to determine appropriate gain for normalization
@@ -204,6 +335,8 @@ async function calculateNormalizedGainFromAPI(
   }
 }
 
+// No longer needed - we're using a delay and real-time analysis approach instead
+
 // Play audio without normalization
 function playNonNormalized(soundInfo: SoundInfo): void {
   if (!globalAudioElement) return;
@@ -238,10 +371,54 @@ function playNonNormalized(soundInfo: SoundInfo): void {
   // Loop the sound to keep it playing continuously
   globalAudioElement.loop = true;
 
-  // Start playback
-  globalAudioElement.play().catch((err) => {
-    console.error('Error playing audio:', err);
+  // Start audio streaming but delay audible playback to allow the analyzer to calibrate
+  // Instead of using mute, set volume to 0 and gradually fade in for smoother transition
+  const originalVolume = globalAudioElement.volume;
+  globalAudioElement.volume = 0;
+  
+  globalAudioElement.play().then(() => {
+    console.log(`Audio stream started (silent) - analyzing levels for ${INITIAL_ANALYSIS_PERIOD/1000} second(s)...`);
+    
+    // After the initial analysis period, fade in the audio
+    setTimeout(() => {
+      if (globalAudioElement && audioContext) {
+        // Gradually increase volume over 200ms for smooth fade-in
+        const fadeInDuration = 200; // milliseconds
+        const fadeSteps = 10;
+        const fadeInterval = fadeInDuration / fadeSteps;
+        let currentStep = 0;
+        
+        const fadeIn = () => {
+          if (!globalAudioElement) return;
+          currentStep++;
+          const progress = currentStep / fadeSteps;
+          globalAudioElement.volume = progress * originalVolume;
+          
+          if (currentStep < fadeSteps) {
+            setTimeout(fadeIn, fadeInterval);
+          } else {
+            console.log('Initial analysis complete - audio now playing at adjusted levels');
+          }
+        };
+        
+        // Start the fade-in
+        fadeIn();
+      }
+    }, INITIAL_ANALYSIS_PERIOD);
+  }).catch((err) => {
+    console.error('Error starting audio stream:', err);
   });
+}
+
+// Reset the anti-clip gain node when stopping playback or changing audio
+// We're not actually resetting to the default value, just cleaning up scheduled values
+function resetAntiClipGain(): void {
+  if (antiClipNode && audioContext) {
+    const currentGain = antiClipNode.gain.value;
+    antiClipNode.gain.cancelScheduledValues(audioContext.currentTime);
+    antiClipNode.gain.setValueAtTime(currentGain, audioContext.currentTime);
+    console.log(`Anti-clip scheduled values cleared (maintaining current gain: ${currentGain.toFixed(3)})`);
+  }
 }
 
 // Play a sound globally so it persists across component navigation
@@ -269,6 +446,10 @@ export async function playGlobalSound(
         audioContext = new (window.AudioContext ||
           (window as any).webkitAudioContext)();
       }
+      
+      // Start with a conservative gain setting until the analyzer has had time to assess the levels
+      // We'll use DEFAULT_CLIP_GAIN as our initial value
+      const initialAntiClipGain = DEFAULT_CLIP_GAIN;
 
       // Calculate appropriate gain based on sound analysis from Freesound API
       const normalizationGain = await calculateNormalizedGainFromAPI(
@@ -292,17 +473,19 @@ export async function playGlobalSound(
         parametricEQ.disconnect();
         parametricEQ = null;
       }
+      if (analyserNode) {
+        analyserNode.disconnect();
+        analyserNode = null;
+      }
+      if (antiClipNode) {
+        antiClipNode.disconnect();
+        antiClipNode = null;
+      }
 
       // Create and connect Web Audio API nodes
       globalAudioElement.src = soundInfo.previewUrl;
       mediaElementSource =
         audioContext.createMediaElementSource(globalAudioElement);
-
-      // Check if compression should be applied (default to false)
-      const useCompressor = soundInfo.useCompressor ?? false;
-      console.log(
-        `Sound #${soundInfo.soundId}: Compression ${useCompressor ? 'enabled' : 'disabled'}`
-      );
 
       // Always create gain node for normalization
       gainNode = audioContext.createGain();
@@ -322,32 +505,29 @@ export async function playGlobalSound(
 
       parametricEQ.gain.value = highShelfGain; // Apply gain reduction
 
+      // Create anti-clip node first in the chain with the pre-analyzed gain value
+      antiClipNode = audioContext.createGain();
+      antiClipNode.gain.value = initialAntiClipGain; // Start with pre-analyzed gain value
+      
+      // Create analyzer node for real-time level monitoring
+      analyserNode = audioContext.createAnalyser();
+      analyserNode.fftSize = ANALYZER_FFT_SIZE;
+      analyserNode.smoothingTimeConstant = 0.1; // Faster response to changes
+      
       console.log(
-        `Sound #${soundInfo.soundId}: Frequency reduction: ${highShelfGain}dB at ${parametricEQ.frequency.value}Hz`
+        `Sound #${soundInfo.soundId}: Frequency reduction: ${highShelfGain}dB at ${parametricEQ.frequency.value}Hz, Anti-clipping enabled (threshold: ${CLIP_THRESHOLD})`
       );
 
-      if (useCompressor) {
-        // Create and configure compressor if enabled
-        compressorNode = audioContext.createDynamicsCompressor();
-        compressorNode.threshold.value = -54; // Start compressing at -24dB
-        compressorNode.knee.value = 0; 
-        compressorNode.ratio.value = 20; 
-        compressorNode.attack.value = 0.001; 
-        compressorNode.release.value = 0.05; // Moderate release time
-
-        // Connect with compressor in the chain
-        mediaElementSource.connect(compressorNode);
-        compressorNode.connect(gainNode);
-      } else {
-        // Connect without compressor - direct to gain node
-        mediaElementSource.connect(gainNode);
-      }
-
-      // Connect gain node to parametric EQ filter
-      gainNode.connect(parametricEQ);
-
-      // Connect parametric EQ filter to limiter
+      // Connect nodes in the audio processing chain:
+      // Source -> Analyzer (to monitor input) -> Gain (normalization) -> Anti-clip -> Parametric EQ -> Output
+      mediaElementSource.connect(analyserNode);
+      analyserNode.connect(gainNode);
+      gainNode.connect(antiClipNode);
+      antiClipNode.connect(parametricEQ);
       parametricEQ.connect(audioContext.destination);
+
+      // Set up the anti-clipping analyzer to continuously monitor audio levels
+      setupAntiClipAnalyzer();
 
       // Play the normalized sound
       playNonNormalized(soundInfo);
@@ -361,9 +541,45 @@ export async function playGlobalSound(
       }
     }
   } else {
-    // Play without normalization
-    globalAudioElement.src = soundInfo.previewUrl;
-    playNonNormalized(soundInfo);
+    try {
+      // Even for non-normalized playback, apply anti-clipping with a delay
+      if (!audioContext) {
+        audioContext = new (window.AudioContext ||
+          (window as any).webkitAudioContext)();
+      }
+      
+      // Use a conservative initial gain value
+      const initialAntiClipGain = DEFAULT_CLIP_GAIN;
+      
+      // Create basic audio graph for anti-clipping only
+      globalAudioElement.src = soundInfo.previewUrl;
+      mediaElementSource = audioContext.createMediaElementSource(globalAudioElement);
+      
+      // Create anti-clip node
+      antiClipNode = audioContext.createGain();
+      antiClipNode.gain.value = initialAntiClipGain;
+      
+      // Connect the nodes
+      mediaElementSource.connect(antiClipNode);
+      antiClipNode.connect(audioContext.destination);
+      
+      // Set up monitoring
+      analyserNode = audioContext.createAnalyser();
+      analyserNode.fftSize = ANALYZER_FFT_SIZE;
+      mediaElementSource.connect(analyserNode);
+      
+      // Set up the anti-clipping analyzer
+      setupAntiClipAnalyzer();
+      
+      // Play the audio
+      playNonNormalized(soundInfo);
+    } catch (error) {
+      console.error('Error setting up basic anti-clipping:', error);
+      
+      // Fall back to direct playback if analysis fails
+      globalAudioElement.src = soundInfo.previewUrl;
+      playNonNormalized(soundInfo);
+    }
   }
 }
 
@@ -381,6 +597,9 @@ export function stopGlobalSound(): void {
       // Ignore errors during cleanup
     }
   }
+  
+  // Reset anti-clip gain before disconnecting
+  resetAntiClipGain();
 
   // Disconnect Web Audio API nodes if they exist
   if (mediaElementSource) {
@@ -399,7 +618,15 @@ export function stopGlobalSound(): void {
     parametricEQ.disconnect();
     parametricEQ = null;
   }
-
+  if (analyserNode) {
+    analyserNode.disconnect();
+    analyserNode = null;
+  }
+  if (antiClipNode) {
+    antiClipNode.disconnect();
+    antiClipNode = null;
+  }
+  
   globalAudioElement = null;
   currentSoundInfo = null;
 }

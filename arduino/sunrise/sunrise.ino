@@ -166,9 +166,9 @@ void setup() {
 
   // start audio
   audioamp.begin();
-  audioamp.setGain(0);
-  audioamp.setLimitLevel(10);
-  setAgcMode(AGC_MODE_JAZZ);
+  audioamp.setGain(30);
+  audioamp.setLimitLevel(20);
+  audioamp.setAGCCompression(TPA2016_AGC_OFF);
 }
 
 void readSerialInput() {

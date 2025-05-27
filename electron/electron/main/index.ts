@@ -187,30 +187,15 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   : RENDERER_DIST;
 
 // Attempt to force hardware acceleration and specific GL backend for Linux/ARM
-// Apply these before other GPU-related decisions like disableHardwareAcceleration
 if (process.platform === 'linux') {
-  // Force Electron to ignore the GPU blocklist
+  console.log('[chrome] applying gpu switches');
   app.commandLine.appendSwitch('ignore-gpu-blocklist');
-
-  // Disable GPU Sandbox (New suggestion)
   app.commandLine.appendSwitch('disable-gpu-sandbox');
-
-  // Revert to a simpler setup, letting Electron try to auto-detect,
-  // but with blocklist ignored and sandbox disabled.
-  // Remove previous use-gl/use-angle attempts for now.
-  // app.commandLine.appendSwitch('use-gl', 'angle');
-  // app.commandLine.appendSwitch('use-angle', 'default');
-
-  // Other flags you could experiment with if the above don't work:
-  // app.commandLine.appendSwitch('use-gl', 'egl');
-  // app.commandLine.appendSwitch('enable-features', 'Vulkan,UseSkiaRenderer');
-  // app.commandLine.appendSwitch('enable-unsafe-webgpu');
-  // app.commandLine.appendSwitch('enable-gpu-rasterization');
-  // app.commandLine.appendSwitch('enable-oop-rasterization');
+  app.commandLine.appendSwitch('use-angle', 'gles');
+  app.commandLine.appendSwitch('enable-gpu-rasterization');
 }
 
-// Disable GPU Acceleration for Windows 7
-if (os.release().startsWith('6.1')) app.disableHardwareAcceleration();
+console.log('[chrome] os.release', os.release());
 
 // Set application name for Windows 10+ notifications
 if (process.platform === 'win32') app.setAppUserModelId(app.getName());
@@ -459,6 +444,18 @@ function createApplicationMenu() {
     {
       label: 'Advanced',
       submenu: [
+        {
+          label: 'WebGL Tests',
+          click: async () => {
+            win.loadURL('https://webglsamples.org');
+          },
+        },
+        {
+          label: 'Chromium GPU stats',
+          click: async () => {
+            win.loadURL('chrome://gpu');
+          },
+        },
         {
           label: 'Force Update',
           accelerator: 'CmdOrCtrl+Shift+U',

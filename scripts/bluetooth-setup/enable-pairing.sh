@@ -66,16 +66,21 @@ enable_pairing() {
     # Ensure device name is set correctly first
     bluetoothctl system-alias "$DEVICE_NAME" 2>/dev/null || print_warning "Could not set device name"
     
-    # Set up automatic pairing agent (no user interaction required)
+    # Set up automatic pairing agent using expect-like approach
     print_status "Setting up automatic pairing agent..."
-    bluetoothctl agent NoInputNoOutput
-    bluetoothctl default-agent
     
-    # Make device discoverable and pairable
-    bluetoothctl discoverable on
-    bluetoothctl pairable on
+    # Use a here document to send commands to bluetoothctl
+    {
+        echo "agent NoInputNoOutput"
+        echo "default-agent"
+        echo "discoverable on"
+        echo "pairable on"
+        echo "quit"
+    } | bluetoothctl
     
-    if [ $? -eq 0 ]; then
+    # Verify pairing mode is active
+    sleep 2
+    if bluetoothctl show | grep -q "Discoverable: yes"; then
         print_success "Pairing mode enabled (automatic pairing - no confirmation needed)!"
         log "Pairing mode activated for $PAIRING_TIMEOUT seconds"
     else
@@ -126,7 +131,7 @@ wait_for_timeout() {
         remaining=$((remaining - 1))
         
         # Check if a new device connected
-        if bluetoothctl info 2>/dev/null | grep -q "Connected: yes"; then
+        if bluetoothctl devices Connected 2>/dev/null | grep -q "Device"; then
             echo ""
             print_success "Device connected! Pairing successful."
             break
@@ -140,9 +145,15 @@ wait_for_timeout() {
 disable_pairing() {
     print_status "Disabling pairing mode..."
     
-    bluetoothctl discoverable off
+    # Use here document to ensure command is processed
+    {
+        echo "discoverable off"
+        echo "quit"
+    } | bluetoothctl
     
-    if [ $? -eq 0 ]; then
+    # Verify pairing mode is disabled
+    sleep 1
+    if bluetoothctl show | grep -q "Discoverable: no"; then
         print_success "Pairing mode disabled"
         log "Pairing mode deactivated"
     else

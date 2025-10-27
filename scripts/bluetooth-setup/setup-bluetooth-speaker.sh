@@ -633,15 +633,39 @@ After=bluetooth.service
 Requires=bluetooth.service
 
 [Service]
-Type=simple
-ExecStart=/bin/bash -c 'sleep 5 && bluetoothctl agent NoInputNoOutput && bluetoothctl default-agent'
-Restart=always
-RestartSec=10
+Type=forking
+ExecStart=/usr/local/bin/setup-bluetooth-agent.sh
+Restart=on-failure
+RestartSec=5
 User=root
 
 [Install]
 WantedBy=multi-user.target
 EOF
+
+    # Create the agent setup script
+    cat > /usr/local/bin/setup-bluetooth-agent.sh << 'EOF'
+#!/bin/bash
+# Setup automatic Bluetooth pairing agent
+
+# Wait for Bluetooth to be ready
+sleep 10
+
+# Check if Bluetooth is powered on
+while ! bluetoothctl show | grep -q "Powered: yes"; do
+    echo "Waiting for Bluetooth to power on..."
+    sleep 2
+done
+
+# Set up the agent
+echo "Setting up NoInputNoOutput agent..."
+bluetoothctl agent NoInputNoOutput
+bluetoothctl default-agent
+
+echo "Bluetooth automatic pairing agent configured"
+EOF
+
+    chmod +x /usr/local/bin/setup-bluetooth-agent.sh
     
     systemctl enable bluetooth-agent.service
     
@@ -705,8 +729,11 @@ EOF
     
     # Configure automatic pairing agent (no user confirmation required)
     print_status "Configuring automatic pairing agent..."
-    bluetoothctl agent NoInputNoOutput
-    bluetoothctl default-agent
+    {
+        echo "agent NoInputNoOutput"
+        echo "default-agent"
+        echo "quit"
+    } | bluetoothctl 2>/dev/null || print_status "Agent will be configured by service on boot"
     
     # Ensure the name is applied
     bluetoothctl power off
@@ -803,11 +830,12 @@ show_final_status() {
     echo ""
     
     echo -e "${BOLD}Next Steps:${NC}"
-    echo "  1. Run './enable-pairing.sh' to make '$DEVICE_NAME' discoverable"
-    echo "  2. Pair your phone/device within 3 minutes"
-    echo "  3. Select it as your audio output device"
-    echo "  4. Play high-quality music and enjoy the difference!"
-    echo "  5. Use LDAC or aptX HD capable devices for best quality"
+    echo "  1. Reboot to ensure all services start properly (recommended)"
+    echo "  2. Run './enable-pairing.sh' to make '$DEVICE_NAME' discoverable"
+    echo "  3. Pair your phone/device within 3 minutes (no confirmation needed)"
+    echo "  4. Select it as your audio output device"
+    echo "  5. Play high-quality music and enjoy the difference!"
+    echo "  6. Use LDAC or aptX HD capable devices for best quality"
     echo ""
     
     echo -e "${BOLD}Useful Commands:${NC}"

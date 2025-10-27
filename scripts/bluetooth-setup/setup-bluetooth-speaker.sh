@@ -275,17 +275,22 @@ configure_pulseaudio_system() {
     fi
     
     cat > /etc/pulse/daemon.conf << 'EOF'
+# Configure PulseAudio for user mode
+cat > /etc/pulse/daemon.conf << 'EOF'
 # PulseAudio daemon configuration for user mode
 system-instance = no
 enable-remixing = yes
 remixing-produce-lfe = yes
 remixing-consume-lfe = yes
-default-sample-format = s16le
-default-sample-rate = 44100
+default-sample-format = s24le
+default-sample-rate = 48000
+alternate-sample-rate = 44100
 default-sample-channels = 2
 default-channel-map = front-left,front-right
-resample-method = speex-float-1
+resample-method = soxr-hq
+avoid-resampling = yes
 flat-volumes = no
+EOF
 EOF
     
     # Configure system ALSA
@@ -542,7 +547,8 @@ show_final_status() {
     echo -e "${BOLD}Next Steps:${NC}"
     echo "  1. Pair your phone/device with '$DEVICE_NAME'"
     echo "  2. Select it as your audio output device"
-    echo "  3. Play music and enjoy!"
+    echo "  3. For even higher quality: sudo ./enhance-bluetooth-audio-quality.sh"
+    echo "  4. Play music and enjoy!"
     echo ""
     
     echo -e "${BOLD}Useful Commands:${NC}"

@@ -38,6 +38,10 @@ fi
 print_status "Updating system packages..."
 apt update && apt upgrade -y
 
+# Ensure we have the latest package information
+print_status "Refreshing package cache..."
+apt update --fix-missing
+
 # Install required packages
 print_status "Installing required packages..."
 apt install -y \
@@ -48,7 +52,21 @@ apt install -y \
     pulseaudio-module-bluetooth \
     pavucontrol \
     alsa-utils \
-    bluealsa
+    libasound2-plugins
+
+# Verify Bluetooth service is available
+if ! systemctl list-unit-files | grep -q bluetooth.service; then
+    print_error "Bluetooth service not found. Attempting to install bluez-firmware..."
+    apt install -y bluez-firmware pi-bluetooth || print_warning "Could not install additional Bluetooth packages"
+fi
+
+print_status "Verifying package installation..."
+for pkg in bluetooth bluez pulseaudio; do
+    if ! dpkg -l | grep -q "^ii  $pkg "; then
+        print_error "Package $pkg not properly installed"
+        exit 1
+    fi
+done
 
 # Enable Bluetooth service
 print_status "Enabling Bluetooth service..."
@@ -62,22 +80,26 @@ print_status "Configuring PulseAudio..."
 cat > /etc/pulse/system.pa << 'EOF'
 #!/usr/bin/pulseaudio -nF
 
-# Load modules
+# Load core modules
 load-module module-device-restore
 load-module module-stream-restore
 load-module module-card-restore
 load-module module-augment-properties
 load-module module-switch-on-port-available
+
+# Load hardware detection modules
 load-module module-udev-detect
 load-module module-alsa-sink
 load-module module-alsa-source device=hw:1,0
+
+# Load Bluetooth modules for BlueZ 5
 load-module module-bluetooth-policy
 load-module module-bluetooth-discover
-load-module module-bluez5-discover
-load-module module-bluez5-device
+
+# Native protocol for local access
 load-module module-native-protocol-unix auth-anonymous=1 socket=/tmp/pulse-socket
 
-# Set default sink and source
+# Set default sink
 set-default-sink alsa_output.platform-bcm2835_audio.analog-stereo
 EOF
 
@@ -104,6 +126,9 @@ Discoverable = yes
 PairableTimeout = 0
 Pairable = yes
 AutoConnect = yes
+FastConnectable = true
+JustWorksRepairing = always
+Privacy = device
 
 [Policy]
 AutoEnable = true
@@ -111,10 +136,16 @@ AutoEnable = true
 [A2DP]
 Disable = false
 
+[AVRCP]
+Disable = false
+
 [HFP]
 Disable = true
 
 [HID]
+Disable = false
+
+[GATT]
 Disable = false
 EOF
 
@@ -137,9 +168,17 @@ TimeoutStopSec=20
 WantedBy=multi-user.target
 EOF
 
-# Add pulse user to audio and bluetooth groups
+# Add users to audio and bluetooth groups
 print_status "Configuring user permissions..."
 usermod -a -G audio,bluetooth pulse
+usermod -a -G audio,bluetooth pi 2>/dev/null || true
+
+# Ensure audio devices have correct permissions
+print_status "Setting audio device permissions..."
+cat > /etc/udev/rules.d/99-audio-permissions.rules << 'EOF'
+SUBSYSTEM=="sound", GROUP="audio", MODE="0664"
+KERNEL=="controlC[0-9]*", GROUP="audio", MODE="0664"
+EOF
 
 # Create Bluetooth agent script for auto-pairing
 print_status "Creating Bluetooth auto-pairing service..."

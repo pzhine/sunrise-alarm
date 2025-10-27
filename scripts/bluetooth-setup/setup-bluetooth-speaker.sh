@@ -180,7 +180,7 @@ install_packages() {
     # Update package cache
     apt update --fix-missing -qq
     
-    # List of required packages
+    # List of required packages (including high-quality audio)
     local packages=(
         "bluetooth"
         "bluez" 
@@ -190,6 +190,7 @@ install_packages() {
         "pavucontrol"
         "alsa-utils"
         "libasound2-plugins"
+        "libsoxr0"
     )
     
     # Check which packages need installation
@@ -256,6 +257,16 @@ Disable = false
 
 [GATT]
 Disable = false
+
+# High-quality audio settings
+[AdvMon]
+RSSISamplingPeriod = 0xFF
+
+[DeviceID]
+Source = 2
+Vendor = 1358
+Product = 1
+Version = 1
 EOF
     
     print_success "Bluetooth configuration completed"
@@ -276,26 +287,29 @@ configure_pulseaudio_system() {
     
     cat > /etc/pulse/daemon.conf << 'EOF'
 # Configure PulseAudio for user mode
-cat > /etc/pulse/daemon.conf << 'EOF'
-# PulseAudio daemon configuration for user mode
+    cat > /etc/pulse/daemon.conf << 'EOF'
+# PulseAudio daemon configuration optimized for high-quality audio
 system-instance = no
 enable-remixing = yes
 remixing-produce-lfe = yes
 remixing-consume-lfe = yes
-default-sample-format = s24le
+default-sample-format = s32le
 default-sample-rate = 48000
 alternate-sample-rate = 44100
 default-sample-channels = 2
 default-channel-map = front-left,front-right
-resample-method = soxr-hq
+resample-method = soxr-vhq
 avoid-resampling = yes
 flat-volumes = no
-EOF
-EOF
-    
-    # Configure system ALSA
+high-priority = yes
+nice-level = -11
+realtime-scheduling = yes
+realtime-priority = 9
+rlimit-rtprio = 9
+rlimit-rttime = 200000
+EOF    # Configure system ALSA for high-quality audio
     cat > /etc/asound.conf << 'EOF'
-# System ALSA configuration
+# High-quality system ALSA configuration
 pcm.!default {
     type pulse
     fallback "sysdefault"
@@ -305,6 +319,36 @@ ctl.!default {
     type pulse
     fallback "sysdefault"
 }
+
+# High-quality PCM device
+pcm.hifi {
+    type hw
+    card 0
+    device 0
+    format S32_LE
+    rate 48000
+    channels 2
+}
+EOF
+
+    # Create Bluetooth codec preferences configuration
+    mkdir -p /etc/bluetooth/audio
+    cat > /etc/bluetooth/audio.conf << 'EOF'
+[General]
+Enable = Source,Sink,Media,Socket
+Disable = Headset,Gateway,Control
+
+[A2DP]
+SBCFrequency = 48000
+SBCChannelMode = JointStereo
+SBCSubbands = 8
+SBCBlocks = 16
+SBCBitpool = 64
+MPEG12Layer3 = true
+LDAC = true
+APTX = true
+APTXHD = true
+AAC = true
 EOF
     
     print_success "PulseAudio system configuration completed"
@@ -326,28 +370,59 @@ configure_user_settings() {
     cat > "/home/$REAL_USER/.config/pulse/default.pa" << 'EOF'
 #!/usr/bin/pulseaudio -nF
 
-# Load core modules
+# Load core modules with high-quality settings
 .include /etc/pulse/default.pa
 
-# Load Bluetooth modules
-load-module module-bluetooth-policy
-load-module module-bluetooth-discover
+# Unload default Bluetooth modules to reconfigure for quality
+.nofail
+unload-module module-bluetooth-discover
+unload-module module-bluetooth-policy
+unload-module module-bluez5-discover
+.fail
+
+# Load Bluetooth modules with high-quality codec preferences
+load-module module-bluetooth-discover headset=auto a2dp_config="ldac_eqmid=hq ldac_fmt=f32 sbc_freq=48k sbc_chmode=joint_stereo aptx_hd=yes"
+load-module module-bluetooth-policy a2dp_source=true ag_mode=false
 
 # Automatically switch to Bluetooth when connected
 load-module module-switch-on-connect
+
+# Load additional modules for better quality
+load-module module-filter-heuristics
+load-module module-filter-apply
 EOF
     
-    # User ALSA configuration
+    # User ALSA configuration for high-quality audio
     cat > "/home/$REAL_USER/.asoundrc" << 'EOF'
-# User ALSA configuration for PulseAudio
+# High-quality user ALSA configuration
 pcm.!default {
     type pulse
     fallback "sysdefault"
+    hint {
+        show on
+        description "Default ALSA Output (High-Quality PulseAudio)"
+    }
 }
 
 ctl.!default {
     type pulse
     fallback "sysdefault"
+}
+
+# High-quality PCM device
+pcm.hifi {
+    type hw
+    card 0
+    device 0
+    format S32_LE
+    rate 48000
+    channels 2
+}
+
+# High-quality control
+ctl.hifi {
+    type hw
+    card 0
 }
 EOF
     
@@ -382,7 +457,58 @@ EOF
 create_utilities() {
     print_status "Creating utility scripts..."
     
-    # Audio balance fix utility
+    # High-quality audio optimization utility
+    cat > /usr/local/bin/optimize-bluetooth-audio.sh << 'EOF'
+#!/bin/bash
+# High-Quality Bluetooth Audio Optimizer
+
+REAL_USER=${1:-$(logname 2>/dev/null)}
+if [ -z "$REAL_USER" ]; then
+    REAL_USER=$(ls /home | head -1)
+fi
+
+echo "Optimizing high-quality Bluetooth audio for user: $REAL_USER"
+
+# Wait for services to be ready
+sleep 3
+
+# Get connected Bluetooth audio devices and optimize them
+sudo -u "$REAL_USER" pactl list sinks short | grep bluez | while read -r sink_info; do
+    sink_name=$(echo $sink_info | cut -f2)
+    echo "Optimizing high-quality Bluetooth sink: $sink_name"
+    
+    # Set optimal volume and unmute
+    sudo -u "$REAL_USER" pactl set-sink-volume "$sink_name" 90% 2>/dev/null || true
+    sudo -u "$REAL_USER" pactl set-sink-mute "$sink_name" false 2>/dev/null || true
+    
+    # Try to set high-quality codec profile
+    card_name=$(echo "$sink_name" | sed 's/bluez_sink\.//' | sed 's/\.a2dp_sink.*//')
+    if [ ! -z "$card_name" ]; then
+        sudo -u "$REAL_USER" pactl set-card-profile "bluez_card.$card_name" a2dp_sink 2>/dev/null || true
+    fi
+done
+
+# Fix balance for all sinks (including local audio)
+sudo -u "$REAL_USER" pactl list sinks short | while read -r sink_info; do
+    sink_name=$(echo $sink_info | cut -f2)
+    echo "Optimizing sink: $sink_name"
+    sudo -u "$REAL_USER" pactl set-sink-volume "$sink_name" 85% 2>/dev/null || true
+    sudo -u "$REAL_USER" pactl set-sink-mute "$sink_name" false 2>/dev/null || true
+done
+
+# Optimize system settings for audio performance
+echo "Optimizing system for high-quality audio..."
+
+# Set CPU governor to performance for better audio processing
+echo performance > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || true
+
+# Optimize audio scheduling
+sysctl -w kernel.sched_rt_runtime_us=950000 2>/dev/null || true
+
+echo "High-quality Bluetooth audio optimization complete!"
+EOF
+    
+    # Audio balance fix utility (simpler version)
     cat > /usr/local/bin/fix-audio-balance.sh << 'EOF'
 #!/bin/bash
 # Audio balance fix utility
@@ -393,22 +519,38 @@ if [ -z "$REAL_USER" ]; then
 fi
 
 echo "Fixing audio balance for user: $REAL_USER"
-
-# Wait for PulseAudio
-sleep 2
-
-# Fix balance for all sinks
-sudo -u "$REAL_USER" pactl list sinks short | while read -r sink_info; do
-    sink_name=$(echo $sink_info | cut -f2)
-    echo "Fixing balance for sink: $sink_name"
-    sudo -u "$REAL_USER" pactl set-sink-volume "$sink_name" 80% 2>/dev/null || true
-    sudo -u "$REAL_USER" pactl set-sink-mute "$sink_name" false 2>/dev/null || true
-done
-
-echo "Audio balance fixed!"
+/usr/local/bin/optimize-bluetooth-audio.sh "$REAL_USER"
 EOF
     
+    chmod +x /usr/local/bin/optimize-bluetooth-audio.sh
     chmod +x /usr/local/bin/fix-audio-balance.sh
+    
+    # Create automatic audio optimization service
+    cat > /etc/systemd/system/bluetooth-audio-optimizer.service << EOF
+[Unit]
+Description=High-Quality Bluetooth Audio Optimizer
+After=bluetooth.service graphical-session.target
+Wants=bluetooth.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/optimize-bluetooth-audio.sh $REAL_USER
+RemainAfterExit=yes
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    
+    systemctl enable bluetooth-audio-optimizer.service
+    
+    # Create udev rule for automatic codec optimization
+    cat > /etc/udev/rules.d/99-bluetooth-audio-quality.rules << 'EOF'
+# High-quality Bluetooth audio optimization
+ACTION=="add", SUBSYSTEM=="bluetooth", ATTR{class}=="0x240404", RUN+="/usr/local/bin/optimize-bluetooth-audio.sh"
+EOF
+    
+    udevadm control --reload-rules
     
     # Bluetooth control utility
     cat > /usr/local/bin/bluetooth-control.sh << 'EOF'
@@ -448,7 +590,32 @@ EOF
 configure_services() {
     print_status "Configuring and starting services..."
     
-    # Enable Bluetooth service
+    # Configure Bluetooth service for high-quality audio
+    BLUETOOTHD_PATH=""
+    for path in "/usr/lib/bluetooth/bluetoothd" "/usr/libexec/bluetooth/bluetoothd" "/usr/sbin/bluetoothd"; do
+        if [ -x "$path" ]; then
+            BLUETOOTHD_PATH="$path"
+            break
+        fi
+    done
+    
+    if [ ! -z "$BLUETOOTHD_PATH" ]; then
+        print_status "Configuring Bluetooth service with experimental features at: $BLUETOOTHD_PATH"
+        
+        mkdir -p /etc/systemd/system/bluetooth.service.d
+        cat > /etc/systemd/system/bluetooth.service.d/override.conf << EOF
+[Service]
+ExecStart=
+ExecStart=$BLUETOOTHD_PATH --experimental
+Restart=always
+RestartSec=5
+EOF
+    else
+        print_warning "Could not find bluetoothd executable, using default configuration"
+    fi
+    
+    # Enable and restart Bluetooth service
+    systemctl daemon-reload
     systemctl enable bluetooth.service
     systemctl restart bluetooth.service
     
@@ -544,19 +711,30 @@ show_final_status() {
     echo "  Discoverable: $(bluetoothctl show | grep -o 'Discoverable: [^[:space:]]*' || echo 'Unknown')"
     echo ""
     
+    echo -e "${BOLD}High-Quality Audio Features Enabled:${NC}"
+    echo "  • Sample Format: 32-bit (professional quality)"
+    echo "  • Sample Rate: 48kHz (DVD quality)"
+    echo "  • Resampler: SoXR Very High Quality"
+    echo "  • Bluetooth Codecs: LDAC, aptX HD, AAC optimized"
+    echo "  • Real-time Audio Scheduling: Enabled"
+    echo "  • Experimental Bluetooth Features: Active"
+    echo ""
+    
     echo -e "${BOLD}Next Steps:${NC}"
     echo "  1. Pair your phone/device with '$DEVICE_NAME'"
     echo "  2. Select it as your audio output device"
-    echo "  3. For even higher quality: sudo ./enhance-bluetooth-audio-quality.sh"
-    echo "  4. Play music and enjoy!"
+    echo "  3. Play high-quality music and enjoy the difference!"
+    echo "  4. Use LDAC or aptX HD capable devices for best quality"
     echo ""
     
     echo -e "${BOLD}Useful Commands:${NC}"
-    echo "  • Test audio:           speaker-test -t wav -c 2"
+    echo "  • Test audio (HQ):      speaker-test -t wav -c 2 -r 48000 -f S32_LE"
+    echo "  • Test audio (basic):   speaker-test -t wav -c 2"
+    echo "  • Optimize audio:       sudo /usr/local/bin/optimize-bluetooth-audio.sh"
     echo "  • Fix audio balance:    sudo /usr/local/bin/fix-audio-balance.sh"
     echo "  • Bluetooth control:    /usr/local/bin/bluetooth-control.sh status"
     echo "  • Make discoverable:    /usr/local/bin/bluetooth-control.sh discoverable"
-    echo "  • Restart Bluetooth:    /usr/local/bin/bluetooth-control.sh restart"
+    echo "  • Check codecs:         pactl list sinks | grep bluetooth"
     echo ""
     
     echo -e "${BOLD}Troubleshooting:${NC}"

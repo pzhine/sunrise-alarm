@@ -216,14 +216,29 @@ EOF
 # Create high-quality Bluetooth service override
 print_status "Creating Bluetooth service optimization..."
 
-mkdir -p /etc/systemd/system/bluetooth.service.d
-cat > /etc/systemd/system/bluetooth.service.d/override.conf << 'EOF'
+# Find the correct bluetoothd path
+BLUETOOTHD_PATH=""
+for path in "/usr/lib/bluetooth/bluetoothd" "/usr/libexec/bluetooth/bluetoothd" "/usr/sbin/bluetoothd"; do
+    if [ -x "$path" ]; then
+        BLUETOOTHD_PATH="$path"
+        break
+    fi
+done
+
+if [ -z "$BLUETOOTHD_PATH" ]; then
+    print_warning "Could not find bluetoothd executable, skipping service override"
+else
+    print_status "Found bluetoothd at: $BLUETOOTHD_PATH"
+    
+    mkdir -p /etc/systemd/system/bluetooth.service.d
+    cat > /etc/systemd/system/bluetooth.service.d/override.conf << EOF
 [Service]
 ExecStart=
-ExecStart=/usr/lib/bluetooth/bluetoothd --experimental -P battery
+ExecStart=$BLUETOOTHD_PATH --experimental
 Restart=always
 RestartSec=5
 EOF
+fi
 
 # Install additional audio quality packages
 print_status "Installing high-quality audio packages..."

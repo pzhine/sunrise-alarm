@@ -19,7 +19,7 @@ SCRIPT_VERSION="1.0.0"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Configuration
-DEVICE_NAME="SunriseAlarm-Speaker"
+DEVICE_NAME="DawnDeck"
 BACKUP_DIR="/var/backups/bluetooth-setup"
 LOG_FILE="/var/log/bluetooth-setup.log"
 
@@ -231,14 +231,18 @@ configure_bluetooth() {
 [General]
 Name = $DEVICE_NAME
 Class = 0x200414
-DiscoverableTimeout = 0
-Discoverable = yes
+DiscoverableTimeout = 180
+Discoverable = no
 PairableTimeout = 0
 Pairable = yes
 AutoConnect = yes
 FastConnectable = true
 JustWorksRepairing = always
 Privacy = device
+
+# Ensure our custom name is used instead of hostname
+ControllerMode = dual
+MultiProfile = multiple
 
 [Policy]
 AutoEnable = true
@@ -583,6 +587,39 @@ EOF
     
     chmod +x /usr/local/bin/bluetooth-control.sh
     
+    # Create Bluetooth name setter utility
+    cat > /usr/local/bin/set-bluetooth-name.sh << EOF
+#!/bin/bash
+# Force set Bluetooth device name
+
+DEVICE_NAME="$DEVICE_NAME"
+
+echo "Setting Bluetooth device name to '\$DEVICE_NAME'..."
+
+# Method 1: Use bluetoothctl
+bluetoothctl system-alias "\$DEVICE_NAME" 2>/dev/null || echo "Could not set via bluetoothctl"
+
+# Method 2: Update hostname-based name via dbus
+dbus-send --system --dest=org.bluez --print-reply /org/bluez/hci0 \
+    org.freedesktop.DBus.Properties.Set string:org.bluez.Adapter1 string:Alias variant:string:"\$DEVICE_NAME" 2>/dev/null || echo "Could not set via dbus"
+
+# Method 3: Restart Bluetooth service to pick up config
+systemctl restart bluetooth 2>/dev/null || echo "Could not restart bluetooth service"
+
+sleep 2
+
+# Verify
+current_name=\$(bluetoothctl show 2>/dev/null | grep "Alias:" | cut -d: -f2 | xargs)
+if [ "\$current_name" = "\$DEVICE_NAME" ]; then
+    echo "Success! Bluetooth device name is now '\$DEVICE_NAME'"
+else
+    echo "Current name: \$current_name"
+    echo "Note: Name change may require a reboot to take full effect"
+fi
+EOF
+    
+    chmod +x /usr/local/bin/set-bluetooth-name.sh
+    
     print_success "Utility scripts created"
 }
 
@@ -636,9 +673,25 @@ EOF
         sudo -u "$REAL_USER" pulseaudio --start --log-target=syslog 2>/dev/null || true
     fi
     
-    # Make device discoverable
+    # Set the Bluetooth adapter name explicitly
     sleep 2
-    /usr/local/bin/bluetooth-control.sh discoverable
+    print_status "Setting Bluetooth device name to '$DEVICE_NAME'..."
+    bluetoothctl system-alias "$DEVICE_NAME" || print_warning "Could not set system alias"
+    bluetoothctl agent on
+    
+    # Ensure the name is applied
+    bluetoothctl power off
+    sleep 1
+    bluetoothctl power on
+    sleep 2
+    
+    # Verify the name was set
+    local current_name=$(bluetoothctl show | grep "Alias:" | cut -d: -f2 | xargs)
+    if [ "$current_name" = "$DEVICE_NAME" ]; then
+        print_success "Bluetooth device name set to '$DEVICE_NAME'"
+    else
+        print_warning "Device name may still show as '$current_name' - this will be fixed after reboot"
+    fi
     
     print_success "Services configured and started"
 }
@@ -721,10 +774,11 @@ show_final_status() {
     echo ""
     
     echo -e "${BOLD}Next Steps:${NC}"
-    echo "  1. Pair your phone/device with '$DEVICE_NAME'"
-    echo "  2. Select it as your audio output device"
-    echo "  3. Play high-quality music and enjoy the difference!"
-    echo "  4. Use LDAC or aptX HD capable devices for best quality"
+    echo "  1. Run './enable-pairing.sh' to make '$DEVICE_NAME' discoverable"
+    echo "  2. Pair your phone/device within 3 minutes"
+    echo "  3. Select it as your audio output device"
+    echo "  4. Play high-quality music and enjoy the difference!"
+    echo "  5. Use LDAC or aptX HD capable devices for best quality"
     echo ""
     
     echo -e "${BOLD}Useful Commands:${NC}"
@@ -732,7 +786,9 @@ show_final_status() {
     echo "  • Test audio (basic):   speaker-test -t wav -c 2"
     echo "  • Optimize audio:       sudo /usr/local/bin/optimize-bluetooth-audio.sh"
     echo "  • Fix audio balance:    sudo /usr/local/bin/fix-audio-balance.sh"
+    echo "  • Set device name:      sudo /usr/local/bin/set-bluetooth-name.sh"
     echo "  • Bluetooth control:    /usr/local/bin/bluetooth-control.sh status"
+    echo "  • Enable pairing:       ./enable-pairing.sh"
     echo "  • Make discoverable:    /usr/local/bin/bluetooth-control.sh discoverable"
     echo "  • Check codecs:         pactl list sinks | grep bluetooth"
     echo ""
@@ -741,6 +797,7 @@ show_final_status() {
     echo "  • Check logs:           tail -f $LOG_FILE"
     echo "  • Audio issues:         Run this script again (it's idempotent)"
     echo "  • Bluetooth issues:     sudo systemctl restart bluetooth"
+    echo "  • Wrong device name:    sudo /usr/local/bin/set-bluetooth-name.sh or reboot"
     echo "  • No sound:             Check cable connections 😉"
     echo ""
     

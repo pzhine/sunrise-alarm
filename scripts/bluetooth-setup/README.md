@@ -1,12 +1,79 @@
-# Bluetooth Speaker Setup
+# DawnDeck Bluetooth Speaker Setup
 
-This directory contains a comprehensive, idempotent setup system for configuring a Raspberry Pi as a Bluetooth speaker with full media control capabilities.
+This directory contains scripts and services to configure a Raspberry Pi as a high-quality Bluetooth speaker named "DawnDeck".
+
+## Files Overview
+
+### Main Scripts
+
+- **`setup-bluetooth-speaker.sh`** - Master setup script that configures everything
+- **`enable-pairing.sh`** - Puts device in pairing mode for 3 minutes (like commercial speakers)
+
+### Electron Integration
+
+- **`electron-pairing-service.ts`** - TypeScript service for programmatic pairing control from Electron app
 
 ## Quick Start
 
+1. **Initial Setup** (run once):
+   ```bash
+   cd scripts/bluetooth-setup
+   sudo ./setup-bluetooth-speaker.sh
+   ```
+
+2. **Enable Pairing** (when you want to pair a new device):
+   ```bash
+   ./enable-pairing.sh
+   ```
+
+## Device Behavior
+
+The DawnDeck speaker behaves like commercial Bluetooth speakers:
+
+- **Default State**: Ready to connect to already-paired devices, but not discoverable
+- **Pairing Mode**: Must be manually activated, automatically times out after 3 minutes
+- **Auto-Connect**: Automatically connects to previously paired devices when in range
+
+## Features
+
+### High-Quality Audio
+- **32-bit/48kHz** audio processing
+- **Advanced Codecs**: LDAC (990kbps), aptX HD (576kbps), AAC optimized
+- **SoXR Very High Quality** resampling
+- **Real-time audio scheduling** for minimal latency
+- **Experimental Bluetooth features** for best codec support
+
+### Smart Pairing
+- **Timed Discovery**: 3-minute pairing window (configurable)
+- **Visual Feedback**: Countdown timer and status display
+- **Auto-disable**: Returns to non-discoverable state after timeout
+- **Connection Detection**: Shows when devices connect during pairing
+
+### Device Management
+- Easy device unpairing
+- Connection status monitoring
+- Paired device listing
+- Audio quality optimization
+
+## Usage Examples
+
+### Command Line
+
 ```bash
-# Make executable
-chmod +x setup-bluetooth-speaker.sh
+# Run initial setup
+sudo ./setup-bluetooth-speaker.sh
+
+# Enable pairing mode for 3 minutes
+./enable-pairing.sh
+
+# Check Bluetooth status
+bluetoothctl show
+
+# List paired devices
+bluetoothctl devices Paired
+
+# Remove a device
+bluetoothctl remove [MAC_ADDRESS]
 
 # Run setup (safe to run multiple times)
 sudo ./setup-bluetooth-speaker.sh

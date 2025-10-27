@@ -330,20 +330,47 @@ systemctl enable pulseaudio.service
 systemctl enable bluetooth-agent.service
 systemctl enable bluetooth-discoverable.service
 
-# Start PulseAudio
+# Start services in correct order
+print_status "Starting services..."
 systemctl start pulseaudio.service
+sleep 3
 
-# Configure audio output routing
-print_status "Configuring audio routing..."
+# Verify PulseAudio is running before configuring audio
+if systemctl is-active --quiet pulseaudio.service; then
+    print_status "Configuring audio routing..."
+    
+    # Set audio output levels (with error handling)
+    if amixer get PCM >/dev/null 2>&1; then
+        amixer set PCM 100% 2>/dev/null || print_warning "Could not set PCM volume"
+    fi
+    
+    if amixer get Master >/dev/null 2>&1; then
+        amixer set Master 100% 2>/dev/null || print_warning "Could not set Master volume"
+    fi
+    
+    # Alternative audio configuration using PulseAudio commands
+    sudo -u pulse pactl set-sink-volume @DEFAULT_SINK@ 100% 2>/dev/null || print_warning "Could not set PulseAudio volume"
+    
+else
+    print_warning "PulseAudio service not running, skipping audio configuration"
+fi
 
-# Ensure Bluetooth audio modules are loaded
-sudo -u pulse pulseaudio -k 2>/dev/null || true
+# Start Bluetooth services
+print_status "Starting Bluetooth services..."
+systemctl restart bluetooth.service
 sleep 2
-systemctl start pulseaudio.service
+systemctl start bluetooth-agent.service
+systemctl start bluetooth-discoverable.service
 
-# Set audio output to maximum quality
-amixer set PCM 100%
-amixer set Master 100%
+# Verify services are running
+print_status "Verifying service status..."
+for service in bluetooth pulseaudio bluetooth-agent bluetooth-discoverable; do
+    if systemctl is-active --quiet $service.service; then
+        print_status "✓ $service service is running"
+    else
+        print_warning "⚠ $service service is not running (this may be normal during setup)"
+    fi
+done
 
 # Create a script to handle Bluetooth connections
 print_status "Creating connection handler..."

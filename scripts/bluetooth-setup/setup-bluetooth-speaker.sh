@@ -180,7 +180,7 @@ install_packages() {
     # Update package cache
     apt update --fix-missing -qq
     
-    # List of required packages (including high-quality audio)
+    # List of required packages (including high-quality audio and Python for agents)
     local packages=(
         "bluetooth"
         "bluez" 
@@ -191,6 +191,9 @@ install_packages() {
         "alsa-utils"
         "libasound2-plugins"
         "libsoxr0"
+        "python3"
+        "python3-dbus"
+        "python3-gi"
     )
     
     # Check which packages need installation

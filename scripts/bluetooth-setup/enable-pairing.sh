@@ -59,6 +59,15 @@ check_bluetooth_service() {
     fi
 }
 
+# Check if Python3 is available for the agent
+check_python() {
+    if ! command -v python3 >/dev/null 2>&1; then
+        print_error "Python3 is required but not installed"
+        print_status "Install with: sudo apt install python3 python3-dbus python3-gi"
+        exit 1
+    fi
+}
+
 # Enable pairing mode
 enable_pairing() {
     print_status "Enabling pairing mode for '$DEVICE_NAME'..."
@@ -66,13 +75,89 @@ enable_pairing() {
     # Ensure device name is set correctly first
     bluetoothctl system-alias "$DEVICE_NAME" 2>/dev/null || print_warning "Could not set device name"
     
-    # Set up automatic pairing agent using expect-like approach
-    print_status "Setting up automatic pairing agent..."
+    # Kill any existing bluetoothctl processes that might interfere
+    pkill -f "bluetoothctl" 2>/dev/null || true
     
-    # Use a here document to send commands to bluetoothctl
+    # Set up automatic pairing agent using a background process
+    print_status "Setting up automatic pairing agent (no confirmation mode)..."
+    
+    # Create a simple-agent script for automatic pairing
+    cat > /tmp/bt-agent-$$.py << 'EOF'
+#!/usr/bin/env python3
+import dbus
+import dbus.service
+import dbus.mainloop.glib
+from gi.repository import GLib
+
+class Agent(dbus.service.Object):
+    exit_on_release = True
+
+    def set_exit_on_release(self, exit_on_release):
+        self.exit_on_release = exit_on_release
+
+    @dbus.service.method("org.bluez.Agent1", in_signature="", out_signature="")
+    def Release(self):
+        if self.exit_on_release:
+            mainloop.quit()
+
+    @dbus.service.method("org.bluez.Agent1", in_signature="os", out_signature="")
+    def AuthorizeService(self, device, uuid):
+        return
+
+    @dbus.service.method("org.bluez.Agent1", in_signature="o", out_signature="s")
+    def RequestPinCode(self, device):
+        return "0000"
+
+    @dbus.service.method("org.bluez.Agent1", in_signature="o", out_signature="u")
+    def RequestPasskey(self, device):
+        return dbus.UInt32(0)
+
+    @dbus.service.method("org.bluez.Agent1", in_signature="ou", out_signature="")
+    def DisplayPasskey(self, device, passkey):
+        return
+
+    @dbus.service.method("org.bluez.Agent1", in_signature="os", out_signature="")
+    def DisplayPinCode(self, device, pincode):
+        return
+
+    @dbus.service.method("org.bluez.Agent1", in_signature="ou", out_signature="")
+    def RequestConfirmation(self, device, passkey):
+        return
+
+    @dbus.service.method("org.bluez.Agent1", in_signature="o", out_signature="")
+    def RequestAuthorization(self, device):
+        return
+
+    @dbus.service.method("org.bluez.Agent1", in_signature="", out_signature="")
+    def Cancel(self):
+        pass
+
+if __name__ == '__main__':
+    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+    bus = dbus.SystemBus()
+    manager = dbus.Interface(bus.get_object("org.bluez", "/org/bluez"), "org.bluez.AgentManager1")
+    
+    path = "/test/agent"
+    agent = Agent(bus, path)
+    
+    manager.RegisterAgent(path, "NoInputNoOutput")
+    manager.RequestDefaultAgent(path)
+    
+    mainloop = GLib.MainLoop()
+    try:
+        mainloop.run()
+    except KeyboardInterrupt:
+        manager.UnregisterAgent(path)
+EOF
+    
+    # Start the automatic agent in background
+    python3 /tmp/bt-agent-$$.py &
+    AGENT_PID=$!
+    
+    sleep 2
+    
+    # Now enable discoverable mode
     {
-        echo "agent NoInputNoOutput"
-        echo "default-agent"
         echo "discoverable on"
         echo "pairable on"
         echo "quit"
@@ -83,8 +168,11 @@ enable_pairing() {
     if bluetoothctl show | grep -q "Discoverable: yes"; then
         print_success "Pairing mode enabled (automatic pairing - no confirmation needed)!"
         log "Pairing mode activated for $PAIRING_TIMEOUT seconds"
+        log "Agent PID: $AGENT_PID"
     else
         print_error "Failed to enable pairing mode"
+        kill $AGENT_PID 2>/dev/null || true
+        rm -f /tmp/bt-agent-$$.py
         exit 1
     fi
 }
@@ -166,6 +254,16 @@ cleanup() {
     echo ""
     print_status "Cleaning up..."
     disable_pairing
+    
+    # Kill the agent process if it exists
+    if [ ! -z "$AGENT_PID" ]; then
+        kill $AGENT_PID 2>/dev/null || true
+        print_status "Stopped automatic pairing agent"
+    fi
+    
+    # Clean up temporary files
+    rm -f /tmp/bt-agent-$$.py
+    
     exit 0
 }
 
@@ -180,6 +278,7 @@ main() {
     
     check_root
     check_bluetooth_service
+    check_python
     enable_pairing
     show_pairing_info
     wait_for_timeout

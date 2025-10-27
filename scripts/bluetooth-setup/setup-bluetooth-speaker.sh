@@ -244,6 +244,11 @@ Privacy = device
 ControllerMode = dual
 MultiProfile = multiple
 
+# SSP (Secure Simple Pairing) settings for seamless pairing
+SSPMode = 1
+JustWorksRepairing = always
+TemporaryTimeout = 30
+
 [Policy]
 AutoEnable = true
 
@@ -620,6 +625,26 @@ EOF
     
     chmod +x /usr/local/bin/set-bluetooth-name.sh
     
+    # Create automatic pairing agent service
+    cat > /etc/systemd/system/bluetooth-agent.service << 'EOF'
+[Unit]
+Description=Bluetooth Auto-Pairing Agent
+After=bluetooth.service
+Requires=bluetooth.service
+
+[Service]
+Type=simple
+ExecStart=/bin/bash -c 'sleep 5 && bluetoothctl agent NoInputNoOutput && bluetoothctl default-agent'
+Restart=always
+RestartSec=10
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    
+    systemctl enable bluetooth-agent.service
+    
     print_success "Utility scripts created"
 }
 
@@ -677,7 +702,11 @@ EOF
     sleep 2
     print_status "Setting Bluetooth device name to '$DEVICE_NAME'..."
     bluetoothctl system-alias "$DEVICE_NAME" || print_warning "Could not set system alias"
-    bluetoothctl agent on
+    
+    # Configure automatic pairing agent (no user confirmation required)
+    print_status "Configuring automatic pairing agent..."
+    bluetoothctl agent NoInputNoOutput
+    bluetoothctl default-agent
     
     # Ensure the name is applied
     bluetoothctl power off

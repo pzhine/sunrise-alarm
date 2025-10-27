@@ -16,9 +16,13 @@ NC='\033[0m' # No Color
 DEVICE_NAME="DawnDeck"
 PAIRING_TIMEOUT=180  # 3 minutes in seconds
 
-# Logging
+# Logging (use user-accessible location)
+USER_LOG_DIR="$HOME/.local/log"
+mkdir -p "$USER_LOG_DIR" 2>/dev/null || USER_LOG_DIR="/tmp"
+PAIRING_LOG="$USER_LOG_DIR/bluetooth-pairing.log"
+
 log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a /var/log/bluetooth-pairing.log
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$PAIRING_LOG"
 }
 
 print_status() {
@@ -62,13 +66,17 @@ enable_pairing() {
     # Ensure device name is set correctly first
     bluetoothctl system-alias "$DEVICE_NAME" 2>/dev/null || print_warning "Could not set device name"
     
+    # Set up automatic pairing agent (no user interaction required)
+    print_status "Setting up automatic pairing agent..."
+    bluetoothctl agent NoInputNoOutput
+    bluetoothctl default-agent
+    
     # Make device discoverable and pairable
     bluetoothctl discoverable on
     bluetoothctl pairable on
-    bluetoothctl agent on
     
     if [ $? -eq 0 ]; then
-        print_success "Pairing mode enabled!"
+        print_success "Pairing mode enabled (automatic pairing - no confirmation needed)!"
         log "Pairing mode activated for $PAIRING_TIMEOUT seconds"
     else
         print_error "Failed to enable pairing mode"
@@ -85,11 +93,12 @@ show_pairing_info() {
     echo ""
     
     print_status "Device '$DEVICE_NAME' is now discoverable for pairing"
+    print_status "Pairing log: $PAIRING_LOG"
     echo ""
     echo -e "${BOLD}Instructions:${NC}"
     echo "  1. Open Bluetooth settings on your phone/device"
     echo "  2. Look for '$DEVICE_NAME' in available devices"
-    echo "  3. Tap to pair (no PIN required)"
+    echo "  3. Tap to pair (automatic - no PIN or confirmation needed)"
     echo "  4. Select '$DEVICE_NAME' as audio output"
     echo ""
     
@@ -168,6 +177,7 @@ main() {
     echo ""
     print_success "Pairing session complete"
     print_status "Device is no longer discoverable"
+    print_status "Pairing log saved to: $PAIRING_LOG"
     echo ""
 }
 

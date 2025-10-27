@@ -34,9 +34,13 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# Configure package manager to handle config file conflicts automatically
+export DEBIAN_FRONTEND=noninteractive
+export APT_LISTCHANGES_FRONTEND=none
+
 # Update system packages
 print_status "Updating system packages..."
-apt update && apt upgrade -y
+apt update && apt upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
 
 # Ensure we have the latest package information
 print_status "Refreshing package cache..."
@@ -44,7 +48,7 @@ apt update --fix-missing
 
 # Install required packages
 print_status "Installing required packages..."
-apt install -y \
+apt install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
     bluetooth \
     bluez \
     bluez-tools \
@@ -57,7 +61,8 @@ apt install -y \
 # Verify Bluetooth service is available
 if ! systemctl list-unit-files | grep -q bluetooth.service; then
     print_error "Bluetooth service not found. Attempting to install bluez-firmware..."
-    apt install -y bluez-firmware pi-bluetooth || print_warning "Could not install additional Bluetooth packages"
+    apt install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
+        bluez-firmware pi-bluetooth || print_warning "Could not install additional Bluetooth packages"
 fi
 
 print_status "Verifying package installation..."
@@ -289,7 +294,7 @@ EOF
 
 # Create script to make device discoverable
 print_status "Creating discoverable script..."
-cat > /usr/local/bin/make-discoverable.sh << 'EOF'
+cat > /usr/local/bin/make-discoverable.sh << 'SCRIPT_EOF'
 #!/bin/bash
 bluetoothctl <<EOF
 power on
@@ -298,7 +303,7 @@ pairable on
 agent NoInputNoOutput
 default-agent
 EOF
-EOF
+SCRIPT_EOF
 
 chmod +x /usr/local/bin/make-discoverable.sh
 

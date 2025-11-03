@@ -13,8 +13,8 @@ BLUE='\033[0;34m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-# Configuration
-BACKUP_DIR="$HOME/.local/share/dawndeck/notification-backups"
+# Configuration will be set after user detection
+BACKUP_DIR=""
 
 print_status() {
     echo -e "${BLUE}${BOLD}[INFO]${NC} $1"
@@ -186,6 +186,9 @@ select_backup() {
 
 # Main function
 main() {
+    # Set backup directory using real user's home directory
+    BACKUP_DIR="/home/$REAL_USER/.local/share/dawndeck/notification-backups"
+    
     echo -e "${BOLD}${BLUE}DawnDeck Notification Restorer${NC}"
     echo "================================"
     echo ""
@@ -221,10 +224,21 @@ main() {
     print_status "Reboot or restart desktop session for all changes to take effect"
 }
 
-# Check if running as root for some operations
-if [[ $EUID -eq 0 ]]; then
-    print_error "Please run this script as a regular user (it will use sudo when needed)"
+# Check if running as root (required for system changes)
+if [[ $EUID -ne 0 ]]; then
+    print_error "This script must be run with sudo to restore system-wide changes"
+    print_status "Run with: sudo ./restore-notifications.sh"
     exit 1
+fi
+
+# Detect the real user (not root)
+REAL_USER=${SUDO_USER:-$(logname 2>/dev/null || echo "")}
+if [ -z "$REAL_USER" ] || [ "$REAL_USER" = "root" ]; then
+    REAL_USER=$(ls /home 2>/dev/null | head -1)
+    if [ -z "$REAL_USER" ]; then
+        print_error "Could not detect non-root user"
+        exit 1
+    fi
 fi
 
 # Run main function

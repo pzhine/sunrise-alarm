@@ -13,9 +13,9 @@ BLUE='\033[0;34m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-# Configuration
-BACKUP_DIR="$HOME/.local/share/dawndeck/notification-backups"
-BACKUP_FILE="$BACKUP_DIR/original-settings-$(date +%Y%m%d_%H%M%S).conf"
+# Configuration will be set after user detection
+BACKUP_DIR=""
+BACKUP_FILE=""
 
 print_status() {
     echo -e "${BLUE}${BOLD}[INFO]${NC} $1"
@@ -38,6 +38,7 @@ create_backup() {
     print_status "Creating backup of current notification settings..."
     
     mkdir -p "$BACKUP_DIR"
+    chown -R "$REAL_USER:$REAL_USER" "/home/$REAL_USER/.local"
     
     cat > "$BACKUP_FILE" << EOF
 # Original notification settings backup - $(date)
@@ -48,14 +49,14 @@ EOF
     # Backup GNOME settings
     if command -v gsettings >/dev/null 2>&1; then
         echo "# GNOME Settings" >> "$BACKUP_FILE"
-        echo "GNOME_SHOW_BANNERS=$(gsettings get org.gnome.desktop.notifications show-banners 2>/dev/null || echo 'true')" >> "$BACKUP_FILE"
-        echo "GNOME_SHOW_IN_LOCK_SCREEN=$(gsettings get org.gnome.desktop.notifications show-in-lock-screen 2>/dev/null || echo 'true')" >> "$BACKUP_FILE"
+        echo "GNOME_SHOW_BANNERS=$(sudo -u "$REAL_USER" gsettings get org.gnome.desktop.notifications show-banners 2>/dev/null || echo 'true')" >> "$BACKUP_FILE"
+        echo "GNOME_SHOW_IN_LOCK_SCREEN=$(sudo -u "$REAL_USER" gsettings get org.gnome.desktop.notifications show-in-lock-screen 2>/dev/null || echo 'true')" >> "$BACKUP_FILE"
     fi
     
     # Backup KDE settings
     if command -v kreadconfig5 >/dev/null 2>&1; then
         echo "# KDE Settings" >> "$BACKUP_FILE"
-        echo "KDE_NOTIFICATIONS_ENABLED=$(kreadconfig5 --file plasmanotifyrc --group Notifications --key Enabled 2>/dev/null || echo 'true')" >> "$BACKUP_FILE"
+        echo "KDE_NOTIFICATIONS_ENABLED=$(sudo -u "$REAL_USER" kreadconfig5 --file plasmanotifyrc --group Notifications --key Enabled 2>/dev/null || echo 'true')" >> "$BACKUP_FILE"
     fi
     print_success "Settings backed up to: $BACKUP_FILE"
 }
@@ -65,12 +66,12 @@ disable_gnome_notifications() {
     if command -v gsettings >/dev/null 2>&1; then
         print_status "Disabling GNOME desktop notifications..."
         
-        gsettings set org.gnome.desktop.notifications show-banners false 2>/dev/null || true
-        gsettings set org.gnome.desktop.notifications show-in-lock-screen false 2>/dev/null || true
+        sudo -u "$REAL_USER" gsettings set org.gnome.desktop.notifications show-banners false 2>/dev/null || true
+        sudo -u "$REAL_USER" gsettings set org.gnome.desktop.notifications show-in-lock-screen false 2>/dev/null || true
         
         # Disable specific notification categories
-        gsettings set org.gnome.desktop.notifications.application:/org/gnome/desktop/notifications/application/blueman/ enable false 2>/dev/null || true
-        gsettings set org.gnome.desktop.notifications.application:/org/gnome/desktop/notifications/application/bluetooth/ enable false 2>/dev/null || true
+        sudo -u "$REAL_USER" gsettings set org.gnome.desktop.notifications.application:/org/gnome/desktop/notifications/application/blueman/ enable false 2>/dev/null || true
+        sudo -u "$REAL_USER" gsettings set org.gnome.desktop.notifications.application:/org/gnome/desktop/notifications/application/bluetooth/ enable false 2>/dev/null || true
         
         print_success "GNOME notifications disabled"
     else
@@ -83,15 +84,15 @@ disable_kde_notifications() {
     if command -v kwriteconfig5 >/dev/null 2>&1; then
         print_status "Disabling KDE desktop notifications..."
         
-        kwriteconfig5 --file plasmanotifyrc --group Notifications --key Enabled false 2>/dev/null || true
-        kwriteconfig5 --file plasmanotifyrc --group Applications --group blueman --key Enabled false 2>/dev/null || true
+        sudo -u "$REAL_USER" kwriteconfig5 --file plasmanotifyrc --group Notifications --key Enabled false 2>/dev/null || true
+        sudo -u "$REAL_USER" kwriteconfig5 --file plasmanotifyrc --group Applications --group blueman --key Enabled false 2>/dev/null || true
         
         # Restart plasmashell to apply changes
         if pgrep plasmashell >/dev/null; then
             print_status "Restarting plasmashell to apply changes..."
-            killall plasmashell 2>/dev/null || true
+            sudo -u "$REAL_USER" killall plasmashell 2>/dev/null || true
             sleep 2
-            plasmashell &
+            sudo -u "$REAL_USER" plasmashell &
         fi
         
         print_success "KDE notifications disabled"
@@ -181,6 +182,10 @@ EOF
 
 # Main function
 main() {
+    # Set backup paths using real user's home directory
+    BACKUP_DIR="/home/$REAL_USER/.local/share/dawndeck/notification-backups"
+    BACKUP_FILE="$BACKUP_DIR/original-settings-$(date +%Y%m%d_%H%M%S).conf"
+    
     echo -e "${BOLD}${BLUE}DawnDeck Notification Disabler${NC}"
     echo "================================="
     echo ""
@@ -215,11 +220,24 @@ main() {
     print_status "Reboot recommended to ensure all changes take effect"
 }
 
-# Check if running as root for some operations
-if [[ $EUID -eq 0 ]]; then
-    print_error "Please run this script as a regular user (it will use sudo when needed)"
+# Check if running as root (required for system changes)
+if [[ $EUID -ne 0 ]]; then
+    print_error "This script must be run with sudo for system-wide changes"
+    print_status "Run with: sudo ./disable-notifications.sh"
     exit 1
 fi
+
+# Detect the real user (not root)
+REAL_USER=${SUDO_USER:-$(logname 2>/dev/null || echo "")}
+if [ -z "$REAL_USER" ] || [ "$REAL_USER" = "root" ]; then
+    REAL_USER=$(ls /home 2>/dev/null | head -1)
+    if [ -z "$REAL_USER" ]; then
+        print_error "Could not detect non-root user"
+        exit 1
+    fi
+fi
+
+print_status "Detected user: $REAL_USER"
 
 # Run main function
 main "$@"

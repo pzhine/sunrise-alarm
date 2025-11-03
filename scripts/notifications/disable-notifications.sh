@@ -14,7 +14,7 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 # Configuration
-BACKUP_DIR="/var/backups/notification-settings"
+BACKUP_DIR="$HOME/.local/share/dawndeck/notification-backups"
 BACKUP_FILE="$BACKUP_DIR/original-settings-$(date +%Y%m%d_%H%M%S).conf"
 
 print_status() {
@@ -37,7 +37,7 @@ print_error() {
 create_backup() {
     print_status "Creating backup of current notification settings..."
     
-    sudo mkdir -p "$BACKUP_DIR"
+    mkdir -p "$BACKUP_DIR"
     
     cat > "$BACKUP_FILE" << EOF
 # Original notification settings backup - $(date)
@@ -57,8 +57,6 @@ EOF
         echo "# KDE Settings" >> "$BACKUP_FILE"
         echo "KDE_NOTIFICATIONS_ENABLED=$(kreadconfig5 --file plasmanotifyrc --group Notifications --key Enabled 2>/dev/null || echo 'true')" >> "$BACKUP_FILE"
     fi
-    
-    sudo chown $(whoami):$(whoami) "$BACKUP_FILE"
     print_success "Settings backed up to: $BACKUP_FILE"
 }
 

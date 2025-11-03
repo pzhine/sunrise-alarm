@@ -14,7 +14,7 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 # Configuration
-BACKUP_DIR="/var/backups/notification-settings"
+BACKUP_DIR="$HOME/.local/share/dawndeck/notification-backups"
 
 print_status() {
     echo -e "${BLUE}${BOLD}[INFO]${NC} $1"

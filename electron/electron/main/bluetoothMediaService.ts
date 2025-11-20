@@ -187,11 +187,11 @@ export class BluetoothMediaService extends EventEmitter {
       }
 
       const commandString = JSON.stringify(command);
-      console.log(`Sending command: ${commandString}`);
+      // console.log(`Sending command: ${commandString}`);
       
       // Set up one-time response handler
       const responseHandler = (response: MediaControlResponse) => {
-        console.log(`Received response for command ${command.type}:`, response);
+        // console.log(`Received response for command ${command.type}:`, response);
         
         // For get_metadata commands, accept any response with metadata
         if (command.type === 'get_metadata' && response.metadata) {

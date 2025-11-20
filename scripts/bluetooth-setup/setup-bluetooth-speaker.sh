@@ -688,7 +688,14 @@ class MediaAgent(dbus.service.Object):
     def __init__(self, bus, path):
         super().__init__(bus, path)
         self.bus = bus
-        self.current_metadata = {}
+        self.current_metadata = {
+            'title': 'No media',
+            'artist': 'Not connected',
+            'album': '',
+            'status': 'stopped',
+            'position': 0,
+            'duration': 0
+        }
         self.current_status = "stopped"
         self.current_position = 0
         self.current_duration = 0
@@ -747,11 +754,15 @@ class MediaAgent(dbus.service.Object):
         cmd_type = command.get('type')
         
         if cmd_type == 'get_metadata':
-            return {
-                'metadata': self.current_metadata,
+            # Ensure we have current metadata with proper status
+            metadata = dict(self.current_metadata) if self.current_metadata else {}
+            metadata.update({
                 'status': self.current_status,
                 'position': self.current_position,
                 'duration': self.current_duration
+            })
+            return {
+                'metadata': metadata
             }
         elif cmd_type == 'media_control':
             action = command.get('action')
@@ -772,21 +783,42 @@ class MediaAgent(dbus.service.Object):
                     player = self.bus.get_object("org.bluez", path)
                     player_interface = dbus.Interface(player, "org.bluez.MediaPlayer1")
                     
+                    # Send the D-Bus command
                     if action == "play":
                         player_interface.Play()
+                        self.current_status = "playing"
                     elif action == "pause":
                         player_interface.Pause()
+                        self.current_status = "paused"
                     elif action == "stop":
                         player_interface.Stop()
+                        self.current_status = "stopped"
                     elif action == "next":
                         player_interface.Next()
+                        # Status will be updated via property change handler
                     elif action == "previous":
                         player_interface.Previous()
+                        # Status will be updated via property change handler
                     
-                    return {'success': True, 'action': action}
+                    print(f"Media command '{action}' sent successfully, status: {self.current_status}")
+                    
+                    # Return response with current metadata including updated status
+                    metadata = dict(self.current_metadata) if self.current_metadata else {}
+                    metadata.update({
+                        'status': self.current_status,
+                        'position': self.current_position,
+                        'duration': self.current_duration
+                    })
+                    
+                    return {
+                        'success': True, 
+                        'action': action,
+                        'metadata': metadata
+                    }
                     
             return {'error': 'No media player found'}
         except Exception as e:
+            print(f"Media command error: {e}")
             return {'error': str(e)}
 
     def set_exit_on_release(self, exit_on_release):
@@ -873,7 +905,9 @@ def property_changed_handler(interface, changed_properties, invalidated_properti
             print(f"Debug - Track keys: {list(track.keys())}")
             
         if "Status" in changed_properties:
-            agent.current_status = changed_properties["Status"]
+            agent.current_status = str(changed_properties["Status"])
+            # Also update status in metadata dict
+            agent.current_metadata['status'] = agent.current_status
             print(f"Status updated: {agent.current_status}")
             
         if "Position" in changed_properties:

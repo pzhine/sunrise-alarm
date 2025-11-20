@@ -10,86 +10,68 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount } from 'vue';
 
-// Audio elements for notification sounds
-let connectSound: HTMLAudioElement | null = null;
-let pairSound: HTMLAudioElement | null = null;
-
-// Initialize notification sounds
-const initializeSounds = () => {
-  // Create simple notification sounds using Web Audio API
-  const createBeepSound = (frequency: number, duration: number): string => {
-    // Create a simple base64 encoded WAV file for a beep
-    // This is a minimal implementation - in production you might want actual sound files
-    const sampleRate = 44100;
-    const samples = Math.floor(sampleRate * duration);
-    const buffer = new ArrayBuffer(44 + samples * 2);
-    const view = new DataView(buffer);
-    
-    // WAV header
-    const writeString = (offset: number, string: string) => {
-      for (let i = 0; i < string.length; i++) {
-        view.setUint8(offset + i, string.charCodeAt(i));
-      }
-    };
-    
-    writeString(0, 'RIFF');
-    view.setUint32(4, 36 + samples * 2, true);
-    writeString(8, 'WAVE');
-    writeString(12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, 1, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, sampleRate * 2, true);
-    view.setUint16(32, 2, true);
-    view.setUint16(34, 16, true);
-    writeString(36, 'data');
-    view.setUint32(40, samples * 2, true);
-    
-    // Generate sine wave
-    for (let i = 0; i < samples; i++) {
-      const sample = Math.sin(2 * Math.PI * frequency * i / sampleRate) * 0.3;
-      const intSample = Math.max(-32768, Math.min(32767, Math.floor(sample * 32767)));
-      view.setInt16(44 + i * 2, intSample, true);
-    }
-    
-    const blob = new Blob([buffer], { type: 'audio/wav' });
-    return URL.createObjectURL(blob);
-  };
-  
-  // Create notification sounds
-  const connectSoundUrl = createBeepSound(800, 0.2); // High pitched beep
-  const pairSoundUrl = createBeepSound(600, 0.3);    // Lower pitched longer beep
-  
-  connectSound = new Audio(connectSoundUrl);
-  pairSound = new Audio(pairSoundUrl);
-  
-  // Set volume
-  if (connectSound) connectSound.volume = 0.5;
-  if (pairSound) pairSound.volume = 0.5;
-};
-
-// Play notification sound
-const playNotificationSound = async (type: 'connect' | 'pair') => {
+// Two-tone notification sounds using Web Audio API
+const playTwoToneNotification = async (type: 'connection' | 'disconnection' | 'pairing'): Promise<void> => {
   try {
-    const sound = type === 'connect' ? connectSound : pairSound;
-    if (sound) {
-      // Reset audio to beginning in case it was played recently
-      sound.currentTime = 0;
-      await sound.play();
-      console.log(`Played ${type} notification sound`);
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    
+    if (type === 'connection') {
+      // Connection: low tone followed by high tone
+      await playTone(audioContext, 400, 0.15); // Low tone - 400Hz for 150ms
+      await new Promise(resolve => setTimeout(resolve, 50)); // 50ms gap
+      await playTone(audioContext, 800, 0.15); // High tone - 800Hz for 150ms
+    } else if (type === 'disconnection') {
+      // Disconnection: high tone followed by low tone  
+      await playTone(audioContext, 800, 0.15); // High tone - 800Hz for 150ms
+      await new Promise(resolve => setTimeout(resolve, 50)); // 50ms gap
+      await playTone(audioContext, 400, 0.15); // Low tone - 400Hz for 150ms
+    } else if (type === 'pairing') {
+      // Pairing: three ascending tones
+      await playTone(audioContext, 400, 0.12); // Low
+      await new Promise(resolve => setTimeout(resolve, 40));
+      await playTone(audioContext, 600, 0.12); // Medium
+      await new Promise(resolve => setTimeout(resolve, 40));
+      await playTone(audioContext, 800, 0.12); // High
     }
+    
+    console.log(`🔊 Played ${type} two-tone notification`);
   } catch (error) {
-    console.warn(`Failed to play ${type} notification sound:`, error);
+    console.warn(`Failed to play ${type} notification:`, error);
     // Fallback to system beep
     playSystemBeep(type);
   }
 };
 
+// Helper function to play a single tone
+const playTone = (audioContext: AudioContext, frequency: number, duration: number): Promise<void> => {
+  return new Promise((resolve) => {
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+    oscillator.type = 'sine';
+    
+    // Smooth envelope to avoid clicks
+    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.15, audioContext.currentTime + 0.01);
+    gainNode.gain.linearRampToValueAtTime(0.15, audioContext.currentTime + duration - 0.01);
+    gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + duration);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + duration);
+    
+    oscillator.onended = () => {
+      resolve();
+    };
+  });
+};
+
 // Fallback system beep using different patterns
-const playSystemBeep = (type: 'connect' | 'pair') => {
-  const beep = () => {
-    // Create a brief audio context beep as fallback
+const playSystemBeep = (type: 'connection' | 'disconnection' | 'pairing') => {
+  const beep = (frequency: number, duration: number) => {
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const oscillator = audioContext.createOscillator();
@@ -97,9 +79,6 @@ const playSystemBeep = (type: 'connect' | 'pair') => {
       
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
-      
-      const frequency = type === 'connect' ? 800 : 600;
-      const duration = type === 'connect' ? 100 : 150;
       
       oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
       gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
@@ -113,57 +92,51 @@ const playSystemBeep = (type: 'connect' | 'pair') => {
     }
   };
   
-  if (type === 'connect') {
-    beep(); // Single beep for connect
-  } else {
-    // Double beep for pair
-    beep();
-    setTimeout(beep, 200);
+  if (type === 'connection') {
+    beep(400, 150);
+    setTimeout(() => beep(800, 150), 200);
+  } else if (type === 'disconnection') {
+    beep(800, 150);
+    setTimeout(() => beep(400, 150), 200);
+  } else if (type === 'pairing') {
+    beep(600, 200);
   }
 };
 
 // Handle device connection events
 const handleDeviceConnected = (device: any) => {
   console.log('🔵 Bluetooth device connected:', device.name);
-  playNotificationSound('connect');
+  playTwoToneNotification('connection');
+};
+
+// Handle device disconnection events
+const handleDeviceDisconnected = (device: any) => {
+  console.log('🔴 Bluetooth device disconnected:', device.name);
+  playTwoToneNotification('disconnection');
 };
 
 // Handle device pairing events  
 const handleDevicePaired = (device: any) => {
   console.log('🔗 Bluetooth device paired:', device.name);
-  playNotificationSound('pair');
+  playTwoToneNotification('pairing');
 };
 
 // Component lifecycle
 onMounted(() => {
-  console.log('📱 Bluetooth notifications initialized');
-  
-  // Initialize sounds
-  initializeSounds();
+  console.log('📱 Bluetooth notifications initialized with two-tone patterns');
   
   // Listen for Bluetooth events
   if ((window as any).electronAPI?.bluetoothPairing) {
     const api = (window as any).electronAPI.bluetoothPairing;
     
     api.onDeviceConnected?.(handleDeviceConnected);
+    api.onDeviceDisconnected?.(handleDeviceDisconnected);
     api.onDevicePaired?.(handleDevicePaired);
   }
 });
 
 onBeforeUnmount(() => {
   console.log('📱 Bluetooth notifications cleanup');
-  
-  // Clean up audio objects
-  if (connectSound) {
-    connectSound.pause();
-    connectSound.src = '';
-    connectSound = null;
-  }
-  
-  if (pairSound) {
-    pairSound.pause();
-    pairSound.src = '';
-    pairSound = null;
-  }
+  // No audio cleanup needed since we use Web Audio API directly
 });
 </script>

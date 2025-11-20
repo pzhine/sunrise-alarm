@@ -21,7 +21,7 @@ import { initConfigManager } from './configManager';
 import { initSunriseController } from './sunriseController';
 import { BluetoothMediaService } from './bluetoothMediaService';
 import { setupBluetoothPairingHandlers } from './bluetoothPairingHandlers';
-import { notificationSoundService } from './notificationSounds';
+
 import './serial';
 import './wlan';
 import './stateManager';
@@ -499,24 +499,7 @@ function initializeBluetoothServices(mainWindow: BrowserWindow) {
   // Setup pairing handlers
   bluetoothPairingService = setupBluetoothPairingHandlers(mainWindow);
   
-  // Initialize notification sounds
-  notificationSoundService.createDefaultSounds();
-  
-  // Listen for device connection/disconnection events and play sounds
-  bluetoothPairingService.on('deviceConnected', (device: any) => {
-    console.log('Device connected:', device.name);
-    notificationSoundService.playSound('connect').catch(console.error);
-  });
-  
-  bluetoothPairingService.on('deviceDisconnected', (device: any) => {
-    console.log('Device disconnected:', device.name);
-    notificationSoundService.playSound('disconnect').catch(console.error);
-  });
-  
-  bluetoothPairingService.on('devicePaired', (device: any) => {
-    console.log('Device paired:', device.name);
-    notificationSoundService.playSound('pair').catch(console.error);
-  });
+  // Note: Sound notifications are now handled in the Vue frontend via BluetoothNotifications.vue
 }
 
 // Create the application menu with update options

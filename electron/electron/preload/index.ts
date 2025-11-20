@@ -93,6 +93,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onDeviceConnected: (callback: (device: any) => void) => {
       ipcRenderer.on('bluetooth-device:connected', (_event, device) => callback(device));
     },
+    onDeviceDisconnected: (callback: (device: any) => void) => {
+      ipcRenderer.on('bluetooth-device:disconnected', (_event, device) => callback(device));
+    },
     onDevicePaired: (callback: (device: any) => void) => {
       ipcRenderer.on('bluetooth-device:paired', (_event, device) => callback(device));
     }

@@ -21,6 +21,7 @@ export class BluetoothPairingService extends EventEmitter {
   private bluetoothMonitor: ChildProcess | null = null;
   private deviceName = 'DawnDeck';
   private initialPairedDevices: Array<{address: string, name: string}> | null = null;
+  private recentlyDiscoveredDevices: Map<string, { name: string, timestamp: number }> = new Map();
 
   constructor() {
     super();
@@ -64,7 +65,8 @@ export class BluetoothPairingService extends EventEmitter {
         console.warn('Could not set NoInputNoOutput agent, pairing dialogs may appear');
       }
       
-      // Reset paired devices list to detect new pairings
+      // Clean up any stale pairings and reset baseline
+      await this.cleanupStalePairings();
       this.initialPairedDevices = null;
       
       this.currentState = {
@@ -181,68 +183,81 @@ export class BluetoothPairingService extends EventEmitter {
 
     this.bluetoothMonitor.stdout.on('data', (data: Buffer) => {
       const output = data.toString();
-      console.log('[BLUETOOTH] Raw monitor output:', JSON.stringify(output));
+      const trimmedOutput = output.trim();
       
-      // Look for device connection events
-      if (output.includes('Device') && output.includes('Connected: yes')) {
+      // Skip empty lines and common status messages
+      if (!trimmedOutput || trimmedOutput.includes('Agent registered') || trimmedOutput.includes('[bluetooth]#')) {
+        return;
+      }
+      
+      console.log('[BLUETOOTH] Monitor output:', trimmedOutput);
+      
+      // Look for actual pairing request/process events (this indicates NEW pairing attempts)
+      const pairingProcessPatterns = [
+        'Pairing successful',
+        'Successfully paired',
+        'Authentication successful', 
+        'Request confirmation',
+        'Request PIN code',
+        'Request passkey',
+        'Confirm passkey',
+        'Device has been paired',
+        'Paired: yes'
+      ];
+      
+      const hasPairingProcess = pairingProcessPatterns.some(pattern => 
+        output.toLowerCase().includes(pattern.toLowerCase())
+      );
+      
+      if (hasPairingProcess) {
+        const deviceMatch = output.match(/Device ([A-F0-9:]{17})/) || 
+                           output.match(/([A-F0-9:]{17})/) ||
+                           output.match(/Device\s+([A-F0-9:]+)/);
+        if (deviceMatch) {
+          const deviceAddress = deviceMatch[1];
+          console.log('[BLUETOOTH] PAIRING PROCESS DETECTED for device:', deviceAddress);
+          console.log('[BLUETOOTH] Trigger pattern:', pairingProcessPatterns.find(p => 
+            output.toLowerCase().includes(p.toLowerCase())));
+          
+          // Immediate pairing success
+          setTimeout(() => this.handleDevicePaired(deviceAddress), 500);
+        } else {
+          console.log('[BLUETOOTH] Pairing process detected but no device address found in:', trimmedOutput);
+        }
+      }
+      
+      // Look for NEW device discoveries (indicates someone is trying to pair)
+      if (output.includes('[NEW] Device')) {
+        const deviceMatch = output.match(/\\[NEW\\] Device ([A-F0-9:]+)\\s+(.+)/);
+        if (deviceMatch) {
+          const deviceAddress = deviceMatch[1];
+          const deviceName = deviceMatch[2];
+          console.log('[BLUETOOTH] NEW device discovered:', deviceName, '(' + deviceAddress + ')');
+          
+          // Store this as a recently discovered device
+          this.recentlyDiscoveredDevices.set(deviceAddress, {
+            name: deviceName,
+            timestamp: Date.now()
+          });
+          
+          // If we're in pairing mode, automatically attempt to pair with this device
+          if (this.currentState.active) {
+            console.log('[BLUETOOTH] Auto-pairing with newly discovered device:', deviceAddress);
+            this.attemptAutoPairing(deviceAddress);
+          }
+        }
+      }
+      
+      // Look for connection events from newly paired devices
+      if (output.includes('Connected: yes')) {
         const deviceMatch = output.match(/Device ([A-F0-9:]+)/);
         if (deviceMatch) {
           const deviceAddress = deviceMatch[1];
-          console.log('[BLUETOOTH] Device connection detected:', deviceAddress);
+          console.log('[BLUETOOTH] Device connected:', deviceAddress);
           this.handleDeviceConnected(deviceAddress);
-        }
-      }
-      
-      // Look for pairing success - multiple patterns
-      const pairingPatterns = [
-        'Pairing successful',
-        'Successfully paired', 
-        'Paired: yes',
-        'Authentication successful',
-        'Authorize service',
-        'Connection successful'
-      ];
-      
-      const hasPairingEvent = pairingPatterns.some(pattern => output.includes(pattern));
-      if (hasPairingEvent) {
-        const deviceMatch = output.match(/Device ([A-F0-9:]+)/) || output.match(/([A-F0-9:]{17})/);
-        if (deviceMatch) {
-          const deviceAddress = deviceMatch[1];
-          console.log('[BLUETOOTH] Pairing event detected for device:', deviceAddress, 'Pattern matched in:', output.trim());
-          // Add delay to ensure pairing state is updated
-          setTimeout(() => this.handleDevicePaired(deviceAddress), 1000);
-        }
-      }
-      
-      // Look for device trust events (also indicates successful pairing)
-      if (output.includes('Trusted: yes')) {
-        const deviceMatch = output.match(/Device ([A-F0-9:]+)/) || output.match(/([A-F0-9:]{17})/);
-        if (deviceMatch) {
-          const deviceAddress = deviceMatch[1];
-          console.log('[BLUETOOTH] Device trusted (pairing complete):', deviceAddress);
-          // Small delay to ensure pairing is complete
-          setTimeout(() => this.handleDevicePaired(deviceAddress), 1500);
-        }
-      }
-      
-      // Alternative approach: Check for new device additions
-      if (output.includes('[NEW] Device')) {
-        const deviceMatch = output.match(/\[NEW\] Device ([A-F0-9:]+)/);
-        if (deviceMatch) {
-          const deviceAddress = deviceMatch[1];
-          console.log('[BLUETOOTH] New device detected:', deviceAddress);
-          // Check if it's paired after a short delay
-          setTimeout(() => this.checkDevicePaired(deviceAddress), 3000);
-        }
-      }
-      
-      // Monitor for any lines containing device addresses - be more aggressive
-      const addressMatches = output.match(/([A-F0-9:]{17})/g);
-      if (addressMatches) {
-        for (const address of addressMatches) {
-          console.log('[BLUETOOTH] Device address detected in output:', address);
-          // Check pairing status for any device address we see
-          setTimeout(() => this.checkDevicePaired(address), 2000);
+          
+          // Also check if this is a newly paired device
+          setTimeout(() => this.checkDevicePaired(deviceAddress), 1000);
         }
       }
     });
@@ -333,7 +348,7 @@ export class BluetoothPairingService extends EventEmitter {
         return;
       }
       
-      // Check for new devices
+      // Check for new devices (devices that weren't in the initial list)
       const newDevices = currentPairedDevices.filter(current => 
         current && !this.initialPairedDevices?.some(initial => 
           initial.address === current.address
@@ -460,6 +475,78 @@ export class BluetoothPairingService extends EventEmitter {
   /**
    * Clean up resources
    */
+  /**
+   * Attempt to automatically pair with a discovered device
+   */
+  private async attemptAutoPairing(deviceAddress: string): Promise<void> {
+    try {
+      console.log(`[BLUETOOTH] Attempting to pair with device: ${deviceAddress}`);
+      
+      // First, try to pair the device
+      await execAsync(`bluetoothctl pair ${deviceAddress}`);
+      console.log(`[BLUETOOTH] Pairing command sent to: ${deviceAddress}`);
+      
+      // Then try to trust it (this often completes the pairing)
+      setTimeout(async () => {
+        try {
+          await execAsync(`bluetoothctl trust ${deviceAddress}`);
+          console.log(`[BLUETOOTH] Trust command sent to: ${deviceAddress}`);
+          
+          // Check if pairing was successful
+          setTimeout(() => {
+            this.checkDevicePaired(deviceAddress);
+          }, 1000);
+        } catch (error) {
+          console.log(`[BLUETOOTH] Could not trust device ${deviceAddress}:`, error);
+        }
+      }, 2000);
+      
+    } catch (error) {
+      console.log(`[BLUETOOTH] Could not pair with device ${deviceAddress}:`, error);
+      // Even if pairing command fails, the device might still get paired through user interaction
+      // So still check for pairing success after a delay
+      setTimeout(() => {
+        this.checkDevicePaired(deviceAddress);
+      }, 3000);
+    }
+  }
+
+  /**
+   * Clean up stale pairings - remove devices that are paired on Pi but not reachable
+   */
+  private async cleanupStalePairings(): Promise<void> {
+    try {
+      console.log('[BLUETOOTH] Cleaning up stale pairings...');
+      const { stdout } = await execAsync('bluetoothctl devices Paired');
+      const pairedDevices = stdout.split('\n')
+        .filter(line => line.includes('Device'))
+        .map(line => line.match(/Device ([A-F0-9:]+)/)?.[1])
+        .filter(Boolean);
+
+      for (const address of pairedDevices) {
+        if (address) {
+          try {
+            // Check if device is actually reachable/responsive
+            const { stdout: infoOutput } = await execAsync(`bluetoothctl info ${address}`);
+            const isConnected = infoOutput.includes('Connected: yes');
+            const isTrusted = infoOutput.includes('Trusted: yes');
+            
+            // If device is paired but not connected and not trusted, it might be stale
+            if (!isConnected && !isTrusted) {
+              console.log(`[BLUETOOTH] Found potentially stale pairing: ${address}`);
+              // We could remove it here, but let's be conservative and just log it
+              // await execAsync(`bluetoothctl remove ${address}`);
+            }
+          } catch (error) {
+            console.log(`[BLUETOOTH] Could not check device ${address}, might be stale:`, error);
+          }
+        }
+      }
+    } catch (error) {
+      console.log('[BLUETOOTH] Error during stale pairing cleanup:', error);
+    }
+  }
+
   public dispose(): void {
     if (this.pairingTimer) {
       clearInterval(this.pairingTimer);

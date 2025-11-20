@@ -264,7 +264,8 @@ export class BluetoothPairingService extends EventEmitter {
    */
   private async checkForNewlyPairedDevices(): Promise<void> {
     try {
-      const { stdout } = await execAsync('bluetoothctl paired-devices');
+      // Get paired devices using bluetoothctl
+      const { stdout } = await execAsync('bluetoothctl devices Paired');
       const currentPairedDevices = stdout.split('\n')
         .filter(line => line.includes('Device'))
         .map(line => {
@@ -346,7 +347,7 @@ export class BluetoothPairingService extends EventEmitter {
    */
   public async getPairedDevices(): Promise<Array<{address: string, name: string, connected: boolean}>> {
     try {
-      const { stdout } = await execAsync('bluetoothctl paired-devices');
+      const { stdout } = await execAsync('bluetoothctl devices Paired');
       const devices = [];
       
       for (const line of stdout.split('\n')) {

@@ -1087,9 +1087,9 @@ def send_command(command):
                 
                 # Try to get duration from player properties if not in track
                 try:
-                    duration = properties.Get("org.bluez.MediaPlayer1", "Duration")
+                    player_duration = properties.Get("org.bluez.MediaPlayer1", "Duration")
                 except:
-                    duration = 0
+                    player_duration = 0
                 
                 print(f"Status: {status}")
                 print(f"Position: {position}ms")
@@ -1118,7 +1118,7 @@ def send_command(command):
                     title = safe_get(['Title', 'title']) or 'Unknown'
                     artist = safe_get(['Artist', 'artist']) or 'Unknown'
                     album = safe_get(['Album', 'album', 'AlbumTitle'])
-                    track_duration = safe_get_int(['Duration', 'duration']) or int(duration) or 0
+                    track_duration = safe_get_int(['Duration', 'duration']) or int(player_duration) or 0
                     track_number = safe_get_int(['TrackNumber', 'tracknumber'])
                     total_tracks = safe_get_int(['NumberOfTracks', 'numberoftracks'])
                     
@@ -1126,7 +1126,8 @@ def send_command(command):
                     print(f"Artist: {artist}")
                     if album:
                         print(f"Album: {album}")
-                    print(f"Duration: {track_duration}ms")
+                    if track_duration > 0:
+                        print(f"Duration: {track_duration}ms")
                     if track_number and total_tracks:
                         print(f"Track: {track_number} of {total_tracks}")
                     
@@ -1135,6 +1136,16 @@ def send_command(command):
                     print("Debug - Track metadata:")
                     for key, value in track.items():
                         print(f"  {key}: {value} (type: {type(value)})")
+                    
+                    # Debug: Show MediaPlayer1 properties
+                    print("Debug - MediaPlayer1 properties:")
+                    try:
+                        all_props = properties.GetAll("org.bluez.MediaPlayer1")
+                        for prop, value in all_props.items():
+                            if prop in ['Status', 'Position', 'Duration', 'Repeat', 'Shuffle']:
+                                print(f"  {prop}: {value} (type: {type(value)})")
+                    except Exception as e:
+                        print(f"  Could not get MediaPlayer1 properties: {e}")
                 else:
                     print("No track information available")
             

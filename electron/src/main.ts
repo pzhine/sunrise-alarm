@@ -37,6 +37,11 @@ const routes = [
     component: () => import('./pages/BluetoothMedia.vue'),
   },
   {
+    path: '/bluetooth-pairing',
+    name: 'BluetoothPairing',
+    component: () => import('./pages/BluetoothPairing.vue'),
+  },
+  {
     path: '/sounds/countries/:searchPhrase/:categoryName',
     name: 'SoundCountries',
     component: () => import('./pages/SoundCountries.vue'),

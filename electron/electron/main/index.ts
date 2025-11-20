@@ -20,6 +20,8 @@ import {
 import { initConfigManager } from './configManager';
 import { initSunriseController } from './sunriseController';
 import { BluetoothMediaService } from './bluetoothMediaService';
+import { setupBluetoothPairingHandlers } from './bluetoothPairingHandlers';
+import { notificationSoundService } from './notificationSounds';
 import './serial';
 import './wlan';
 import './stateManager';
@@ -281,6 +283,9 @@ async function createWindow() {
     return { action: 'deny' };
   });
   // win.webContents.on('will-navigate', (event, url) => { }) #344
+  
+  // Initialize Bluetooth services
+  initializeBluetoothServices(win);
 }
 
 // Wait for any previous instances to cleanup resources before continuing
@@ -437,6 +442,7 @@ ipcMain.handle('get-country-sounds', async (_, { query, country }) => {
 
 // Initialize Bluetooth Media Service
 let bluetoothMediaService: BluetoothMediaService | null = null;
+let bluetoothPairingService: any = null;
 
 // Register IPC handlers for Bluetooth Media Control
 ipcMain.handle('bluetooth-media:send-command', async (_, command: string) => {
@@ -487,6 +493,26 @@ ipcMain.handle('bluetooth-media:get-metadata', async () => {
     };
   }
 });
+
+// Initialize Bluetooth services when window is created
+function initializeBluetoothServices(mainWindow: BrowserWindow) {
+  // Setup pairing handlers
+  bluetoothPairingService = setupBluetoothPairingHandlers(mainWindow);
+  
+  // Initialize notification sounds
+  notificationSoundService.createDefaultSounds();
+  
+  // Listen for device connection events and play sounds
+  bluetoothPairingService.on('deviceConnected', (device: any) => {
+    console.log('Device connected:', device.name);
+    notificationSoundService.playSound('connect').catch(console.error);
+  });
+  
+  bluetoothPairingService.on('devicePaired', (device: any) => {
+    console.log('Device paired:', device.name);
+    notificationSoundService.playSound('pair').catch(console.error);
+  });
+}
 
 // Create the application menu with update options
 function createApplicationMenu() {

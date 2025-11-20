@@ -65,6 +65,11 @@ const menuItems = computed(() => {
       onSelect: () => router.push('/bluetooth-media'),
     },
     {
+      label: 'Bluetooth Pairing',
+      value: 'Connect Device',
+      onSelect: () => router.push('/bluetooth-pairing'),
+    },
+    {
       label: 'Sunrise',
       onSelect: () => router.push('/sunriseSettings'),
     },

@@ -1080,25 +1080,60 @@ def send_command(command, debug_mode=False):
             elif command == "previous":
                 player_interface.Previous()
             elif command == "seek-forward":
-                # Seek forward 15 seconds
+                # Try multiple methods for seeking forward
+                success = False
                 try:
-                    properties = dbus.Interface(player, "org.freedesktop.DBus.Properties")
-                    current_position = properties.Get("org.bluez.MediaPlayer1", "Position")
-                    new_position = current_position + 15000  # 15 seconds in milliseconds
-                    properties.Set("org.bluez.MediaPlayer1", "Position", dbus.UInt32(new_position))
-                    print(f"Seeked forward 15s to position: {new_position}ms")
-                except Exception as e:
-                    print(f"Seek forward failed (may not be supported): {e}")
+                    # Method 1: Try FastForward (AVRCP command)
+                    player_interface.FastForward()
+                    print("Fast forward activated (hold for ~15s then pause)")
+                    success = True
+                except Exception as e1:
+                    try:
+                        # Method 2: Try calling Rewind method if available
+                        import time
+                        # Some implementations have a Seek method
+                        player_interface.Seek(dbus.Int64(15000000))  # 15 seconds in microseconds
+                        print("Seeked forward 15 seconds")
+                        success = True
+                    except Exception as e2:
+                        try:
+                            # Method 3: Try setting Position directly (we know this fails but let's be thorough)
+                            properties = dbus.Interface(player, "org.freedesktop.DBus.Properties")
+                            current_position = properties.Get("org.bluez.MediaPlayer1", "Position")
+                            new_position = current_position + 15000
+                            properties.Set("org.bluez.MediaPlayer1", "Position", dbus.UInt32(new_position))
+                            print(f"Seeked forward 15s to position: {new_position}ms")
+                            success = True
+                        except Exception as e3:
+                            print("Seek forward not supported by this device/app")
+                            print("Try using your device's native controls for seeking")
+                            
             elif command == "seek-backward":
-                # Seek backward 15 seconds
+                # Try multiple methods for seeking backward
+                success = False
                 try:
-                    properties = dbus.Interface(player, "org.freedesktop.DBus.Properties")
-                    current_position = properties.Get("org.bluez.MediaPlayer1", "Position")
-                    new_position = max(0, current_position - 15000)  # Don't go below 0
-                    properties.Set("org.bluez.MediaPlayer1", "Position", dbus.UInt32(new_position))
-                    print(f"Seeked backward 15s to position: {new_position}ms")
-                except Exception as e:
-                    print(f"Seek backward failed (may not be supported): {e}")
+                    # Method 1: Try Rewind (AVRCP command)
+                    player_interface.Rewind()
+                    print("Rewind activated (hold for ~15s then pause)")
+                    success = True
+                except Exception as e1:
+                    try:
+                        # Method 2: Try Seek method with negative offset
+                        player_interface.Seek(dbus.Int64(-15000000))  # -15 seconds in microseconds
+                        print("Seeked backward 15 seconds")
+                        success = True
+                    except Exception as e2:
+                        try:
+                            # Method 3: Try setting Position directly
+                            properties = dbus.Interface(player, "org.freedesktop.DBus.Properties")
+                            current_position = properties.Get("org.bluez.MediaPlayer1", "Position")
+                            new_position = max(0, current_position - 15000)
+                            properties.Set("org.bluez.MediaPlayer1", "Position", dbus.UInt32(new_position))
+                            print(f"Seeked backward 15s to position: {new_position}ms")
+                            success = True
+                        except Exception as e3:
+                            print("Seek backward not supported by this device/app")
+                            print("Try using your device's native controls for seeking")
             elif command == "status":
                 properties = dbus.Interface(player, "org.freedesktop.DBus.Properties")
                 status = properties.Get("org.bluez.MediaPlayer1", "Status")
@@ -1191,6 +1226,43 @@ def send_command(command, debug_mode=False):
                             print(f"  Could not enumerate interfaces: {e}")
                 else:
                     print("No track information available")
+            elif command == "methods":
+                # Debug: Show available methods on MediaPlayer1 interface
+                try:
+                    import dbus.introspect_parser as parser
+                    introspect = dbus.Interface(player, "org.freedesktop.DBus.Introspectable")
+                    xml_data = introspect.Introspect()
+                    parsed = parser.process_introspection_data(xml_data)
+                    
+                    print("Available MediaPlayer1 methods:")
+                    if "org.bluez.MediaPlayer1" in parsed:
+                        interface_data = parsed["org.bluez.MediaPlayer1"]
+                        for method_name, method_data in interface_data.get("methods", {}).items():
+                            args = ", ".join([f"{arg['name']}: {arg['type']}" for arg in method_data.get("args", [])])
+                            print(f"  {method_name}({args})")
+                        
+                        print("\nAvailable MediaPlayer1 properties:")
+                        for prop_name, prop_data in interface_data.get("properties", {}).items():
+                            access = prop_data.get("access", "unknown")
+                            prop_type = prop_data.get("type", "unknown")
+                            print(f"  {prop_name}: {prop_type} ({access})")
+                    else:
+                        print("  MediaPlayer1 interface not found in introspection")
+                        
+                except Exception as e:
+                    print(f"Could not introspect MediaPlayer1 interface: {e}")
+                    # Fallback: try calling methods directly to see which exist
+                    print("Trying direct method calls to detect available methods:")
+                    test_methods = ["Play", "Pause", "Stop", "Next", "Previous", "FastForward", "Rewind", "Seek"]
+                    for method in test_methods:
+                        try:
+                            # Don't actually call, just see if method exists
+                            getattr(player_interface, method)
+                            print(f"  ✓ {method} - available")
+                        except AttributeError:
+                            print(f"  ✗ {method} - not available")
+                        except Exception:
+                            print(f"  ? {method} - exists but may have restrictions")
             
             print(f"Command '{command}' sent successfully")
             return True
@@ -1208,11 +1280,12 @@ if __name__ == "__main__":
     
     command = sys.argv[1].lower()
     debug_mode = "--debug" in sys.argv
-    valid_commands = ["play", "pause", "stop", "next", "previous", "status", "seek-forward", "seek-backward"]
+    valid_commands = ["play", "pause", "stop", "next", "previous", "status", "seek-forward", "seek-backward", "methods"]
     
     if command not in valid_commands:
         print(f"Invalid command. Valid commands: {', '.join(valid_commands)}")
         print("Use 'seek-forward' or 'seek-backward' to skip ±15 seconds")
+        print("Use 'methods' to see available MediaPlayer1 methods")
         sys.exit(1)
     
     send_command(command, debug_mode)

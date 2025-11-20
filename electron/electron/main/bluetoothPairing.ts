@@ -111,7 +111,17 @@ export class BluetoothPairingService extends EventEmitter {
             
           for (const deviceAddress of connectedDevices) {
             if (deviceAddress) {
-              console.log('[BLUETOOTH] Checking pairing status for connected device:', deviceAddress);
+              // Only check devices that weren't in the initial paired list
+              const wasInitiallyPaired = this.initialPairedDevices?.some(device => 
+                device.address === deviceAddress
+              );
+              
+              if (wasInitiallyPaired) {
+                console.log('[BLUETOOTH] Skipping already paired device:', deviceAddress);
+                continue;
+              }
+              
+              console.log('[BLUETOOTH] Checking pairing status for newly connected device:', deviceAddress);
               await this.checkDevicePaired(deviceAddress);
             }
           }
@@ -256,8 +266,17 @@ export class BluetoothPairingService extends EventEmitter {
           console.log('[BLUETOOTH] Device connected:', deviceAddress);
           this.handleDeviceConnected(deviceAddress);
           
-          // Also check if this is a newly paired device
-          setTimeout(() => this.checkDevicePaired(deviceAddress), 1000);
+          // Only check pairing for devices that weren't initially paired
+          const wasInitiallyPaired = this.initialPairedDevices?.some(device => 
+            device.address === deviceAddress
+          );
+          
+          if (!wasInitiallyPaired) {
+            console.log('[BLUETOOTH] Checking if newly connected device is paired:', deviceAddress);
+            setTimeout(() => this.checkDevicePaired(deviceAddress), 1000);
+          } else {
+            console.log('[BLUETOOTH] Connected device was already paired, skipping pairing check:', deviceAddress);
+          }
         }
       }
     });
@@ -285,7 +304,16 @@ export class BluetoothPairingService extends EventEmitter {
       const nameMatch = stdout.match(/Name: (.+)/);
       const deviceName = nameMatch ? nameMatch[1].trim() : deviceAddress;
       
-      console.log(`Bluetooth device connected: ${deviceName} (${deviceAddress})`);
+      console.log(`[BLUETOOTH] Bluetooth device connected: ${deviceName} (${deviceAddress})`);
+      
+      // Check if this was an already paired device
+      const wasInitiallyPaired = this.initialPairedDevices?.some(device => 
+        device.address === deviceAddress
+      );
+      
+      if (wasInitiallyPaired) {
+        console.log(`[BLUETOOTH] Connected device was already paired, not triggering pairing event: ${deviceAddress}`);
+      }
       
       this.emit('deviceConnected', {
         address: deviceAddress,
@@ -311,13 +339,25 @@ export class BluetoothPairingService extends EventEmitter {
     try {
       const { stdout } = await execAsync(`bluetoothctl info ${deviceAddress}`);
       if (stdout.includes('Paired: yes')) {
-        console.log('Device is paired:', deviceAddress);
+        console.log('[BLUETOOTH] Device is paired:', deviceAddress);
+        
+        // Only trigger pairing event if this device was NOT in the initial paired list
+        const wasInitiallyPaired = this.initialPairedDevices?.some(device => 
+          device.address === deviceAddress
+        );
+        
+        if (wasInitiallyPaired) {
+          console.log('[BLUETOOTH] Device was already paired before pairing mode started, ignoring:', deviceAddress);
+          return;
+        }
+        
+        console.log('[BLUETOOTH] Device is newly paired:', deviceAddress);
         this.handleDevicePaired(deviceAddress);
       } else {
-        console.log('Device not yet paired:', deviceAddress);
+        console.log('[BLUETOOTH] Device not yet paired:', deviceAddress);
       }
     } catch (error) {
-      console.log('Could not check device pairing status:', error);
+      console.log('[BLUETOOTH] Could not check device pairing status:', error);
     }
   }
 

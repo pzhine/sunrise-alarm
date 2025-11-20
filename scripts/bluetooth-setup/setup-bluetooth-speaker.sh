@@ -842,14 +842,33 @@ def property_changed_handler(interface, changed_properties, invalidated_properti
     if interface == "org.bluez.MediaPlayer1":
         if "Track" in changed_properties:
             track = changed_properties["Track"]
+            
+            # Helper functions to safely extract and convert D-Bus values
+            def safe_get_str(key_variants):
+                for key in key_variants:
+                    if key in track:
+                        value = track[key]
+                        return str(value) if value is not None else 'Unknown'
+                return 'Unknown'
+            
+            def safe_get_int(key_variants):
+                for key in key_variants:
+                    if key in track:
+                        try:
+                            return int(track[key])
+                        except (ValueError, TypeError):
+                            pass
+                return 0
+            
             # Handle different possible key formats and extract all available info
             metadata = {
-                'title': track.get('Title') or track.get('title') or 'Unknown',
-                'artist': track.get('Artist') or track.get('artist') or 'Unknown', 
-                'album': track.get('Album') or track.get('album') or track.get('AlbumTitle') or 'Unknown',
-                'duration': track.get('Duration') or track.get('duration') or 0,
-                'track_number': track.get('TrackNumber') or track.get('tracknumber') or 0,
-                'genre': track.get('Genre') or track.get('genre') or 'Unknown',
+                'title': safe_get_str(['Title', 'title']),
+                'artist': safe_get_str(['Artist', 'artist']),
+                'album': safe_get_str(['Album', 'album', 'AlbumTitle']),
+                'duration': safe_get_int(['Duration', 'duration']),
+                'track_number': safe_get_int(['TrackNumber', 'tracknumber']),
+                'total_tracks': safe_get_int(['NumberOfTracks', 'numberoftracks']),
+                'genre': safe_get_str(['Genre', 'genre']),
             }
             agent.current_metadata = metadata
             print(f"Metadata updated: {metadata}")
@@ -925,26 +944,47 @@ class MetadataMonitor:
             
             if "Track" in changed_properties:
                 track = changed_properties["Track"]
+                
+                # Helper functions to safely extract and convert D-Bus values
+                def safe_get_str(key_variants):
+                    for key in key_variants:
+                        if key in track:
+                            value = track[key]
+                            return str(value) if value is not None else 'Unknown'
+                    return 'Unknown'
+                
+                def safe_get_int(key_variants):
+                    for key in key_variants:
+                        if key in track:
+                            try:
+                                return int(track[key])
+                            except (ValueError, TypeError):
+                                pass
+                    return 0
+                
                 # Handle different possible key formats
                 self.current_metadata = {
                     'timestamp': timestamp,
-                    'title': str(track.get('Title') or track.get('title') or 'Unknown'),
-                    'artist': str(track.get('Artist') or track.get('artist') or 'Unknown'),
-                    'album': str(track.get('Album') or track.get('album') or track.get('AlbumTitle') or 'Unknown'),
-                    'duration': int(track.get('Duration') or track.get('duration') or 0),
-                    'track_number': int(track.get('TrackNumber') or track.get('tracknumber') or 0),
-                    'genre': str(track.get('Genre') or track.get('genre') or 'Unknown'),
+                    'title': safe_get_str(['Title', 'title']),
+                    'artist': safe_get_str(['Artist', 'artist']),
+                    'album': safe_get_str(['Album', 'album', 'AlbumTitle']),
+                    'duration': safe_get_int(['Duration', 'duration']),
+                    'track_number': safe_get_int(['TrackNumber', 'tracknumber']),
+                    'total_tracks': safe_get_int(['NumberOfTracks', 'numberoftracks']),
+                    'genre': safe_get_str(['Genre', 'genre']),
                 }
                 
                 # Log metadata to file for debugging
                 with open(self.log_file, 'a') as f:
                     debug_entry = dict(self.current_metadata)
                     debug_entry['available_keys'] = list(track.keys())
+                    debug_entry['raw_values'] = {k: str(v) for k, v in track.items()}
                     f.write(f"{json.dumps(debug_entry)}\n")
                 
                 print(f"New track: {self.current_metadata['artist']} - {self.current_metadata['title']}")
                 print(f"Album: {self.current_metadata['album']}, Duration: {self.current_metadata['duration']}ms")
                 print(f"Available track keys: {list(track.keys())}")
+                print(f"Track {self.current_metadata['track_number']} of {self.current_metadata['total_tracks']}" if self.current_metadata['track_number'] else "")
             
             if "Status" in changed_properties:
                 status = str(changed_properties["Status"])
@@ -1054,19 +1094,47 @@ def send_command(command):
                 print(f"Status: {status}")
                 print(f"Position: {position}ms")
                 if track:
-                    # Handle different possible key formats
-                    title = track.get('Title') or track.get('title') or 'Unknown'
-                    artist = track.get('Artist') or track.get('artist') or 'Unknown'
-                    album = track.get('Album') or track.get('album') or track.get('AlbumTitle') or 'Unknown'
-                    track_duration = track.get('Duration') or track.get('duration') or duration or 0
+                    # Convert D-Bus types to Python types and handle different key formats
+                    def safe_get(key_variants):
+                        for key in key_variants:
+                            if key in track:
+                                value = track[key]
+                                # Convert D-Bus types to Python types
+                                if hasattr(value, '__str__'):
+                                    return str(value)
+                                return value
+                        return None
+                    
+                    def safe_get_int(key_variants):
+                        for key in key_variants:
+                            if key in track:
+                                value = track[key]
+                                try:
+                                    return int(value)
+                                except (ValueError, TypeError):
+                                    pass
+                        return 0
+                    
+                    title = safe_get(['Title', 'title']) or 'Unknown'
+                    artist = safe_get(['Artist', 'artist']) or 'Unknown'
+                    album = safe_get(['Album', 'album', 'AlbumTitle'])
+                    track_duration = safe_get_int(['Duration', 'duration']) or int(duration) or 0
+                    track_number = safe_get_int(['TrackNumber', 'tracknumber'])
+                    total_tracks = safe_get_int(['NumberOfTracks', 'numberoftracks'])
                     
                     print(f"Title: {title}")
                     print(f"Artist: {artist}")
-                    print(f"Album: {album}")
+                    if album:
+                        print(f"Album: {album}")
                     print(f"Duration: {track_duration}ms")
+                    if track_number and total_tracks:
+                        print(f"Track: {track_number} of {total_tracks}")
                     
-                    # Debug: Show all available track metadata
+                    # Debug: Show all available track metadata with values
                     print(f"Debug - Available track keys: {list(track.keys())}")
+                    print("Debug - Track metadata:")
+                    for key, value in track.items():
+                        print(f"  {key}: {value} (type: {type(value)})")
                 else:
                     print("No track information available")
             

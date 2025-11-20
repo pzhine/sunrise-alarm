@@ -1079,6 +1079,26 @@ def send_command(command, debug_mode=False):
                 player_interface.Next()
             elif command == "previous":
                 player_interface.Previous()
+            elif command == "seek-forward":
+                # Seek forward 15 seconds
+                try:
+                    properties = dbus.Interface(player, "org.freedesktop.DBus.Properties")
+                    current_position = properties.Get("org.bluez.MediaPlayer1", "Position")
+                    new_position = current_position + 15000  # 15 seconds in milliseconds
+                    properties.Set("org.bluez.MediaPlayer1", "Position", dbus.UInt32(new_position))
+                    print(f"Seeked forward 15s to position: {new_position}ms")
+                except Exception as e:
+                    print(f"Seek forward failed (may not be supported): {e}")
+            elif command == "seek-backward":
+                # Seek backward 15 seconds
+                try:
+                    properties = dbus.Interface(player, "org.freedesktop.DBus.Properties")
+                    current_position = properties.Get("org.bluez.MediaPlayer1", "Position")
+                    new_position = max(0, current_position - 15000)  # Don't go below 0
+                    properties.Set("org.bluez.MediaPlayer1", "Position", dbus.UInt32(new_position))
+                    print(f"Seeked backward 15s to position: {new_position}ms")
+                except Exception as e:
+                    print(f"Seek backward failed (may not be supported): {e}")
             elif command == "status":
                 properties = dbus.Interface(player, "org.freedesktop.DBus.Properties")
                 status = properties.Get("org.bluez.MediaPlayer1", "Status")
@@ -1182,15 +1202,17 @@ def send_command(command, debug_mode=False):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: media-control.py <play|pause|stop|next|previous|status> [--debug]")
+        print("Usage: media-control.py <play|pause|stop|next|previous|status|seek-forward|seek-backward> [--debug]")
+        print("       seek-forward/seek-backward: Skip ±15 seconds (useful for podcasts/audiobooks)")
         sys.exit(1)
     
     command = sys.argv[1].lower()
     debug_mode = "--debug" in sys.argv
-    valid_commands = ["play", "pause", "stop", "next", "previous", "status"]
+    valid_commands = ["play", "pause", "stop", "next", "previous", "status", "seek-forward", "seek-backward"]
     
     if command not in valid_commands:
         print(f"Invalid command. Valid commands: {', '.join(valid_commands)}")
+        print("Use 'seek-forward' or 'seek-backward' to skip ±15 seconds")
         sys.exit(1)
     
     send_command(command, debug_mode)
@@ -1449,6 +1471,9 @@ show_final_status() {
     echo "  • Make discoverable:    /usr/local/bin/bluetooth-control.sh discoverable"
     echo "  • Check codecs:         pactl list sinks | grep bluetooth"
     echo "  • Media control:        sudo /usr/local/bin/media-control.py status"
+    echo "  • Play/pause:           sudo /usr/local/bin/media-control.py play|pause"
+    echo "  • Skip tracks:          sudo /usr/local/bin/media-control.py next|previous"
+    echo "  • Seek ±15s:            sudo /usr/local/bin/media-control.py seek-forward|seek-backward"
     echo "  • View metadata logs:   tail -f /var/log/media_metadata.log"
     echo ""
     

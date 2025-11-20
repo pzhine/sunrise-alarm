@@ -1080,87 +1080,80 @@ def send_command(command, debug_mode=False):
             elif command == "previous":
                 player_interface.Previous()
             elif command == "seek-forward":
-                # Try multiple methods for seeking forward
-                import time
+                # Try seeking forward - note: limited support in streaming apps
+                seek_worked = False
                 
-                # Method 1: Try Seek with offset (most likely to work)
                 try:
-                    # Try different parameter formats for Seek
-                    seek_methods = [
-                        lambda: player_interface.Seek(dbus.Int64(15000000)),  # microseconds
-                        lambda: player_interface.Seek(dbus.Int32(15000)),     # milliseconds  
-                        lambda: player_interface.Seek(dbus.UInt32(15000)),    # milliseconds unsigned
-                        lambda: player_interface.Seek(15000),                 # plain int
+                    # Try different Seek parameter formats
+                    seek_attempts = [
+                        (lambda: player_interface.Seek(dbus.Int64(15000000)), "microseconds"),
+                        (lambda: player_interface.Seek(dbus.Int32(15000)), "milliseconds"),
+                        (lambda: player_interface.Seek(15000), "raw milliseconds"),
                     ]
                     
-                    for i, method in enumerate(seek_methods):
-                        try:
-                            method()
-                            print(f"Seek forward successful (method {i+1})")
-                            return True
-                        except Exception as e:
-                            continue
-                    
-                    # If direct seek fails, try FastForward with automatic stop
-                    print("Direct seek failed, trying FastForward simulation...")
                     properties = dbus.Interface(player, "org.freedesktop.DBus.Properties")
                     start_pos = properties.Get("org.bluez.MediaPlayer1", "Position")
                     
-                    player_interface.FastForward()
-                    time.sleep(1)  # Fast forward for 1 second (should skip ~15s of content)
-                    player_interface.Pause()
-                    time.sleep(0.1)
-                    player_interface.Play()  # Resume normal playback
+                    for seek_func, desc in seek_attempts:
+                        try:
+                            seek_func()
+                            # Check if position actually changed
+                            import time
+                            time.sleep(0.5)  # Give it time to update
+                            new_pos = properties.Get("org.bluez.MediaPlayer1", "Position")
+                            if abs(new_pos - start_pos) > 5000:  # Significant change
+                                print(f"✓ Seek forward successful ({desc}): +{new_pos - start_pos}ms")
+                                seek_worked = True
+                                break
+                        except Exception:
+                            continue
                     
-                    end_pos = properties.Get("org.bluez.MediaPlayer1", "Position") 
-                    skipped = end_pos - start_pos
-                    print(f"FastForward simulation complete, skipped ~{skipped}ms")
-                    
+                    if not seek_worked:
+                        print("✗ Seek forward not supported")
+                        print("  Spotify and most streaming services don't allow seeking via Bluetooth")
+                        print("  Try: Podcast apps, local music players, or audiobook apps")
+                        print("  Or use your phone's native controls for seeking")
+                        
                 except Exception as e:
-                    print(f"Seek forward failed: {e}")
-                    print("Note: Some apps (like Spotify) don't support seeking via Bluetooth")
-                    print("Try using your phone's controls or a podcast app for better seeking support")
+                    print(f"✗ Seek forward failed: {e}")
                             
             elif command == "seek-backward":
-                # Try multiple methods for seeking backward  
-                import time
+                # Try seeking backward - note: limited support in streaming apps
+                seek_worked = False
                 
-                # Method 1: Try Seek with negative offset
                 try:
-                    # Try different parameter formats for Seek
-                    seek_methods = [
-                        lambda: player_interface.Seek(dbus.Int64(-15000000)),  # microseconds
-                        lambda: player_interface.Seek(dbus.Int32(-15000)),     # milliseconds
-                        lambda: player_interface.Seek(-15000),                 # plain int
+                    # Try different Seek parameter formats with negative values
+                    seek_attempts = [
+                        (lambda: player_interface.Seek(dbus.Int64(-15000000)), "microseconds"),
+                        (lambda: player_interface.Seek(dbus.Int32(-15000)), "milliseconds"),
+                        (lambda: player_interface.Seek(-15000), "raw milliseconds"),
                     ]
                     
-                    for i, method in enumerate(seek_methods):
-                        try:
-                            method()
-                            print(f"Seek backward successful (method {i+1})")
-                            return True
-                        except Exception as e:
-                            continue
-                    
-                    # If direct seek fails, try Rewind with automatic stop
-                    print("Direct seek failed, trying Rewind simulation...")
                     properties = dbus.Interface(player, "org.freedesktop.DBus.Properties")
                     start_pos = properties.Get("org.bluez.MediaPlayer1", "Position")
                     
-                    player_interface.Rewind()
-                    time.sleep(1)  # Rewind for 1 second
-                    player_interface.Pause()
-                    time.sleep(0.1)
-                    player_interface.Play()  # Resume normal playback
+                    for seek_func, desc in seek_attempts:
+                        try:
+                            seek_func()
+                            # Check if position actually changed
+                            import time
+                            time.sleep(0.5)  # Give it time to update
+                            new_pos = properties.Get("org.bluez.MediaPlayer1", "Position")
+                            if abs(start_pos - new_pos) > 5000:  # Significant change
+                                print(f"✓ Seek backward successful ({desc}): -{start_pos - new_pos}ms")
+                                seek_worked = True
+                                break
+                        except Exception:
+                            continue
                     
-                    end_pos = properties.Get("org.bluez.MediaPlayer1", "Position")
-                    skipped = start_pos - end_pos
-                    print(f"Rewind simulation complete, went back ~{skipped}ms")
-                    
+                    if not seek_worked:
+                        print("✗ Seek backward not supported")
+                        print("  Spotify and most streaming services don't allow seeking via Bluetooth")
+                        print("  Try: Podcast apps, local music players, or audiobook apps")
+                        print("  Or use your phone's native controls for seeking")
+                        
                 except Exception as e:
-                    print(f"Seek backward failed: {e}")
-                    print("Note: Some apps (like Spotify) don't support seeking via Bluetooth")
-                    print("Try using your phone's controls or a podcast app for better seeking support")
+                    print(f"✗ Seek backward failed: {e}")
             elif command == "status":
                 properties = dbus.Interface(player, "org.freedesktop.DBus.Properties")
                 status = properties.Get("org.bluez.MediaPlayer1", "Status")
@@ -1574,6 +1567,7 @@ show_final_status() {
     echo "  • Play/pause:           sudo /usr/local/bin/media-control.py play|pause"
     echo "  • Skip tracks:          sudo /usr/local/bin/media-control.py next|previous"
     echo "  • Seek ±15s:            sudo /usr/local/bin/media-control.py seek-forward|seek-backward"
+    echo "    (Note: Seeking works with podcast/audiobook apps, not streaming services)"
     echo "  • View metadata logs:   tail -f /var/log/media_metadata.log"
     echo ""
     

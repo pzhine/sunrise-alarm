@@ -20,6 +20,7 @@ export class BluetoothPairingService extends EventEmitter {
   private currentState: PairingState = { active: false, timeRemaining: 0 };
   private bluetoothMonitor: ChildProcess | null = null;
   private deviceName = 'DawnDeck';
+  private initialPairedDevices: Array<{address: string, name: string}> | null = null;
 
   constructor() {
     super();
@@ -63,6 +64,9 @@ export class BluetoothPairingService extends EventEmitter {
         console.warn('Could not set NoInputNoOutput agent, pairing dialogs may appear');
       }
       
+      // Reset paired devices list to detect new pairings
+      this.initialPairedDevices = null;
+      
       this.currentState = {
         active: true,
         timeRemaining: this.pairingDuration,
@@ -71,9 +75,14 @@ export class BluetoothPairingService extends EventEmitter {
 
       this.emit('pairingStarted', this.currentState);
       
-      // Start countdown timer
-      this.pairingTimer = setInterval(() => {
+      // Start countdown timer and periodic pairing check
+      this.pairingTimer = setInterval(async () => {
         this.currentState.timeRemaining--;
+        
+        // Every 5 seconds, check for newly paired devices
+        if (this.currentState.timeRemaining % 3 === 0) {
+          await this.checkForNewlyPairedDevices();
+        }
         
         if (this.currentState.timeRemaining <= 0) {
           this.stopPairing();
@@ -163,6 +172,7 @@ export class BluetoothPairingService extends EventEmitter {
         const deviceMatch = output.match(/Device ([A-F0-9:]+)/);
         if (deviceMatch) {
           const deviceAddress = deviceMatch[1];
+          console.log('Pairing detected for device:', deviceAddress);
           this.handleDevicePaired(deviceAddress);
         }
       }
@@ -172,8 +182,20 @@ export class BluetoothPairingService extends EventEmitter {
         const deviceMatch = output.match(/Device ([A-F0-9:]+)/);
         if (deviceMatch) {
           const deviceAddress = deviceMatch[1];
+          console.log('Device trusted (pairing complete):', deviceAddress);
           // Small delay to ensure pairing is complete
           setTimeout(() => this.handleDevicePaired(deviceAddress), 500);
+        }
+      }
+      
+      // Alternative approach: Check for new device additions
+      if (output.includes('[NEW] Device')) {
+        const deviceMatch = output.match(/\[NEW\] Device ([A-F0-9:]+)/);
+        if (deviceMatch) {
+          const deviceAddress = deviceMatch[1];
+          console.log('New device detected:', deviceAddress);
+          // Check if it's paired after a short delay
+          setTimeout(() => this.checkDevicePaired(deviceAddress), 2000);
         }
       }
     });
@@ -217,6 +239,63 @@ export class BluetoothPairingService extends EventEmitter {
         name: deviceAddress,
         timestamp: new Date().toISOString()
       });
+    }
+  }
+
+  /**
+   * Check if a specific device is paired
+   */
+  private async checkDevicePaired(deviceAddress: string): Promise<void> {
+    try {
+      const { stdout } = await execAsync(`bluetoothctl info ${deviceAddress}`);
+      if (stdout.includes('Paired: yes')) {
+        console.log('Device is paired:', deviceAddress);
+        this.handleDevicePaired(deviceAddress);
+      } else {
+        console.log('Device not yet paired:', deviceAddress);
+      }
+    } catch (error) {
+      console.log('Could not check device pairing status:', error);
+    }
+  }
+
+  /**
+   * Check for newly paired devices (backup detection method)
+   */
+  private async checkForNewlyPairedDevices(): Promise<void> {
+    try {
+      const { stdout } = await execAsync('bluetoothctl paired-devices');
+      const currentPairedDevices = stdout.split('\n')
+        .filter(line => line.includes('Device'))
+        .map(line => {
+          const match = line.match(/Device ([A-F0-9:]+) (.+)/);
+          return match ? { address: match[1], name: match[2] } : null;
+        })
+        .filter(Boolean);
+        
+      // Store initial paired devices on first run
+      if (!this.initialPairedDevices) {
+        this.initialPairedDevices = currentPairedDevices as Array<{address: string, name: string}>;
+        return;
+      }
+      
+      // Check for new devices
+      const newDevices = currentPairedDevices.filter(current => 
+        current && !this.initialPairedDevices?.some(initial => 
+          initial.address === current.address
+        )
+      );
+      
+      if (newDevices.length > 0) {
+        console.log('Newly paired devices detected:', newDevices);
+        for (const device of newDevices) {
+          if (device) {
+            this.handleDevicePaired(device.address);
+          }
+        }
+      }
+    } catch (error) {
+      console.log('Could not check for newly paired devices:', error);
     }
   }
 

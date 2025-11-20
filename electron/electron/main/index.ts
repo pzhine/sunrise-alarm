@@ -19,6 +19,7 @@ import {
 } from './autoUpdater';
 import { initConfigManager } from './configManager';
 import { initSunriseController } from './sunriseController';
+import { BluetoothMediaService } from './bluetoothMediaService';
 import './serial';
 import './wlan';
 import './stateManager';
@@ -431,6 +432,59 @@ ipcMain.handle('get-country-sounds', async (_, { query, country }) => {
   } catch (error) {
     console.error('Error in get-country-sounds IPC handler:', error);
     throw error;
+  }
+});
+
+// Initialize Bluetooth Media Service
+let bluetoothMediaService: BluetoothMediaService | null = null;
+
+// Register IPC handlers for Bluetooth Media Control
+ipcMain.handle('bluetooth-media:send-command', async (_, command: string) => {
+  try {
+    if (!bluetoothMediaService) {
+      bluetoothMediaService = new BluetoothMediaService();
+      
+      // Forward metadata updates to renderer
+      bluetoothMediaService.on('metadataUpdated', (metadata) => {
+        if (win && !win.isDestroyed()) {
+          win.webContents.send('bluetooth-media:metadata-update', metadata);
+        }
+      });
+    }
+    
+    return await bluetoothMediaService.sendMediaCommand(command);
+  } catch (error) {
+    console.error('Error in bluetooth-media:send-command IPC handler:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('bluetooth-media:get-metadata', async () => {
+  try {
+    if (!bluetoothMediaService) {
+      bluetoothMediaService = new BluetoothMediaService();
+      
+      // Forward metadata updates to renderer
+      bluetoothMediaService.on('metadataUpdated', (metadata) => {
+        if (win && !win.isDestroyed()) {
+          win.webContents.send('bluetooth-media:metadata-update', metadata);
+        }
+      });
+    }
+    
+    const metadata = await bluetoothMediaService.getMetadata();
+    return { 
+      success: true, 
+      metadata,
+      connectionState: bluetoothMediaService.getConnectionState()
+    };
+  } catch (error) {
+    console.error('Error in bluetooth-media:get-metadata IPC handler:', error);
+    return { 
+      success: false, 
+      error: error.message,
+      connectionState: 'disconnected' 
+    };
   }
 });
 

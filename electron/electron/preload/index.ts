@@ -51,6 +51,20 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   },
 });
 
+// --------- Bluetooth Media API ---------
+contextBridge.exposeInMainWorld('electronAPI', {
+  bluetoothMedia: {
+    sendCommand: (command: string) => ipcRenderer.invoke('bluetooth-media:send-command', command),
+    getMetadata: () => ipcRenderer.invoke('bluetooth-media:get-metadata'),
+    onMetadataUpdate: (callback: (metadata: any) => void) => {
+      ipcRenderer.on('bluetooth-media:metadata-update', (_event, metadata) => callback(metadata));
+    },
+    removeMetadataListener: () => {
+      ipcRenderer.removeAllListeners('bluetooth-media:metadata-update');
+    }
+  }
+});
+
 // --------- Preload scripts loading ---------
 function domReady(
   condition: DocumentReadyState[] = ['complete', 'interactive']

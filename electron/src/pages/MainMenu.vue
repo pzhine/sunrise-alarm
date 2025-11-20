@@ -60,6 +60,11 @@ const menuItems = computed(() => {
       onSelect: () => router.push('/sounds'),
     },
     {
+      label: 'Bluetooth Media',
+      value: 'Remote Control',
+      onSelect: () => router.push('/bluetooth-media'),
+    },
+    {
       label: 'Sunrise',
       onSelect: () => router.push('/sunriseSettings'),
     },

@@ -168,7 +168,9 @@ export class BluetoothMediaService extends EventEmitter {
       this.emit('metadataUpdated', response.metadata);
     }
     
-    if (response.success !== undefined) {
+    // Always emit commandResponse for any valid response (metadata, success, or error)
+    // This ensures get_metadata responses are properly handled
+    if (response.metadata || response.success !== undefined || response.error) {
       this.emit('commandResponse', response);
     }
     

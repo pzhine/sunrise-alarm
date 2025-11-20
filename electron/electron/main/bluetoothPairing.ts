@@ -37,13 +37,17 @@ export class BluetoothPairingService extends EventEmitter {
     try {
       console.log('Starting Bluetooth pairing mode...');
       
-      // Make device discoverable and pairable
+      // Use our approach that suppresses system dialogs
       await execAsync('bluetoothctl power on');
       await execAsync('bluetoothctl discoverable on');
       await execAsync('bluetoothctl pairable on');
       
       // Set device name
       await execAsync(`bluetoothctl system-alias "${this.deviceName}"`);
+      
+      // Set up auto-accept for pairing (this suppresses system dialogs)
+      await execAsync('bluetoothctl agent NoInputNoOutput');
+      await execAsync('bluetoothctl default-agent');
       
       this.currentState = {
         active: true,
@@ -127,6 +131,7 @@ export class BluetoothPairingService extends EventEmitter {
 
     this.bluetoothMonitor.stdout.on('data', (data: Buffer) => {
       const output = data.toString();
+      console.log('Bluetooth monitor output:', output.trim());
       
       // Look for device connection events
       if (output.includes('Device') && output.includes('Connected: yes')) {
@@ -137,12 +142,24 @@ export class BluetoothPairingService extends EventEmitter {
         }
       }
       
-      // Look for pairing success
-      if (output.includes('Pairing successful')) {
+      // Look for pairing success - multiple patterns
+      if (output.includes('Pairing successful') || 
+          output.includes('Successfully paired') ||
+          output.includes('Paired: yes')) {
         const deviceMatch = output.match(/Device ([A-F0-9:]+)/);
         if (deviceMatch) {
           const deviceAddress = deviceMatch[1];
           this.handleDevicePaired(deviceAddress);
+        }
+      }
+      
+      // Look for device trust events (also indicates successful pairing)
+      if (output.includes('Trusted: yes')) {
+        const deviceMatch = output.match(/Device ([A-F0-9:]+)/);
+        if (deviceMatch) {
+          const deviceAddress = deviceMatch[1];
+          // Small delay to ensure pairing is complete
+          setTimeout(() => this.handleDevicePaired(deviceAddress), 500);
         }
       }
     });
@@ -201,22 +218,29 @@ export class BluetoothPairingService extends EventEmitter {
       
       console.log(`Bluetooth device paired: ${deviceName} (${deviceAddress})`);
       
+      // Always emit device paired event for notifications
       this.emit('devicePaired', {
         address: deviceAddress,
         name: deviceName,
         timestamp: new Date().toISOString()
       });
 
-      // If we're in pairing mode and a device paired successfully, stop pairing
+      // If we're in pairing mode, mark as successful
       if (this.currentState.active) {
-        this.currentState.deviceName = deviceName;
-        this.emit('pairingSuccess', {
+        console.log('Pairing mode: Device paired successfully!');
+        
+        const successState = {
           ...this.currentState,
-          deviceName
-        });
+          active: false,
+          deviceName: deviceName
+        };
+        
+        this.currentState = successState;
+        
+        this.emit('pairingSuccess', successState);
         
         // Stop pairing mode after successful pairing
-        setTimeout(() => this.stopPairing(), 2000);
+        setTimeout(() => this.stopPairing(), 3000);
       }
       
     } catch (error) {

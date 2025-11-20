@@ -86,6 +86,13 @@ onMounted(() => {
       error.value = state.error;
       pairingState.value = { ...state, active: false };
     });
+    
+    // Listen for device pairing events specifically
+    api.onDevicePaired?.((device: any) => {
+      console.log('Device paired event received in UI:', device);
+      success.value = { deviceName: device.name };
+      pairingState.value = { ...pairingState.value, active: false };
+    });
   }
 
   // Auto-start pairing immediately

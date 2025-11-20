@@ -762,11 +762,9 @@ class MediaAgent(dbus.service.Object):
     def send_media_command(self, action):
         """Send media control commands via D-Bus"""
         try:
-            # Find connected media players
-            adapter = self.bus.get_object("org.bluez", "/org/bluez/hci0")
-            
-            # Get all devices
-            manager = dbus.Interface(adapter, "org.freedesktop.DBus.ObjectManager")
+            # Find connected media players using the root BlueZ ObjectManager
+            manager_obj = self.bus.get_object("org.bluez", "/")
+            manager = dbus.Interface(manager_obj, "org.freedesktop.DBus.ObjectManager")
             objects = manager.GetManagedObjects()
             
             for path, interfaces in objects.items():
@@ -1041,8 +1039,8 @@ def get_media_players():
     bus = dbus.SystemBus()
     
     try:
-        manager = bus.get_object("org.bluez", "/")
-        manager_interface = dbus.Interface(manager, "org.freedesktop.DBus.ObjectManager")
+        manager_obj = bus.get_object("org.bluez", "/")
+        manager_interface = dbus.Interface(manager_obj, "org.freedesktop.DBus.ObjectManager")
         objects = manager_interface.GetManagedObjects()
         
         players = []
@@ -1225,8 +1223,8 @@ def send_command(command, debug_mode=False):
                         # Debug: Check if there are other interfaces on this device
                         print("Debug - Available interfaces on device:")
                         try:
-                            manager = bus.get_object("org.bluez", "/")
-                            manager_interface = dbus.Interface(manager, "org.freedesktop.DBus.ObjectManager")
+                            manager_obj = bus.get_object("org.bluez", "/")
+                            manager_interface = dbus.Interface(manager_obj, "org.freedesktop.DBus.ObjectManager")
                             objects = manager_interface.GetManagedObjects()
                             
                             for path, interfaces in objects.items():

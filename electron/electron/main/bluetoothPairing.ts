@@ -37,17 +37,31 @@ export class BluetoothPairingService extends EventEmitter {
     try {
       console.log('Starting Bluetooth pairing mode...');
       
-      // Use our approach that suppresses system dialogs
+      // Basic Bluetooth setup
       await execAsync('bluetoothctl power on');
       await execAsync('bluetoothctl discoverable on');
       await execAsync('bluetoothctl pairable on');
       
       // Set device name
-      await execAsync(`bluetoothctl system-alias "${this.deviceName}"`);
+      try {
+        await execAsync(`bluetoothctl system-alias "${this.deviceName}"`);
+      } catch (error) {
+        console.warn('Could not set system alias:', error);
+      }
       
       // Set up auto-accept for pairing (this suppresses system dialogs)
-      await execAsync('bluetoothctl agent NoInputNoOutput');
-      await execAsync('bluetoothctl default-agent');
+      // Use a more reliable approach with error handling
+      try {
+        await execAsync('bluetoothctl agent off');
+      } catch (error) {
+        // Ignore error if no agent was running
+      }
+      
+      try {
+        await execAsync('bluetoothctl agent NoInputNoOutput');
+      } catch (error) {
+        console.warn('Could not set NoInputNoOutput agent, pairing dialogs may appear');
+      }
       
       this.currentState = {
         active: true,

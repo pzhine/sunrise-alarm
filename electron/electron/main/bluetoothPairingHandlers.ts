@@ -72,6 +72,10 @@ export function setupBluetoothPairingHandlers(mainWindow: BrowserWindow) {
     mainWindow.webContents.send('bluetooth-device:connected', device);
   });
 
+  bluetoothPairingService.on('deviceDisconnected', (device) => {
+    mainWindow.webContents.send('bluetooth-device:disconnected', device);
+  });
+
   bluetoothPairingService.on('devicePaired', (device) => {
     mainWindow.webContents.send('bluetooth-device:paired', device);
   });

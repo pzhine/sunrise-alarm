@@ -198,9 +198,17 @@ export class BluetoothPairingService extends EventEmitter {
         if (deviceMatch) {
           const deviceAddress = deviceMatch[1];
           console.log('[BLUETOOTH] Device connected:', deviceAddress);
-          
-          // Handle the connection - this will also handle pairing success if in pairing mode
           this.handleDeviceConnected(deviceAddress);
+        }
+      }
+      
+      // Look for device disconnections
+      if (output.includes('Connected: no')) {
+        const deviceMatch = output.match(/Device ([A-F0-9:]+)/);
+        if (deviceMatch) {
+          const deviceAddress = deviceMatch[1];
+          console.log('[BLUETOOTH] Device disconnected:', deviceAddress);
+          this.handleDeviceDisconnected(deviceAddress);
         }
       }
     });
@@ -269,9 +277,34 @@ export class BluetoothPairingService extends EventEmitter {
     }
   }
 
-
-
-
+  /**
+   * Handle device disconnection event
+   */
+  private async handleDeviceDisconnected(deviceAddress: string): Promise<void> {
+    try {
+      // Get device info
+      const { stdout } = await execAsync(`bluetoothctl info ${deviceAddress}`);
+      const nameMatch = stdout.match(/Name: (.+)/);
+      const deviceName = nameMatch ? nameMatch[1].trim() : deviceAddress;
+      
+      console.log(`[BLUETOOTH] Bluetooth device disconnected: ${deviceName} (${deviceAddress})`);
+      
+      this.emit('deviceDisconnected', {
+        address: deviceAddress,
+        name: deviceName,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('Error getting device info for disconnection:', error);
+      
+      this.emit('deviceDisconnected', {
+        address: deviceAddress,
+        name: deviceAddress,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
 
   /**
    * Handle device pairing success

@@ -502,10 +502,15 @@ function initializeBluetoothServices(mainWindow: BrowserWindow) {
   // Initialize notification sounds
   notificationSoundService.createDefaultSounds();
   
-  // Listen for device connection events and play sounds
+  // Listen for device connection/disconnection events and play sounds
   bluetoothPairingService.on('deviceConnected', (device: any) => {
     console.log('Device connected:', device.name);
     notificationSoundService.playSound('connect').catch(console.error);
+  });
+  
+  bluetoothPairingService.on('deviceDisconnected', (device: any) => {
+    console.log('Device disconnected:', device.name);
+    notificationSoundService.playSound('disconnect').catch(console.error);
   });
   
   bluetoothPairingService.on('devicePaired', (device: any) => {

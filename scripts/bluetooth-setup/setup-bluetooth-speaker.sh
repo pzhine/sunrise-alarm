@@ -754,6 +754,23 @@ class MediaAgent(dbus.service.Object):
         cmd_type = command.get('type')
         
         if cmd_type == 'get_metadata':
+            # Check if we have connected media players
+            if not self.has_connected_media_players():
+                # No connected devices - return disconnected state
+                self.current_status = "stopped"
+                self.current_metadata = {
+                    'title': 'No device connected',
+                    'artist': 'Connect a Bluetooth device',
+                    'album': '',
+                    'status': 'stopped',
+                    'position': 0,
+                    'duration': 0
+                }
+                return {
+                    'error': 'No Bluetooth media device connected',
+                    'metadata': self.current_metadata
+                }
+            
             # Ensure we have current metadata with proper status
             metadata = dict(self.current_metadata) if self.current_metadata else {}
             metadata.update({
@@ -770,9 +787,35 @@ class MediaAgent(dbus.service.Object):
         else:
             return {'error': 'Unknown command type'}
             
+    def has_connected_media_players(self):
+        """Check if there are any connected Bluetooth media players"""
+        try:
+            manager_obj = self.bus.get_object("org.bluez", "/")
+            manager = dbus.Interface(manager_obj, "org.freedesktop.DBus.ObjectManager")
+            objects = manager.GetManagedObjects()
+            
+            for path, interfaces in objects.items():
+                if "org.bluez.MediaPlayer1" in interfaces:
+                    # Check if the device is actually connected
+                    device_path = path.rsplit('/', 1)[0]  # Get device path from player path
+                    if "org.bluez.Device1" in objects.get(device_path, {}):
+                        device = self.bus.get_object("org.bluez", device_path)
+                        device_props = dbus.Interface(device, "org.freedesktop.DBus.Properties")
+                        connected = device_props.Get("org.bluez.Device1", "Connected")
+                        if connected:
+                            return True
+            return False
+        except Exception as e:
+            print(f"Error checking connected media players: {e}")
+            return False
+
     def send_media_command(self, action):
         """Send media control commands via D-Bus"""
         try:
+            # Check if we have any connected media players first
+            if not self.has_connected_media_players():
+                return {'error': 'No Bluetooth media device connected'}
+            
             # Find connected media players using the root BlueZ ObjectManager
             manager_obj = self.bus.get_object("org.bluez", "/")
             manager = dbus.Interface(manager_obj, "org.freedesktop.DBus.ObjectManager")
@@ -780,6 +823,15 @@ class MediaAgent(dbus.service.Object):
             
             for path, interfaces in objects.items():
                 if "org.bluez.MediaPlayer1" in interfaces:
+                    # Verify the device is still connected
+                    device_path = path.rsplit('/', 1)[0]
+                    if "org.bluez.Device1" in objects.get(device_path, {}):
+                        device = self.bus.get_object("org.bluez", device_path)
+                        device_props = dbus.Interface(device, "org.freedesktop.DBus.Properties")
+                        connected = device_props.Get("org.bluez.Device1", "Connected")
+                        if not connected:
+                            continue  # Skip disconnected devices
+                    
                     player = self.bus.get_object("org.bluez", path)
                     player_interface = dbus.Interface(player, "org.bluez.MediaPlayer1")
                     

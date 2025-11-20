@@ -1,8 +1,8 @@
 import { exec } from 'child_process';
 import { ipcMain } from 'electron';
 import { getState } from './stateManager';
-import { VITE_DEV_SERVER_URL } from '.';
-import { getConfig } from './configManager';
+// import { VITE_DEV_SERVER_URL } from '.';
+// import { getConfig } from './configManager';
 
 // Function to execute shell commands
 function executeCommand(command: string): Promise<string> {

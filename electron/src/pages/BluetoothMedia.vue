@@ -142,8 +142,23 @@ onMounted(() => {
   // Listen for metadata updates from main process
   if ((window as any).electronAPI?.bluetoothMedia?.onMetadataUpdate) {
     (window as any).electronAPI.bluetoothMedia.onMetadataUpdate((newMetadata: any) => {
-      metadata.value = newMetadata;
-      connectionStatus.value = 'connected';
+      if (newMetadata) {
+        metadata.value = newMetadata;
+        connectionStatus.value = 'connected';
+      } else {
+        metadata.value = null;
+        connectionStatus.value = 'disconnected';
+      }
+    });
+  }
+  
+  // Listen for connection changes from main process
+  if ((window as any).electronAPI?.bluetoothMedia?.onConnectionChange) {
+    (window as any).electronAPI.bluetoothMedia.onConnectionChange((status: 'connected' | 'disconnected') => {
+      connectionStatus.value = status;
+      if (status === 'disconnected') {
+        metadata.value = null;
+      }
     });
   }
   
@@ -153,6 +168,14 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (updateInterval.value) {
     clearInterval(updateInterval.value);
+  }
+  
+  // Clean up event listeners
+  if ((window as any).electronAPI?.bluetoothMedia?.removeMetadataListener) {
+    (window as any).electronAPI.bluetoothMedia.removeMetadataListener();
+  }
+  if ((window as any).electronAPI?.bluetoothMedia?.removeConnectionListener) {
+    (window as any).electronAPI.bluetoothMedia.removeConnectionListener();
   }
 });
 </script>

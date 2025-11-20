@@ -246,9 +246,21 @@ export class BluetoothMediaService extends EventEmitter {
     
     try {
       const response = await this.sendCommand({ type: 'get_metadata' });
+      
+      // Check if response indicates no device connected
+      if (response.error && response.error.includes('No Bluetooth media device connected')) {
+        // Clear current metadata and emit disconnected state
+        this.currentMetadata = null;
+        this.emit('bluetoothDisconnected');
+        return null;
+      }
+      
       return response.metadata || null;
     } catch (error) {
       console.error('Failed to get metadata:', error);
+      // Also treat command failures as potential disconnection
+      this.currentMetadata = null;
+      this.emit('bluetoothDisconnected');
       return null;
     }
   }

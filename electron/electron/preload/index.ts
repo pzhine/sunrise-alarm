@@ -57,10 +57,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     sendCommand: (command: string) => ipcRenderer.invoke('bluetooth-media:send-command', command),
     getMetadata: () => ipcRenderer.invoke('bluetooth-media:get-metadata'),
     onMetadataUpdate: (callback: (metadata: any) => void) => {
-      ipcRenderer.on('bluetooth-media:metadata-update', (_event, metadata) => callback(metadata));
+      ipcRenderer.on('bluetooth-media:metadataUpdated', (_event, metadata) => callback(metadata));
+    },
+    onConnectionChange: (callback: (status: 'connected' | 'disconnected') => void) => {
+      ipcRenderer.on('bluetooth-media:connectionChanged', (_event, status) => callback(status));
     },
     removeMetadataListener: () => {
-      ipcRenderer.removeAllListeners('bluetooth-media:metadata-update');
+      ipcRenderer.removeAllListeners('bluetooth-media:metadataUpdated');
+    },
+    removeConnectionListener: () => {
+      ipcRenderer.removeAllListeners('bluetooth-media:connectionChanged');
     }
   }
 });

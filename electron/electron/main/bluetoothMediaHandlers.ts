@@ -63,6 +63,11 @@ export function setupBluetoothMediaHandlers(mainWindow: BrowserWindow) {
     mainWindow.webContents.send('bluetooth-media:connectionChanged', 'disconnected');
   });
 
+  bluetoothMediaService.on('bluetoothDisconnected', () => {
+    mainWindow.webContents.send('bluetooth-media:connectionChanged', 'disconnected');
+    mainWindow.webContents.send('bluetooth-media:metadataUpdated', null);
+  });
+
   bluetoothMediaService.on('error', (error) => {
     mainWindow.webContents.send('bluetooth-media:error', error.message);
   });

@@ -842,14 +842,18 @@ def property_changed_handler(interface, changed_properties, invalidated_properti
     if interface == "org.bluez.MediaPlayer1":
         if "Track" in changed_properties:
             track = changed_properties["Track"]
+            # Handle different possible key formats and extract all available info
             metadata = {
-                'title': track.get('Title', 'Unknown'),
-                'artist': track.get('Artist', 'Unknown'),
-                'album': track.get('Album', 'Unknown'),
-                'duration': track.get('Duration', 0),
+                'title': track.get('Title') or track.get('title') or 'Unknown',
+                'artist': track.get('Artist') or track.get('artist') or 'Unknown', 
+                'album': track.get('Album') or track.get('album') or track.get('AlbumTitle') or 'Unknown',
+                'duration': track.get('Duration') or track.get('duration') or 0,
+                'track_number': track.get('TrackNumber') or track.get('tracknumber') or 0,
+                'genre': track.get('Genre') or track.get('genre') or 'Unknown',
             }
             agent.current_metadata = metadata
             print(f"Metadata updated: {metadata}")
+            print(f"Debug - Track keys: {list(track.keys())}")
             
         if "Status" in changed_properties:
             agent.current_status = changed_properties["Status"]
@@ -858,6 +862,10 @@ def property_changed_handler(interface, changed_properties, invalidated_properti
         if "Position" in changed_properties:
             agent.current_position = changed_properties["Position"]
             print(f"Position updated: {agent.current_position}")
+            
+        if "Duration" in changed_properties:
+            agent.current_duration = changed_properties["Duration"]
+            print(f"Duration updated: {agent.current_duration}")
 
 if __name__ == '__main__':
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
@@ -917,21 +925,26 @@ class MetadataMonitor:
             
             if "Track" in changed_properties:
                 track = changed_properties["Track"]
+                # Handle different possible key formats
                 self.current_metadata = {
                     'timestamp': timestamp,
-                    'title': str(track.get('Title', 'Unknown')),
-                    'artist': str(track.get('Artist', 'Unknown')),
-                    'album': str(track.get('Album', 'Unknown')),
-                    'duration': int(track.get('Duration', 0)),
-                    'track_number': int(track.get('TrackNumber', 0)),
-                    'genre': str(track.get('Genre', 'Unknown')),
+                    'title': str(track.get('Title') or track.get('title') or 'Unknown'),
+                    'artist': str(track.get('Artist') or track.get('artist') or 'Unknown'),
+                    'album': str(track.get('Album') or track.get('album') or track.get('AlbumTitle') or 'Unknown'),
+                    'duration': int(track.get('Duration') or track.get('duration') or 0),
+                    'track_number': int(track.get('TrackNumber') or track.get('tracknumber') or 0),
+                    'genre': str(track.get('Genre') or track.get('genre') or 'Unknown'),
                 }
                 
                 # Log metadata to file for debugging
                 with open(self.log_file, 'a') as f:
-                    f.write(f"{json.dumps(self.current_metadata)}\n")
+                    debug_entry = dict(self.current_metadata)
+                    debug_entry['available_keys'] = list(track.keys())
+                    f.write(f"{json.dumps(debug_entry)}\n")
                 
                 print(f"New track: {self.current_metadata['artist']} - {self.current_metadata['title']}")
+                print(f"Album: {self.current_metadata['album']}, Duration: {self.current_metadata['duration']}ms")
+                print(f"Available track keys: {list(track.keys())}")
             
             if "Status" in changed_properties:
                 status = str(changed_properties["Status"])
@@ -945,6 +958,11 @@ class MetadataMonitor:
                 position = int(changed_properties["Position"])
                 self.current_metadata['position'] = position
                 print(f"Position: {position}ms")
+                
+            if "Duration" in changed_properties:
+                duration = int(changed_properties["Duration"])
+                self.current_metadata['duration'] = duration
+                print(f"Track duration: {duration}ms")
 
 if __name__ == '__main__':
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
@@ -1027,13 +1045,30 @@ def send_command(command):
                 track = properties.Get("org.bluez.MediaPlayer1", "Track")
                 position = properties.Get("org.bluez.MediaPlayer1", "Position")
                 
+                # Try to get duration from player properties if not in track
+                try:
+                    duration = properties.Get("org.bluez.MediaPlayer1", "Duration")
+                except:
+                    duration = 0
+                
                 print(f"Status: {status}")
                 print(f"Position: {position}ms")
                 if track:
-                    print(f"Title: {track.get('Title', 'Unknown')}")
-                    print(f"Artist: {track.get('Artist', 'Unknown')}")
-                    print(f"Album: {track.get('Album', 'Unknown')}")
-                    print(f"Duration: {track.get('Duration', 0)}ms")
+                    # Handle different possible key formats
+                    title = track.get('Title') or track.get('title') or 'Unknown'
+                    artist = track.get('Artist') or track.get('artist') or 'Unknown'
+                    album = track.get('Album') or track.get('album') or track.get('AlbumTitle') or 'Unknown'
+                    track_duration = track.get('Duration') or track.get('duration') or duration or 0
+                    
+                    print(f"Title: {title}")
+                    print(f"Artist: {artist}")
+                    print(f"Album: {album}")
+                    print(f"Duration: {track_duration}ms")
+                    
+                    # Debug: Show all available track metadata
+                    print(f"Debug - Available track keys: {list(track.keys())}")
+                else:
+                    print("No track information available")
             
             print(f"Command '{command}' sent successfully")
             return True

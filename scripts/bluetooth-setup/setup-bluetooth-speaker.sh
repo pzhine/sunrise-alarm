@@ -1055,7 +1055,7 @@ def get_media_players():
         print(f"Error getting players: {e}")
         return []
 
-def send_command(command):
+def send_command(command, debug_mode=False):
     """Send media control command"""
     bus = dbus.SystemBus()
     players = get_media_players()
@@ -1131,21 +1131,44 @@ def send_command(command):
                     if track_number and total_tracks:
                         print(f"Track: {track_number} of {total_tracks}")
                     
-                    # Debug: Show all available track metadata with values
-                    print(f"Debug - Available track keys: {list(track.keys())}")
-                    print("Debug - Track metadata:")
-                    for key, value in track.items():
-                        print(f"  {key}: {value} (type: {type(value)})")
-                    
-                    # Debug: Show MediaPlayer1 properties
-                    print("Debug - MediaPlayer1 properties:")
-                    try:
-                        all_props = properties.GetAll("org.bluez.MediaPlayer1")
-                        for prop, value in all_props.items():
-                            if prop in ['Status', 'Position', 'Duration', 'Repeat', 'Shuffle']:
+                    # Only show debug info if debug mode is enabled
+                    if debug_mode:
+                        print(f"Debug - Available track keys: {list(track.keys())}")
+                        print("Debug - Track metadata:")
+                        for key, value in track.items():
+                            print(f"  {key}: {value} (type: {type(value)})")
+                        
+                        # Debug: Show all MediaPlayer1 properties
+                        print("Debug - All MediaPlayer1 properties:")
+                        try:
+                            all_props = properties.GetAll("org.bluez.MediaPlayer1")
+                            for prop, value in all_props.items():
                                 print(f"  {prop}: {value} (type: {type(value)})")
-                    except Exception as e:
-                        print(f"  Could not get MediaPlayer1 properties: {e}")
+                        except Exception as e:
+                            print(f"  Could not get MediaPlayer1 properties: {e}")
+                        
+                        # Debug: Check if there are other interfaces on this device
+                        print("Debug - Available interfaces on device:")
+                        try:
+                            manager = bus.get_object("org.bluez", "/")
+                            manager_interface = dbus.Interface(manager, "org.freedesktop.DBus.ObjectManager")
+                            objects = manager_interface.GetManagedObjects()
+                            
+                            for path, interfaces in objects.items():
+                                if "MediaPlayer1" in path or "media" in path.lower():
+                                    print(f"  Path: {path}")
+                                    for interface in interfaces.keys():
+                                        print(f"    Interface: {interface}")
+                                        if "MediaTransport" in interface:
+                                            transport = bus.get_object("org.bluez", path)
+                                            transport_props = dbus.Interface(transport, "org.freedesktop.DBus.Properties")
+                                            try:
+                                                transport_all = transport_props.GetAll(interface)
+                                                print(f"      Transport properties: {list(transport_all.keys())}")
+                                            except:
+                                                pass
+                        except Exception as e:
+                            print(f"  Could not enumerate interfaces: {e}")
                 else:
                     print("No track information available")
             
@@ -1158,18 +1181,19 @@ def send_command(command):
     return False
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: media-control.py <play|pause|stop|next|previous|status>")
+    if len(sys.argv) < 2:
+        print("Usage: media-control.py <play|pause|stop|next|previous|status> [--debug]")
         sys.exit(1)
     
     command = sys.argv[1].lower()
+    debug_mode = "--debug" in sys.argv
     valid_commands = ["play", "pause", "stop", "next", "previous", "status"]
     
     if command not in valid_commands:
         print(f"Invalid command. Valid commands: {', '.join(valid_commands)}")
         sys.exit(1)
     
-    send_command(command)
+    send_command(command, debug_mode)
 EOF
 
     chmod +x /usr/local/bin/media-control.py

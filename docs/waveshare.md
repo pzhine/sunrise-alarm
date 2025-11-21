@@ -1,0 +1,1 @@
+https://www.waveshare.com/wiki/50H-800480-IPS#:~:text=Brightness.zip%20unzip%20Brightness.zip%20cd%20Brightness%20sudo%20chmod,open%20the%20demo%20in%20Menu%20%2D%3E%20Accessories

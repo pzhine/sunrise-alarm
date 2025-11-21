@@ -237,9 +237,10 @@ async function createWindow() {
           height: 544,
           useContentSize: true, // This ensures dimensions apply to content area only
           title: 'Sunrise Alarm (Dev)',
+          fullscreen: true,
         }
       : {
-          // Production settings - fullscreen
+          // Production settings
           fullscreen: true,
           title: 'Sunrise Alarm',
           autoHideMenuBar: true,

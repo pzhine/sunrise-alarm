@@ -85,6 +85,7 @@ const lastTouchY = ref(0);
 const startTouchY = ref(0); // To detect clicks vs drags
 const startTouchX = ref(0); // To detect horizontal swipes
 const isClickSuppressed = ref(false);
+const lockedAxis = ref<'vertical' | 'horizontal' | null>(null);
 let animationFrameId: number | null = null;
 
 // Helper to check if item is object
@@ -150,6 +151,7 @@ const handleTouchStart = (e: TouchEvent) => {
   }
 
   isDragging.value = true;
+  lockedAxis.value = null; // Reset axis lock
   velocity.value = 0;
   lastTouchY.value = e.touches[0].clientY;
   startTouchY.value = e.touches[0].clientY;
@@ -166,6 +168,31 @@ const handleTouchMove = (e: TouchEvent) => {
   e.preventDefault();
   
   const currentY = e.touches[0].clientY;
+  const currentX = e.touches[0].clientX;
+  
+  // Axis locking logic
+  if (!lockedAxis.value) {
+    const absDiffX = Math.abs(currentX - startTouchX.value);
+    const absDiffY = Math.abs(currentY - startTouchY.value);
+    const totalMove = Math.sqrt(absDiffX * absDiffX + absDiffY * absDiffY);
+    
+    // Lock axis after 10px of movement
+    if (totalMove > 10) {
+      if (absDiffX > absDiffY) {
+        lockedAxis.value = 'horizontal';
+      } else {
+        lockedAxis.value = 'vertical';
+      }
+    }
+  }
+
+  // If locked horizontally, do not scroll
+  if (lockedAxis.value === 'horizontal') {
+    // Update lastTouchY so that if we switch back (unlikely with locking) or release, state is consistent
+    lastTouchY.value = currentY;
+    return;
+  }
+
   const delta = lastTouchY.value - currentY;
   lastTouchY.value = currentY;
   
@@ -191,6 +218,11 @@ const handleTouchMove = (e: TouchEvent) => {
 const handleTouchEnd = (e: TouchEvent) => {
   isDragging.value = false;
   
+  // If we were locked to vertical scrolling, do not trigger back gesture
+  if (lockedAxis.value === 'vertical') {
+    return;
+  }
+
   // Check for horizontal swipe (Back gesture)
   // Swipe right: endX > startX
   const endX = e.changedTouches[0].clientX;
@@ -211,6 +243,7 @@ const handleMouseDown = (e: MouseEvent) => {
   }
 
   isDragging.value = true;
+  lockedAxis.value = null;
   velocity.value = 0;
   lastTouchY.value = e.clientY;
   startTouchY.value = e.clientY;
@@ -223,7 +256,30 @@ const handleMouseDown = (e: MouseEvent) => {
 const handleMouseMove = (e: MouseEvent) => {
   if (!isDragging.value) return;
   e.preventDefault();
+  
   const currentY = e.clientY;
+  const currentX = e.clientX;
+
+  // Axis locking logic
+  if (!lockedAxis.value) {
+    const absDiffX = Math.abs(currentX - startTouchX.value);
+    const absDiffY = Math.abs(currentY - startTouchY.value);
+    const totalMove = Math.sqrt(absDiffX * absDiffX + absDiffY * absDiffY);
+    
+    if (totalMove > 10) {
+      if (absDiffX > absDiffY) {
+        lockedAxis.value = 'horizontal';
+      } else {
+        lockedAxis.value = 'vertical';
+      }
+    }
+  }
+
+  if (lockedAxis.value === 'horizontal') {
+    lastTouchY.value = currentY;
+    return;
+  }
+
   const delta = lastTouchY.value - currentY;
   lastTouchY.value = currentY;
   
@@ -247,6 +303,10 @@ const handleMouseMove = (e: MouseEvent) => {
 const handleMouseUp = (e: MouseEvent) => {
   if (!isDragging.value) return;
   isDragging.value = false;
+
+  if (lockedAxis.value === 'vertical') {
+    return;
+  }
 
   // Check for horizontal swipe (Back gesture)
   const endX = e.clientX;

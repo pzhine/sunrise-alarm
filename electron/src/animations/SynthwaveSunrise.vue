@@ -26,7 +26,7 @@ const props = defineProps({
   },
   lowResolution: {
     type: Boolean,
-    default: true,
+    default: false,
   },
   debug: {
     // Added new debug prop
@@ -458,8 +458,8 @@ onMounted(() => {
     let newHeight = container.value.clientHeight;
 
     if (props.lowResolution) {
-      newWidth /= 2;
-      newHeight /= 2;
+      newWidth /= 4;
+      newHeight /= 4;
     }
 
     camera.aspect = newWidth / newHeight;

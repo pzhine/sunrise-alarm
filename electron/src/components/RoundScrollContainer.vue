@@ -84,6 +84,7 @@ const isDragging = ref(false);
 const lastTouchY = ref(0);
 const startTouchY = ref(0); // To detect clicks vs drags
 const startTouchX = ref(0); // To detect horizontal swipes
+const isClickSuppressed = ref(false);
 let animationFrameId: number | null = null;
 
 // Helper to check if item is object
@@ -92,8 +93,8 @@ const isObject = (item: any): item is Extract<ListItem, object> => {
 };
 
 const handleItemClick = (item: ListItem) => {
-  // Prevent click if we were dragging
-  if (Math.abs(lastTouchY.value - startTouchY.value) > 10) {
+  // Prevent click if we were dragging or catching a scroll
+  if (isClickSuppressed.value) {
     return;
   }
   
@@ -141,6 +142,13 @@ const handleWheel = (e: WheelEvent) => {
 };
 
 const handleTouchStart = (e: TouchEvent) => {
+  // If moving significantly, suppress click (catch)
+  if (Math.abs(velocity.value) > 0.1) {
+    isClickSuppressed.value = true;
+  } else {
+    isClickSuppressed.value = false;
+  }
+
   isDragging.value = true;
   velocity.value = 0;
   lastTouchY.value = e.touches[0].clientY;
@@ -160,6 +168,11 @@ const handleTouchMove = (e: TouchEvent) => {
   const currentY = e.touches[0].clientY;
   const delta = lastTouchY.value - currentY;
   lastTouchY.value = currentY;
+  
+  // Check if we moved enough to suppress click
+  if (!isClickSuppressed.value && Math.abs(currentY - startTouchY.value) > 10) {
+    isClickSuppressed.value = true;
+  }
   
   scrollTop.value += delta;
   
@@ -191,6 +204,12 @@ const handleTouchEnd = (e: TouchEvent) => {
 };
 
 const handleMouseDown = (e: MouseEvent) => {
+  if (Math.abs(velocity.value) > 0.1) {
+    isClickSuppressed.value = true;
+  } else {
+    isClickSuppressed.value = false;
+  }
+
   isDragging.value = true;
   velocity.value = 0;
   lastTouchY.value = e.clientY;
@@ -208,6 +227,11 @@ const handleMouseMove = (e: MouseEvent) => {
   const delta = lastTouchY.value - currentY;
   lastTouchY.value = currentY;
   
+  // Check if we moved enough to suppress click
+  if (!isClickSuppressed.value && Math.abs(currentY - startTouchY.value) > 10) {
+    isClickSuppressed.value = true;
+  }
+
   scrollTop.value += delta;
   
   // Rubber banding during drag

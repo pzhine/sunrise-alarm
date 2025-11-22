@@ -21,7 +21,7 @@
 
 <script setup lang="ts">
 import { useAppStore } from './stores/appState';
-import { computed, watch, onMounted } from 'vue';
+import { computed, watch, onMounted, onUnmounted } from 'vue';
 import UpdateIndicator from './components/UpdateIndicator.vue';
 import TimeoutRedirect from './components/TimeoutRedirect.vue';
 import BluetoothNotifications from './components/BluetoothNotifications.vue';
@@ -55,6 +55,24 @@ onMounted(() => {
     brightnessFilter.value
   );
 });
+
+const handleTouchStart = () => {
+  document.body.classList.add('cursor-hidden');
+};
+
+const handleMouseMove = () => {
+  document.body.classList.remove('cursor-hidden');
+};
+
+onMounted(() => {
+  window.addEventListener('touchstart', handleTouchStart);
+  window.addEventListener('mousemove', handleMouseMove);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('touchstart', handleTouchStart);
+  window.removeEventListener('mousemove', handleMouseMove);
+});
 </script>
 
 <style>
@@ -71,5 +89,10 @@ body {
 /* Apply brightness filter to text and borders */
 * {
   filter: var(--brightness-filter);
+}
+
+/* Hide cursor when touching the screen */
+.cursor-hidden {
+  cursor: none !important;
 }
 </style>

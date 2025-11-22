@@ -156,3 +156,7 @@ textarea:focus {
     box-shadow: 0 0 50px rgba(0,0,0,0.5);
   }
 }
+
+body.cursor-hidden, body.cursor-hidden * {
+  cursor: none !important;
+}

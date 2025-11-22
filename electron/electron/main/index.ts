@@ -19,6 +19,9 @@ import {
 } from './autoUpdater';
 import { initConfigManager } from './configManager';
 import { initSunriseController } from './sunriseController';
+import { BluetoothMediaService } from './bluetoothMediaService';
+import { setupBluetoothPairingHandlers } from './bluetoothPairingHandlers';
+
 import './serial';
 import './wlan';
 import './stateManager';
@@ -219,9 +222,10 @@ async function createWindow() {
           height: 544,
           useContentSize: true, // This ensures dimensions apply to content area only
           title: 'Sunrise Alarm (Dev)',
+          fullscreen: true,
         }
       : {
-          // Production settings - fullscreen
+          // Production settings
           fullscreen: true,
           title: 'Sunrise Alarm',
           autoHideMenuBar: true,
@@ -265,6 +269,9 @@ async function createWindow() {
     return { action: 'deny' };
   });
   // win.webContents.on('will-navigate', (event, url) => { }) #344
+  
+  // Initialize Bluetooth services
+  initializeBluetoothServices(win);
 }
 
 // Wait for any previous instances to cleanup resources before continuing
@@ -418,6 +425,68 @@ ipcMain.handle('get-country-sounds', async (_, { query, country }) => {
     throw error;
   }
 });
+
+// Initialize Bluetooth Media Service
+let bluetoothMediaService: BluetoothMediaService | null = null;
+let bluetoothPairingService: any = null;
+
+// Register IPC handlers for Bluetooth Media Control
+ipcMain.handle('bluetooth-media:send-command', async (_, command: string) => {
+  try {
+    if (!bluetoothMediaService) {
+      bluetoothMediaService = new BluetoothMediaService();
+      
+      // Forward metadata updates to renderer
+      bluetoothMediaService.on('metadataUpdated', (metadata) => {
+        if (win && !win.isDestroyed()) {
+          win.webContents.send('bluetooth-media:metadata-update', metadata);
+        }
+      });
+    }
+    
+    return await bluetoothMediaService.sendMediaCommand(command);
+  } catch (error) {
+    console.error('Error in bluetooth-media:send-command IPC handler:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('bluetooth-media:get-metadata', async () => {
+  try {
+    if (!bluetoothMediaService) {
+      bluetoothMediaService = new BluetoothMediaService();
+      
+      // Forward metadata updates to renderer
+      bluetoothMediaService.on('metadataUpdated', (metadata) => {
+        if (win && !win.isDestroyed()) {
+          win.webContents.send('bluetooth-media:metadata-update', metadata);
+        }
+      });
+    }
+    
+    const metadata = await bluetoothMediaService.getMetadata();
+    return { 
+      success: true, 
+      metadata,
+      connectionState: bluetoothMediaService.getConnectionState()
+    };
+  } catch (error) {
+    console.error('Error in bluetooth-media:get-metadata IPC handler:', error);
+    return { 
+      success: false, 
+      error: error.message,
+      connectionState: 'disconnected' 
+    };
+  }
+});
+
+// Initialize Bluetooth services when window is created
+function initializeBluetoothServices(mainWindow: BrowserWindow) {
+  // Setup pairing handlers
+  bluetoothPairingService = setupBluetoothPairingHandlers(mainWindow);
+  
+  // Note: Sound notifications are now handled in the Vue frontend via BluetoothNotifications.vue
+}
 
 // Create the application menu with update options
 function createApplicationMenu() {

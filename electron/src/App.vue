@@ -12,6 +12,7 @@
     ]"
   />
   <UpdateIndicator />
+  <BluetoothNotifications />
 </template>
 
 <script setup lang="ts">
@@ -19,6 +20,7 @@ import { useAppStore } from './stores/appState';
 import { computed, watch, onMounted } from 'vue';
 import UpdateIndicator from './components/UpdateIndicator.vue';
 import TimeoutRedirect from './components/TimeoutRedirect.vue';
+import BluetoothNotifications from './components/BluetoothNotifications.vue';
 
 const appStore = useAppStore();
 

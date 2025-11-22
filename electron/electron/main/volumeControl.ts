@@ -1,8 +1,8 @@
 import { exec } from 'child_process';
 import { ipcMain } from 'electron';
 import { getState } from './stateManager';
-import { VITE_DEV_SERVER_URL } from '.';
-import { getConfig } from './configManager';
+// import { VITE_DEV_SERVER_URL } from '.';
+// import { getConfig } from './configManager';
 
 // Function to execute shell commands
 function executeCommand(command: string): Promise<string> {
@@ -42,13 +42,6 @@ export async function setSystemVolume(volumeLevel: number): Promise<void> {
 
 // Get current system volume level
 export async function getSystemVolume(): Promise<number> {
-  if (VITE_DEV_SERVER_URL && getConfig().dev.mockSystemAudio) {
-    console.log(
-      'Skipping volume control in development mode:',
-      VITE_DEV_SERVER_URL
-    );
-    return 50;
-  }
   try {
     // Get current volume using amixer
     const output = await executeCommand('amixer -D pulse get Master');

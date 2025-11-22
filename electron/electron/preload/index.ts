@@ -51,6 +51,57 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   },
 });
 
+// --------- Bluetooth Media API ---------
+contextBridge.exposeInMainWorld('electronAPI', {
+  bluetoothMedia: {
+    sendCommand: (command: string) => ipcRenderer.invoke('bluetooth-media:send-command', command),
+    getMetadata: () => ipcRenderer.invoke('bluetooth-media:get-metadata'),
+    onMetadataUpdate: (callback: (metadata: any) => void) => {
+      ipcRenderer.on('bluetooth-media:metadataUpdated', (_event, metadata) => callback(metadata));
+    },
+    onConnectionChange: (callback: (status: 'connected' | 'disconnected') => void) => {
+      ipcRenderer.on('bluetooth-media:connectionChanged', (_event, status) => callback(status));
+    },
+    removeMetadataListener: () => {
+      ipcRenderer.removeAllListeners('bluetooth-media:metadataUpdated');
+    },
+    removeConnectionListener: () => {
+      ipcRenderer.removeAllListeners('bluetooth-media:connectionChanged');
+    }
+  },
+  bluetoothPairing: {
+    start: () => ipcRenderer.invoke('bluetooth-pairing:start'),
+    stop: () => ipcRenderer.invoke('bluetooth-pairing:stop'),
+    getState: () => ipcRenderer.invoke('bluetooth-pairing:getState'),
+    getPairedDevices: () => ipcRenderer.invoke('bluetooth-pairing:getPairedDevices'),
+    unpairDevice: (address: string) => ipcRenderer.invoke('bluetooth-pairing:unpairDevice', address),
+    onPairingStarted: (callback: (state: any) => void) => {
+      ipcRenderer.on('bluetooth-pairing:started', (_event, state) => callback(state));
+    },
+    onPairingUpdate: (callback: (state: any) => void) => {
+      ipcRenderer.on('bluetooth-pairing:update', (_event, state) => callback(state));
+    },
+    onPairingStopped: (callback: (state: any) => void) => {
+      ipcRenderer.on('bluetooth-pairing:stopped', (_event, state) => callback(state));
+    },
+    onPairingSuccess: (callback: (state: any) => void) => {
+      ipcRenderer.on('bluetooth-pairing:success', (_event, state) => callback(state));
+    },
+    onPairingError: (callback: (state: any) => void) => {
+      ipcRenderer.on('bluetooth-pairing:error', (_event, state) => callback(state));
+    },
+    onDeviceConnected: (callback: (device: any) => void) => {
+      ipcRenderer.on('bluetooth-device:connected', (_event, device) => callback(device));
+    },
+    onDeviceDisconnected: (callback: (device: any) => void) => {
+      ipcRenderer.on('bluetooth-device:disconnected', (_event, device) => callback(device));
+    },
+    onDevicePaired: (callback: (device: any) => void) => {
+      ipcRenderer.on('bluetooth-device:paired', (_event, device) => callback(device));
+    }
+  }
+});
+
 // --------- Preload scripts loading ---------
 function domReady(
   condition: DocumentReadyState[] = ['complete', 'interactive']

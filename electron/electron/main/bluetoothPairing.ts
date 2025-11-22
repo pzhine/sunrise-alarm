@@ -142,9 +142,21 @@ export class BluetoothPairingService extends EventEmitter {
    */
   private startConnectionMonitoring(): void {
     // Monitor bluetoothctl for connection events
-    this.bluetoothMonitor = spawn('bluetoothctl');
+    try {
+      this.bluetoothMonitor = spawn('bluetoothctl');
+      
+      // Handle spawn errors (e.g., bluetoothctl not found)
+      this.bluetoothMonitor.on('error', (error) => {
+        console.error('Failed to start bluetoothctl monitor:', error);
+        this.bluetoothMonitor = null;
+      });
+      
+    } catch (error) {
+      console.error('Failed to spawn bluetoothctl:', error);
+      return;
+    }
     
-    if (!this.bluetoothMonitor.stdout) return;
+    if (!this.bluetoothMonitor || !this.bluetoothMonitor.stdout) return;
 
     this.bluetoothMonitor.stdout.on('data', (data: Buffer) => {
       const output = data.toString();

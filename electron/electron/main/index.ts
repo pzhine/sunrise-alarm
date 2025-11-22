@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain, dialog, Menu } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, dialog, Menu, screen } from 'electron';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -213,20 +213,32 @@ const preload = path.join(__dirname, '../preload/index.mjs');
 const indexHtml = path.join(RENDERER_DIST, 'index.html');
 
 async function createWindow() {
+  // Get primary display dimensions
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+  
+  // Determine if we should use fullscreen based on screen width
+  const shouldBeFullscreen = screenWidth <= 1024;
+  
+  console.log(`Screen dimensions: ${screenWidth}x${screenHeight}`);
+  console.log(`Fullscreen mode: ${shouldBeFullscreen}`);
+  
   win = new BrowserWindow({
     // Different window settings for dev and production
     ...(VITE_DEV_SERVER_URL
       ? {
-          // Development settings - windowed with specific size
-          width: 950,
-          height: 544,
+          // Development settings - windowed with specific size for large screens
+          width: shouldBeFullscreen ? screenWidth : 950,
+          height: shouldBeFullscreen ? screenHeight : 950,
           useContentSize: true, // This ensures dimensions apply to content area only
           title: 'Sunrise Alarm (Dev)',
-          fullscreen: true,
+          fullscreen: shouldBeFullscreen,
         }
       : {
           // Production settings
-          fullscreen: true,
+          fullscreen: shouldBeFullscreen,
+          width: shouldBeFullscreen ? undefined : 950,
+          height: shouldBeFullscreen ? undefined : 950,
           title: 'Sunrise Alarm',
           autoHideMenuBar: true,
         }),

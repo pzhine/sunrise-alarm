@@ -1,9 +1,9 @@
 <template>
-  <div class="w-full">
-    <InteractiveList
-      :title="'Main Menu'"
-      :show-title="true"
+  <div class="w-full h-full">
+    <RoundScrollContainer
       :items="menuItems"
+      :title="'DawnDeck'"
+      :show-title="true"
       :showBackButton="true"
       @select="handleMenuSelection"
       @back="router.push('/')"
@@ -20,6 +20,7 @@
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import InteractiveList, { ListItem } from '../components/InteractiveList.vue';
+import RoundScrollContainer from '../components/RoundScrollContainer.vue';
 import { useAppStore } from '../stores/appState';
 import {
   isGlobalSoundPlaying,
@@ -30,7 +31,7 @@ import TimeoutRedirect from '../components/TimeoutRedirect.vue';
 const router = useRouter();
 const appStore = useAppStore();
 const inactivityTimer = ref<number | null>(null);
-const INACTIVITY_TIMEOUT = 10000; // 10 seconds in milliseconds
+const INACTIVITY_TIMEOUT = 30_000; // 30 seconds in milliseconds
 const isPlaying = ref(isGlobalSoundPlaying());
 
 // Update the isPlaying value periodically to detect changes

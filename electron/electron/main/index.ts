@@ -228,8 +228,8 @@ async function createWindow() {
     ...(VITE_DEV_SERVER_URL
       ? {
           // Development settings - windowed with specific size for large screens
-          width: shouldBeFullscreen ? screenWidth : 950,
-          height: shouldBeFullscreen ? screenHeight : 950,
+          width: shouldBeFullscreen ? screenWidth : 1025,
+          height: shouldBeFullscreen ? screenHeight : 1025,
           useContentSize: true, // This ensures dimensions apply to content area only
           title: 'Sunrise Alarm (Dev)',
           fullscreen: shouldBeFullscreen,
@@ -237,8 +237,8 @@ async function createWindow() {
       : {
           // Production settings
           fullscreen: shouldBeFullscreen,
-          width: shouldBeFullscreen ? undefined : 950,
-          height: shouldBeFullscreen ? undefined : 950,
+          width: shouldBeFullscreen ? undefined : 1025,
+          height: shouldBeFullscreen ? undefined : 1025,
           title: 'Sunrise Alarm',
           autoHideMenuBar: true,
         }),

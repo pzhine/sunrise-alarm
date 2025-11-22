@@ -1,18 +1,22 @@
 <template>
-  <router-view />
-  <TimeoutRedirect
-    :ms="45000"
-    redirectRoute="/"
-    resetOnActivity="wheel"
-    :excludeRoutes="[
-      'SunrisePlayer', 'sunrise-player',   
-      'Wifi', 'wifi', 
-      'WifiPassword', 'wifi-password', 
-      'WifiConnect', 'wifi-connect'
-    ]"
-  />
-  <UpdateIndicator />
-  <BluetoothNotifications />
+  <div class="app-container">
+    <div class="round-display">
+      <router-view />
+      <TimeoutRedirect
+        :ms="45000"
+        redirectRoute="/"
+        resetOnActivity="wheel"
+        :excludeRoutes="[
+          'SunrisePlayer', 'sunrise-player',   
+          'Wifi', 'wifi', 
+          'WifiPassword', 'wifi-password', 
+          'WifiConnect', 'wifi-connect'
+        ]"
+      />
+      <UpdateIndicator />
+      <BluetoothNotifications />
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">

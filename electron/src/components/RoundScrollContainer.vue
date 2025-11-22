@@ -166,13 +166,6 @@ const handleTouchMove = (e: TouchEvent) => {
   // Rubber banding during drag
   if (scrollTop.value < 0) {
     // Apply resistance when pulling past top
-    // We need to be careful not to compound the resistance too much on each move
-    // A simple way is to just dampen the delta if we are already out of bounds
-    // But since we are adding delta to scrollTop directly, let's just dampen the result
-    // Actually, the standard way is: newPos = limit + (rawPos - limit) * resistance
-    // But here we are incremental.
-    // Let's just dampen the delta if we are out of bounds.
-    // Revert the addition
     scrollTop.value -= delta;
     // Add dampened delta
     scrollTop.value += delta * 0.4;
@@ -191,8 +184,8 @@ const handleTouchEnd = (e: TouchEvent) => {
   const diffX = endX - startTouchX.value;
   const diffY = Math.abs(e.changedTouches[0].clientY - startTouchY.value);
   
-  // Thresholds: moved right by > 50px, and horizontal movement was dominant
-  if (diffX > 50 && diffX > diffY * 1.5) {
+  // Thresholds: moved right by > 100px, and horizontal movement was significantly dominant
+  if (diffX > 100 && diffX > diffY * 2.5) {
     emit('back');
   }
 };
@@ -236,7 +229,7 @@ const handleMouseUp = (e: MouseEvent) => {
   const diffX = endX - startTouchX.value;
   const diffY = Math.abs(e.clientY - startTouchY.value);
   
-  if (diffX > 50 && diffX > diffY * 1.5) {
+  if (diffX > 100 && diffX > diffY * 2.5) {
     emit('back');
   }
 };

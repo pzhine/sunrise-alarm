@@ -85,6 +85,7 @@ const lastTouchY = ref(0);
 const startTouchY = ref(0); // To detect clicks vs drags
 const startTouchX = ref(0); // To detect horizontal swipes
 const isClickSuppressed = ref(false);
+const clickTimeoutId = ref<number | null>(null);
 const lockedAxis = ref<'vertical' | 'horizontal' | null>(null);
 const lastDragEndTime = ref(0);
 const lastDragEndPos = ref({ x: 0, y: 0 });
@@ -101,10 +102,19 @@ const handleItemClick = (item: ListItem) => {
     return;
   }
   
-  if (isObject(item) && item.onSelect) {
-    item.onSelect();
+  // Clear any existing timeout
+  if (clickTimeoutId.value) {
+    clearTimeout(clickTimeoutId.value);
   }
-  emit('select', item);
+
+  // Delay the click to allow for cancellation if it's just noise (continuation)
+  clickTimeoutId.value = window.setTimeout(() => {
+    if (isObject(item) && item.onSelect) {
+      item.onSelect();
+    }
+    emit('select', item);
+    clickTimeoutId.value = null;
+  }, 100);
 };
 
 const updateLayout = () => {
@@ -157,16 +167,20 @@ const handleTouchStart = (e: TouchEvent) => {
     (Math.abs(touchY - lastDragEndPos.value.y) < 50);
 
   if (isContinuation) {
+    // Cancel pending click from previous touch end (it was likely noise)
+    if (clickTimeoutId.value) {
+      clearTimeout(clickTimeoutId.value);
+      clickTimeoutId.value = null;
+    }
+
     // Resume previous state
     isDragging.value = true;
     // Don't reset lockedAxis or startTouchX/Y to preserve gesture context
     // Just update lastTouchY to current position to avoid jumps
     lastTouchY.value = touchY;
     
-    // If we were moving, keep suppressing clicks
-    if (Math.abs(velocity.value) > 0.1) {
-      isClickSuppressed.value = true;
-    }
+    // Always suppress clicks for continuations (treat as noise/drag resume)
+    isClickSuppressed.value = true;
   } else {
     // New gesture
     // If moving significantly, suppress click (catch)

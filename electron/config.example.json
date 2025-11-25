@@ -21,6 +21,7 @@
   },
   "dev": {
     "mockSerial": true,
-    "mockSystemAudio": true
+    "mockSystemAudio": true,
+    "debugTouchNoise": false
   }
 }

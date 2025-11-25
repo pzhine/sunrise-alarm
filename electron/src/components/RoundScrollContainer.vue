@@ -14,6 +14,15 @@
     <div class="w-full will-change-transform" ref="contentRef">
       <div class="scroll-spacer" :style="{ height: spacerHeight + 'px' }"></div>
       
+      <!-- Debug Overlay -->
+      <div v-if="debugTouchNoise" class="absolute top-0 left-0 w-full h-auto bg-black/80 text-green-400 text-xs p-2 z-50 pointer-events-none font-mono">
+        <div>NOISE DEBUG</div>
+        <div>Dirty Starts: {{ noiseStats.dirtyStarts }}</div>
+        <div>Jumps: {{ noiseStats.jumps }}</div>
+        <div>Continuations: {{ noiseStats.continuations }}</div>
+        <div>Last: {{ noiseStats.lastEvent }}</div>
+      </div>
+
       <!-- Title Item -->
       <div 
         v-if="showTitle && title"
@@ -55,8 +64,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, watch, computed } from 'vue';
 import type { ListItem } from './InteractiveList.vue';
+import { useAppStore } from '../stores/appState';
 
 const props = defineProps<{
   items?: ListItem[];
@@ -70,6 +80,15 @@ const emit = defineEmits<{
   (e: 'select', item: ListItem): void;
   (e: 'back'): void;
 }>();
+
+const appStore = useAppStore();
+const debugTouchNoise = computed(() => appStore.config?.dev?.debugTouchNoise);
+const noiseStats = ref({
+  dirtyStarts: 0,
+  jumps: 0,
+  continuations: 0,
+  lastEvent: '',
+});
 
 const containerRef = ref<HTMLElement | null>(null);
 const contentRef = ref<HTMLElement | null>(null);
@@ -214,6 +233,10 @@ const handleTouchStart = (e: TouchEvent) => {
     
     // Always suppress clicks for continuations (treat as noise/drag resume)
     isClickSuppressed.value = true;
+    
+    // Debug stats
+    noiseStats.value.continuations++;
+    noiseStats.value.lastEvent = 'Continuation';
   } else {
     // New gesture
     
@@ -226,6 +249,10 @@ const handleTouchStart = (e: TouchEvent) => {
       // If touch started too soon after the last one, treat as noise/dirty
       isClickSuppressed.value = true;
       isNoise.value = true;
+      
+      // Debug stats
+      noiseStats.value.dirtyStarts++;
+      noiseStats.value.lastEvent = 'Dirty Start';
     } else {
       isNoise.value = false;
       if (Math.abs(velocity.value) > 0.1) {
@@ -258,13 +285,17 @@ const handleTouchMove = (e: TouchEvent) => {
   const currentX = e.touches[0].clientX;
   
   // Filter out erratic jumps (EMI noise)
-  // If the touch jumps more than 80px in a single frame, ignore it
+  // If the touch jumps more than 200px in a single frame, ignore it
   const jumpDeltaY = Math.abs(currentY - lastTouchY.value);
   const jumpDeltaX = Math.abs(currentX - lastTouchX.value);
   
-  if (jumpDeltaY > 80 || jumpDeltaX > 80) {
+  if (jumpDeltaY > 200 || jumpDeltaX > 200) {
     isNoise.value = true;
     isClickSuppressed.value = true;
+    
+    // Debug stats
+    noiseStats.value.jumps++;
+    noiseStats.value.lastEvent = 'Jump Detected';
     return;
   }
   
@@ -276,8 +307,8 @@ const handleTouchMove = (e: TouchEvent) => {
     const absDiffY = Math.abs(currentY - startTouchY.value);
     const totalMove = Math.sqrt(absDiffX * absDiffX + absDiffY * absDiffY);
     
-    // Lock axis after 10px of movement
-    if (totalMove > 10) {
+    // Lock axis after 15px of movement
+    if (totalMove > 15) {
       if (absDiffX > absDiffY) {
         lockedAxis.value = 'horizontal';
       } else {
@@ -352,8 +383,8 @@ const handleTouchEnd = (e: TouchEvent) => {
     }
   }
 
-  // Thresholds: moved right by > 100px, and horizontal movement was significantly dominant
-  if (diffX > 100 && diffX > diffY * 2.5) {
+  // Thresholds: moved right by > 80px, and horizontal movement was significantly dominant
+  if (diffX > 80 && diffX > diffY * 2.0) {
     emit('back');
   }
 };

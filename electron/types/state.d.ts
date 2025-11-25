@@ -53,6 +53,7 @@ export interface AppConfig {
   dev: {
     mockSerial: boolean;
     mockSystemAudio: boolean;
+    debugTouchNoise?: boolean;
   };
 }
 

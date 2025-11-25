@@ -2,7 +2,7 @@
   <div class="app-container">
     <div class="round-display">
       <router-view />
-      <TimeoutRedirect
+      <!-- <TimeoutRedirect
         :ms="45000"
         redirectRoute="/"
         resetOnActivity="wheel"
@@ -12,7 +12,7 @@
           'WifiPassword', 'wifi-password', 
           'WifiConnect', 'wifi-connect'
         ]"
-      />
+      /> -->
       <UpdateIndicator />
       <BluetoothNotifications />
     </div>

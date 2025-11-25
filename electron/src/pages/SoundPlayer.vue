@@ -26,7 +26,6 @@
       />
     </div> -->
   </div>
-  <TimeoutRedirect :ms="30000" :redirectRoute="'/'" />
 </template>
 
 <script setup lang="ts">
@@ -38,7 +37,6 @@ import {
   getCurrentSoundInfo,
   updateParametricEQFrequency,
 } from '../services/audioService';
-import TimeoutRedirect from '../components/TimeoutRedirect.vue';
 
 const route = useRoute();
 const router = useRouter();

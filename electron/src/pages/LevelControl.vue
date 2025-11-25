@@ -12,7 +12,6 @@
     <h1 class="text-2xl">{{ title }}</h1>
     <div class="text-3xl">{{ level }}%</div>
   </div>
-  <TimeoutRedirect :ms="4000" :resetOnActivity="'wheel'" />
 </template>
 
 <script setup lang="ts">
@@ -20,7 +19,6 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAppStore } from '../stores/appState';
 import { debounce } from 'lodash-es';
-import TimeoutRedirect from '../components/TimeoutRedirect.vue';
 
 const props = defineProps<{
   type:

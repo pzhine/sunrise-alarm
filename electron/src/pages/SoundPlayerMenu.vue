@@ -7,11 +7,6 @@
       :showBackButton="true"
       @back="backToSoundsList"
     />
-    <TimeoutRedirect
-      :ms="15000"
-      :redirectRoute="{ name: 'SoundPlayer' }"
-      :resetOnActivity="'wheel'"
-    />
   </div>
 </template>
 
@@ -21,7 +16,6 @@ import { useRoute, useRouter } from 'vue-router';
 import InteractiveList from '../components/InteractiveList.vue';
 import { useAppStore } from '../stores/appState';
 import { getCurrentSoundInfo, stopGlobalSound } from '../services/audioService';
-import TimeoutRedirect from '../components/TimeoutRedirect.vue';
 
 const route = useRoute();
 const router = useRouter();

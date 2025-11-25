@@ -68,14 +68,11 @@
       </div>
     </div>
   </div>
-  
-  <TimeoutRedirect :ms="60000" :redirectRoute="'/'" />
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
-import TimeoutRedirect from '../components/TimeoutRedirect.vue';
 
 const router = useRouter();
 

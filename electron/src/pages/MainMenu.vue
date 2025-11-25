@@ -9,11 +9,6 @@
       @back="router.push('/')"
     />
   </div>
-  <TimeoutRedirect
-    :ms="INACTIVITY_TIMEOUT"
-    :redirectRoute="'/'"
-    :resetOnActivity="'wheel'"
-  />
 </template>
 
 <script setup lang="ts">
@@ -26,7 +21,6 @@ import {
   isGlobalSoundPlaying,
   getCurrentSoundInfo,
 } from '../services/audioService';
-import TimeoutRedirect from '../components/TimeoutRedirect.vue';
 
 const router = useRouter();
 const appStore = useAppStore();

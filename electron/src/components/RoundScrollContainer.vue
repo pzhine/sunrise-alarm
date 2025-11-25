@@ -89,6 +89,8 @@ const clickTimeoutId = ref<number | null>(null);
 const lockedAxis = ref<'vertical' | 'horizontal' | null>(null);
 const lastDragEndTime = ref(0);
 const lastDragEndPos = ref({ x: 0, y: 0 });
+const isNoise = ref(false);
+const lastTouchX = ref(0);
 let animationFrameId: number | null = null;
 
 // Helper to check if item is object
@@ -208,6 +210,7 @@ const handleTouchStart = (e: TouchEvent) => {
     // Don't reset lockedAxis or startTouchX/Y to preserve gesture context
     // Just update lastTouchY to current position to avoid jumps
     lastTouchY.value = touchY;
+    lastTouchX.value = touchX;
     
     // Always suppress clicks for continuations (treat as noise/drag resume)
     isClickSuppressed.value = true;
@@ -222,17 +225,22 @@ const handleTouchStart = (e: TouchEvent) => {
     if (!isCleanStart) {
       // If touch started too soon after the last one, treat as noise/dirty
       isClickSuppressed.value = true;
-    } else if (Math.abs(velocity.value) > 0.1) {
-      // If moving significantly, suppress click (catch)
-      isClickSuppressed.value = true;
+      isNoise.value = true;
     } else {
-      isClickSuppressed.value = false;
+      isNoise.value = false;
+      if (Math.abs(velocity.value) > 0.1) {
+        // If moving significantly, suppress click (catch)
+        isClickSuppressed.value = true;
+      } else {
+        isClickSuppressed.value = false;
+      }
     }
 
     isDragging.value = true;
     lockedAxis.value = null; // Reset axis lock
     velocity.value = 0;
     lastTouchY.value = touchY;
+    lastTouchX.value = touchX;
     startTouchY.value = touchY;
     startTouchX.value = touchX;
   }
@@ -251,21 +259,16 @@ const handleTouchMove = (e: TouchEvent) => {
   
   // Filter out erratic jumps (EMI noise)
   // If the touch jumps more than 80px in a single frame, ignore it
-  const jumpDelta = Math.abs(currentY - lastTouchY.value);
-  if (jumpDelta > 80) {
-    // Update lastTouchY to current to prevent "stuck" offset if it wasn't noise,
-    // but don't apply the delta to scrollTop this frame.
-    // Actually, if it IS noise, we should probably ignore the update entirely?
-    // But if the user really moved that fast, we might lose tracking.
-    // Let's assume noise is transient. If we ignore this frame, the next frame 
-    // will have a smaller delta relative to this one if it was real movement?
-    // No, if we ignore this frame, lastTouchY remains old. Next frame currentY is new.
-    // Delta will be even bigger.
-    // So we should only ignore if it snaps BACK quickly?
-    // Simple approach: Cap the delta.
-    // Better approach for "teleporting" noise: just skip this event update entirely.
+  const jumpDeltaY = Math.abs(currentY - lastTouchY.value);
+  const jumpDeltaX = Math.abs(currentX - lastTouchX.value);
+  
+  if (jumpDeltaY > 80 || jumpDeltaX > 80) {
+    isNoise.value = true;
+    isClickSuppressed.value = true;
     return;
   }
+  
+  lastTouchX.value = currentX;
 
   // Axis locking logic
   if (!lockedAxis.value) {
@@ -322,6 +325,11 @@ const handleTouchEnd = (e: TouchEvent) => {
     y: e.changedTouches[0].clientY
   };
   
+  // If noise was detected, do not trigger gestures
+  if (isNoise.value) {
+    return;
+  }
+
   // If we were locked to vertical scrolling, do not trigger back gesture
   if (lockedAxis.value === 'vertical') {
     return;
@@ -333,6 +341,17 @@ const handleTouchEnd = (e: TouchEvent) => {
   const diffX = endX - startTouchX.value;
   const diffY = Math.abs(e.changedTouches[0].clientY - startTouchY.value);
   
+  // Zone Check for Swipe: Must start in the middle 50%
+  if (containerRef.value) {
+    const containerRect = containerRef.value.getBoundingClientRect();
+    const containerCenter = containerRect.top + containerRect.height / 2;
+    const stableThreshold = (containerRect.height / 2) * 0.5;
+    const dist = Math.abs(startTouchY.value - containerCenter);
+    if (dist > stableThreshold) {
+      return;
+    }
+  }
+
   // Thresholds: moved right by > 100px, and horizontal movement was significantly dominant
   if (diffX > 100 && diffX > diffY * 2.5) {
     emit('back');

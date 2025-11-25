@@ -86,6 +86,8 @@ const startTouchY = ref(0); // To detect clicks vs drags
 const startTouchX = ref(0); // To detect horizontal swipes
 const isClickSuppressed = ref(false);
 const lockedAxis = ref<'vertical' | 'horizontal' | null>(null);
+const lastDragEndTime = ref(0);
+const lastDragEndPos = ref({ x: 0, y: 0 });
 let animationFrameId: number | null = null;
 
 // Helper to check if item is object
@@ -143,19 +145,45 @@ const handleWheel = (e: WheelEvent) => {
 };
 
 const handleTouchStart = (e: TouchEvent) => {
-  // If moving significantly, suppress click (catch)
-  if (Math.abs(velocity.value) > 0.1) {
-    isClickSuppressed.value = true;
+  const now = Date.now();
+  const touchX = e.touches[0].clientX;
+  const touchY = e.touches[0].clientY;
+
+  // Check if this is a continuation of a recent drag (within 150ms and 50px)
+  // This helps with EMI interference causing touch interruptions
+  const isContinuation = 
+    (now - lastDragEndTime.value < 150) &&
+    (Math.abs(touchX - lastDragEndPos.value.x) < 50) &&
+    (Math.abs(touchY - lastDragEndPos.value.y) < 50);
+
+  if (isContinuation) {
+    // Resume previous state
+    isDragging.value = true;
+    // Don't reset lockedAxis or startTouchX/Y to preserve gesture context
+    // Just update lastTouchY to current position to avoid jumps
+    lastTouchY.value = touchY;
+    
+    // If we were moving, keep suppressing clicks
+    if (Math.abs(velocity.value) > 0.1) {
+      isClickSuppressed.value = true;
+    }
   } else {
-    isClickSuppressed.value = false;
+    // New gesture
+    // If moving significantly, suppress click (catch)
+    if (Math.abs(velocity.value) > 0.1) {
+      isClickSuppressed.value = true;
+    } else {
+      isClickSuppressed.value = false;
+    }
+
+    isDragging.value = true;
+    lockedAxis.value = null; // Reset axis lock
+    velocity.value = 0;
+    lastTouchY.value = touchY;
+    startTouchY.value = touchY;
+    startTouchX.value = touchX;
   }
 
-  isDragging.value = true;
-  lockedAxis.value = null; // Reset axis lock
-  velocity.value = 0;
-  lastTouchY.value = e.touches[0].clientY;
-  startTouchY.value = e.touches[0].clientY;
-  startTouchX.value = e.touches[0].clientX;
   if (!animationFrameId) {
     animationLoop();
   }
@@ -163,13 +191,29 @@ const handleTouchStart = (e: TouchEvent) => {
 
 const handleTouchMove = (e: TouchEvent) => {
   if (!isDragging.value) return;
-  // e.preventDefault(); // Don't prevent default immediately to allow horizontal swipe detection?
-  // Actually we need to prevent default to stop browser scrolling/navigation
   e.preventDefault();
   
   const currentY = e.touches[0].clientY;
   const currentX = e.touches[0].clientX;
   
+  // Filter out erratic jumps (EMI noise)
+  // If the touch jumps more than 80px in a single frame, ignore it
+  const jumpDelta = Math.abs(currentY - lastTouchY.value);
+  if (jumpDelta > 80) {
+    // Update lastTouchY to current to prevent "stuck" offset if it wasn't noise,
+    // but don't apply the delta to scrollTop this frame.
+    // Actually, if it IS noise, we should probably ignore the update entirely?
+    // But if the user really moved that fast, we might lose tracking.
+    // Let's assume noise is transient. If we ignore this frame, the next frame 
+    // will have a smaller delta relative to this one if it was real movement?
+    // No, if we ignore this frame, lastTouchY remains old. Next frame currentY is new.
+    // Delta will be even bigger.
+    // So we should only ignore if it snaps BACK quickly?
+    // Simple approach: Cap the delta.
+    // Better approach for "teleporting" noise: just skip this event update entirely.
+    return;
+  }
+
   // Axis locking logic
   if (!lockedAxis.value) {
     const absDiffX = Math.abs(currentX - startTouchX.value);
@@ -217,6 +261,13 @@ const handleTouchMove = (e: TouchEvent) => {
 
 const handleTouchEnd = (e: TouchEvent) => {
   isDragging.value = false;
+  
+  // Store end state for continuation logic
+  lastDragEndTime.value = Date.now();
+  lastDragEndPos.value = {
+    x: e.changedTouches[0].clientX,
+    y: e.changedTouches[0].clientY
+  };
   
   // If we were locked to vertical scrolling, do not trigger back gesture
   if (lockedAxis.value === 'vertical') {

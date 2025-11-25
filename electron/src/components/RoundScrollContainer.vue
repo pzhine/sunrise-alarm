@@ -29,8 +29,8 @@
         <div
           v-for="(item, index) in items"
           :key="index"
-          class="round-item-wrapper flex justify-center items-center py-3 w-full origin-center border-b border-white/20"
-          @click="handleItemClick(item)"
+          class="round-item-wrapper flex justify-center items-center py-3 w-full origin-center border-b border-white/20 transition-colors duration-1000"
+          @click="handleItemClick(item, $event)"
         >
           <div 
             class="round-item-content flex justify-between items-center w-[90%] text-[1.2rem] text-center"
@@ -96,10 +96,40 @@ const isObject = (item: any): item is Extract<ListItem, object> => {
   return typeof item === 'object' && item !== null;
 };
 
-const handleItemClick = (item: ListItem) => {
+const handleItemClick = (item: ListItem, event?: MouseEvent) => {
   // Prevent click if we were dragging or catching a scroll
   if (isClickSuppressed.value) {
     return;
+  }
+
+  // Check if click is within the stable zone (middle 50%)
+  if (event && containerRef.value) {
+    const containerRect = containerRef.value.getBoundingClientRect();
+    const containerCenter = containerRect.top + containerRect.height / 2;
+    const clickY = event.clientY;
+    const distanceFromCenter = Math.abs(clickY - containerCenter);
+    const stableThreshold = (containerRect.height / 2) * 0.5;
+
+    if (distanceFromCenter > stableThreshold) {
+      return; // Ignore clicks outside the middle 50%
+    }
+
+    // Visual feedback: Flash highlight
+    const target = event.currentTarget as HTMLElement;
+    if (target) {
+      // Remove transition temporarily for instant highlight
+      target.style.transition = 'none';
+      target.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+      
+      // Force reflow
+      void target.offsetHeight;
+
+      // Restore transition to fade out
+      requestAnimationFrame(() => {
+        target.style.transition = 'background-color 1s ease-out';
+        target.style.backgroundColor = '';
+      });
+    }
   }
   
   // Clear any existing timeout
@@ -183,8 +213,17 @@ const handleTouchStart = (e: TouchEvent) => {
     isClickSuppressed.value = true;
   } else {
     // New gesture
-    // If moving significantly, suppress click (catch)
-    if (Math.abs(velocity.value) > 0.1) {
+    
+    // Check for "clean" start: must be preceded by a pause (no touches)
+    // This filters out rapid-fire false touches from EMI noise
+    const timeSinceLastTouch = now - lastDragEndTime.value;
+    const isCleanStart = timeSinceLastTouch > 100; // 100ms quiet period required
+
+    if (!isCleanStart) {
+      // If touch started too soon after the last one, treat as noise/dirty
+      isClickSuppressed.value = true;
+    } else if (Math.abs(velocity.value) > 0.1) {
+      // If moving significantly, suppress click (catch)
       isClickSuppressed.value = true;
     } else {
       isClickSuppressed.value = false;
